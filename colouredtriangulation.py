@@ -9,7 +9,9 @@ import flipper
 norm = flipper.norm
 
 RED, BLUE = 'Red', 'Blue'
-R, B = RED, BLUE
+
+def best_rotation(X):
+	return min(X[i:] + X[:i] for i in range(len(X)))
 
 class ColouredTriangulation(object):
 	def __init__(self, triangulation, colouring, sanity=False):
@@ -104,10 +106,7 @@ class ColouredTriangulation(object):
 						num_seen_edges += 1
 						to_process.put(~child)
 			
-			def best_rotation(t):
-				translated_edges = [translate[edge.label] for edge in t]
-				return min(translated_edges[i:] + translated_edges[:i] for i in range(3))
-			X = tuple(sorted(tuple(best_rotation(t)) for t in self.triangulation))
+			X = tuple(sorted(tuple(best_rotation([translate[edge.label] for edge in t])) for t in self.triangulation))
 			
 			inv_translate = dict((v, k) for (k, v) in translate.items())
 			Y = tuple([self.colouring[norm(inv_translate[i])] for i in range(self.triangulation.zeta)])
@@ -118,7 +117,7 @@ class ColouredTriangulation(object):
 		return best
 
 def test():
-	T = ColouredTriangulation(flipper.create_triangulation([(0,1,2), (~0,~1,~2)]), {0: R, 1: B, 2: R})
+	T = ColouredTriangulation(flipper.create_triangulation([(0,1,2), (~0,~1,~2)]), {0: RED, 1: BLUE, 2: RED})
 	
 	print(T)
 	print(T.stratum())
@@ -148,10 +147,10 @@ def build():
 	T = ColouredTriangulation.from_pA(flipper.load('S_1_1').mapping_class('aB'))  # [0]  # 2.
 	T = ColouredTriangulation.from_pA(flipper.load('S_1_2').mapping_class('abC'))  # [1, 1, -1, -1] # 8797 in 1m47s.
 	# T = ngon(6)  # [0, 0] # 18 in 1s.
-	# T = ngon(8)  # [4] # 120 in 3s.
+	T = ngon(8)  # [4] # 120 in 3s.
 	# T = ngon(10)  # [2, 2] # 2062 in 1m4s.
 	# T = ngon(12)  # [8] # 59342 in 52m21s.
-	T = ngon(14)  # [4, 4] # 
+	# T = ngon(14)  # [4, 4] # 
 	
 	print('Stratum: %s' % T.stratum())
 	
