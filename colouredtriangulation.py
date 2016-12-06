@@ -12,10 +12,12 @@ RED, BLUE = 'Red', 'Blue'
 R, B = RED, BLUE
 
 class ColouredTriangulation(object):
-	def __init__(self, triangulation, colouring):
+	def __init__(self, triangulation, colouring, sanity=False):
 		self.triangulation = triangulation
 		self.colouring = colouring  # A dict : edge_indices --> {Red, Blue}
-		self.num_red, self.num_blue = self.colouring.values().count(RED), self.colouring.values().count(BLUE)
+		if sanity:
+			assert(all(self.colouring[i] in [RED, BLUE] for i in self.triangulation.indices))
+			assert(all(0 < [self.colouring[i] for i in t.indices].count(RED) < 3 for t in self.triangulation))
 	
 	@classmethod
 	def from_pA(self, h):
@@ -24,8 +26,21 @@ class ColouredTriangulation(object):
 		colouring = dict((edge.index, RED if (F.edge_vectors[edge].x > 0) == (F.edge_vectors[edge].y > 0) else BLUE) for edge in F.edge_vectors)
 		return ColouredTriangulation(T, colouring)
 	
+	@classmethod
+	def from_QD(self, QD):
+		return NotImplemented
+	
+	@classmethod
+	def from_iso_sig(self, sig):
+		# sig == (Edge colourings | triangles)
+		# Hence len(sig) = zeta + F(S) = 5 / 3 zeta
+		zeta = 3 * len(sig) // 5
+		T = flipper.create_triangulation(sig[zeta:])
+		colouring = dict(zip(range(zeta), sig[:zeta]))
+		return ColouredTriangulation(T, colouring)
+	
 	def __str__(self):
-		return str(self.triangulation) + str(self.colouring)
+		return str(self.triangulation) + ', ' + str(self.colouring)
 	def __repr__(self):
 		return str(self)
 	
@@ -55,7 +70,7 @@ class ColouredTriangulation(object):
 	
 	def stratum(self):
 		VD = self.vertex_data_dict()
-		return [VD[v][0] for v in VD]
+		return sorted([VD[v][0] for v in VD], reverse=True)
 	
 	def good_starts(self):
 		VD = self.vertex_data_dict()
@@ -108,6 +123,8 @@ def test():
 	print(T)
 	print(T.stratum())
 	print(T.iso_sig())
+	T2 = ColouredTriangulation.from_iso_sig(T.iso_sig())
+	print(T2.iso_sig())
 	
 	print(T.flippable_edges())
 	T2 = T.flip_edge(0, BLUE)
@@ -134,6 +151,7 @@ def build():
 	# T = ngon(8)  # [4] # 120 in 3s.
 	# T = ngon(10)  # [2, 2] # 2062 in 1m4s.
 	# T = ngon(12)  # [8] # 59342 in 52m21s.
+	T = ngon(14)  # [4, 4] # 
 	
 	print('Stratum: %s' % T.stratum())
 	
@@ -157,5 +175,6 @@ def build():
 	print(len(seen))
 
 if __name__ == '__main__':
+	# test()
 	build()
 
