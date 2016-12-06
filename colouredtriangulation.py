@@ -5,10 +5,19 @@ import sys
 import string
 from Queue import Queue
 
+
+try:
+	from pyparma import Polyhedron
+	from pyparma.utils import intize
+except ImportError:
+	print('PyParma unavailable.')
+	pass
+
 import flipper
 norm = flipper.norm
 
 RED, BLUE = 'Red', 'Blue'
+HORIZONTAL, VERTICAL = 'Horizontal', 'Vertical'
 
 def best_rotation(X):
 	return min(X[i:] + X[:i] for i in range(len(X)))
@@ -74,6 +83,41 @@ class ColouredTriangulation(object):
 		VD = self.vertex_data_dict()
 		return sorted([VD[v][0] for v in VD], reverse=True)
 	
+	def matrix(self, orientation=VERTICAL):
+		
+		zeta = self.triangulation.zeta
+		M = []
+		for t in self.triangulation:
+			corner = [corner for corner in t.corners if self.colouring[corner.indices[1]] == self.colouring[corner.indices[2]]][0]
+			I = corner.indices
+			corner_colour = self.colouring[I[1]]
+			if orientation == VERTICAL:
+				if corner_colour == RED:
+					# I[2] == I[0] + I[1].
+					row = [1 if i == I[2] else -1 if i == I[0] or i == I[1] else 0 for i in range(zeta)]
+				else:  # corner_colour == BLUE:
+					# I[1] == I[0] + I[2].
+					row = [1 if i == I[1] else -1 if i == I[0] or i == I[2] else 0 for i in range(zeta)]
+			else:  # orientation == HORIZONTAL.
+				if corner_colour == RED:
+					# I[1] == I[0] + I[2].
+					row = [1 if i == I[1] else -1 if i == I[0] or i == I[2] else 0 for i in range(zeta)]
+				else:  # corner_colour == BLUE:
+					# I[2] == I[0] + I[1].
+					row = [1 if i == I[2] else -1 if i == I[0] or i == I[1] else 0 for i in range(zeta)]
+			M.append(row)
+		return M
+	
+	def dimension(self, orientation=VERTICAL):
+		M = self.matrix(orientation)
+		A = []
+		for row in M:
+			A.append([0] + [i for i in row])
+			A.append([-0] + [-i for i in row])
+		
+		P = Polyhedron(hrep=intize(A))  # Build Polyhedron corresponding to A.x + b >= 0.
+		return P.poly.affine_dimension()
+	
 	def good_starts(self):
 		VD = self.vertex_data_dict()
 		
@@ -124,6 +168,10 @@ def test():
 	print(T.iso_sig())
 	T2 = ColouredTriangulation.from_iso_sig(T.iso_sig())
 	print(T2.iso_sig())
+	M = T.matrix()
+	for row in M:
+		print(row)
+	print(T.dimension())
 	
 	print(T.flippable_edges())
 	T2 = T.flip_edge(0, BLUE)
@@ -147,8 +195,8 @@ def build():
 	T = ColouredTriangulation.from_pA(flipper.load('S_1_1').mapping_class('aB'))  # [0]  # 2.
 	T = ColouredTriangulation.from_pA(flipper.load('S_1_2').mapping_class('abC'))  # [1, 1, -1, -1] # 8797 in 1m47s.
 	# T = ngon(6)  # [0, 0] # 18 in 1s.
-	T = ngon(8)  # [4] # 120 in 3s.
-	# T = ngon(10)  # [2, 2] # 2062 in 1m4s.
+	# T = ngon(8)  # [4] # 120 in 3s.
+	T = ngon(10)  # [2, 2] # 2062 in 1m4s.
 	# T = ngon(12)  # [8] # 59342 in 52m21s.
 	# T = ngon(14)  # [4, 4] # 
 	
@@ -161,6 +209,8 @@ def build():
 	while not current.empty():
 		count += 1
 		T = current.get()
+		print(T.dimension(VERTICAL))
+		print(T.dimension(HORIZONTAL))
 		neighbours = [T.flip_edge(i, c) for i in T.flippable_edges() for c in [RED, BLUE]]
 		for n in neighbours:
 			s = n.iso_sig(n.good_starts())
@@ -168,7 +218,7 @@ def build():
 				current.put(n)
 				seen.add(s)
 		if count % 1 == 0:
-			print('\r %d %d %0.3f               ' % (len(seen), current.qsize(), float(current.qsize()) / len(seen)), end='')
+			print('\r %d %d %0.3f               ' % (len(seen), current.qsize(), float(current.qsize()) / len(seen)), end='\n')
 			sys.stdout.flush()
 	print('')
 	print(len(seen))
