@@ -26,6 +26,7 @@ class ColouredTriangulation(object):
 	def __init__(self, triangulation, colouring, sanity=False):
 		self.triangulation = triangulation
 		self.colouring = colouring  # A dict : edge_indices --> {Red, Blue}
+		self.zeta = self.triangulation.zeta
 		if sanity:
 			assert(all(self.colouring[i] in [RED, BLUE] for i in self.triangulation.indices))
 			assert(all(0 < [self.colouring[i] for i in t.indices].count(RED) < 3 for t in self.triangulation))
@@ -55,6 +56,9 @@ class ColouredTriangulation(object):
 	def __repr__(self):
 		return str(self)
 	
+	def full_dimension(self):
+		return 1 + self.zeta // 3  # Check this with Saul.
+	
 	def colours_about_edge(self, i):
 		return [self.colouring[e.index] for e in self.triangulation.square_about_edge(i)]
 	
@@ -76,47 +80,46 @@ class ColouredTriangulation(object):
 		colouring[norm(i)] = colour
 		return ColouredTriangulation(T, colouring)
 	
-	def vertex_data_dict(self):
-		return dict((CC[0].vertex, (len([c for c in CC if self.colouring[c.indices[1]] == BLUE and self.colouring[c.indices[2]] == RED]) - 2, len(CC))) for CC in self.triangulation.corner_classes)
-	
-	def stratum(self):
-		VD = self.vertex_data_dict()
-		return sorted([VD[v][0] for v in VD], reverse=True)
-	
 	def matrix(self, orientation=VERTICAL):
-		
-		zeta = self.triangulation.zeta
 		M = []
 		for t in self.triangulation:
 			corner = [corner for corner in t.corners if self.colouring[corner.indices[1]] == self.colouring[corner.indices[2]]][0]
 			I = corner.indices
 			corner_colour = self.colouring[I[1]]
-			if orientation == VERTICAL:
-				if corner_colour == RED:
-					# I[2] == I[0] + I[1].
-					row = [1 if i == I[2] else -1 if i == I[0] or i == I[1] else 0 for i in range(zeta)]
-				else:  # corner_colour == BLUE:
-					# I[1] == I[0] + I[2].
-					row = [1 if i == I[1] else -1 if i == I[0] or i == I[2] else 0 for i in range(zeta)]
-			else:  # orientation == HORIZONTAL.
-				if corner_colour == RED:
-					# I[1] == I[0] + I[2].
-					row = [1 if i == I[1] else -1 if i == I[0] or i == I[2] else 0 for i in range(zeta)]
-				else:  # corner_colour == BLUE:
-					# I[2] == I[0] + I[1].
-					row = [1 if i == I[2] else -1 if i == I[0] or i == I[1] else 0 for i in range(zeta)]
+			if (orientation == VERTICAL) != (corner_colour == RED):
+				# Vertical and Blue.
+				# Horizontal and Red.
+				# I[1] == I[0] + I[2].
+				row = [1 if i == I[1] else -1 if i == I[0] or i == I[2] else 0 for i in range(self.zeta)]
+			else:
+				# Horizontal and Red.
+				# Vertical and Blue.
+				# I[2] == I[0] + I[1].
+				row = [1 if i == I[2] else -1 if i == I[0] or i == I[1] else 0 for i in range(self.zeta)]
 			M.append(row)
 		return M
 	
 	def dimension(self, orientation=VERTICAL):
+		# Uses PyParma.
 		M = self.matrix(orientation)
-		A = []
+		A = [[0] + [0] * i + [1] + [0] * (self.zeta - i - 1) for i in range(self.zeta)]
 		for row in M:
 			A.append([0] + [i for i in row])
 			A.append([-0] + [-i for i in row])
 		
-		P = Polyhedron(hrep=intize(A))  # Build Polyhedron corresponding to A.x + b >= 0.
-		return P.poly.affine_dimension()
+		return Polyhedron(hrep=intize(A)).poly.affine_dimension()
+	
+	def is_full_dimensional(self, orientation=None):
+		if orientation is None:
+			return all(self.dimension(orientation) == 1 + self.zeta // 3 for orientation in [HORIZONTAL, VERTICAL])
+		else:
+			return self.dimension(orientation) == 1 + self.zeta // 3
+	
+	def vertex_data_dict(self):
+		return dict((CC[0].vertex, (len([c for c in CC if self.colouring[c.indices[1]] == BLUE and self.colouring[c.indices[2]] == RED]) - 2, len(CC))) for CC in self.triangulation.corner_classes)
+	
+	def stratum(self):
+		return sorted([d for d, v in self.vertex_data_dict().values()], reverse=True)
 	
 	def good_starts(self):
 		VD = self.vertex_data_dict()
@@ -191,39 +194,46 @@ def ngon(n):
 	colouring = dict([(i, RED) for i in range(2*m)] + [(i, BLUE) for i in range(2*m, 3*m)])
 	return ColouredTriangulation(T, colouring)
 
-def build():
+def build(T, skip_dimension=False):
+	
+	print('Computing stratum: %s' % T.stratum())
+	print('Full dimension: %d' % T.full_dimension())
+	print('Good | Bad | current | ratio (current/good):')
+	
+	current = Queue()
+	current.put(T)
+	count = 0
+	if not skip_dimension: assert(T.is_full_dimensional())
+	good = set([T.iso_sig(T.good_starts())])
+	bad = set()
+	while not current.empty():
+		count += 1
+		T = current.get()
+		neighbours = [T.flip_edge(i, c) for i in T.flippable_edges() for c in [RED, BLUE]]
+		for n in neighbours:
+			s = n.iso_sig(n.good_starts())
+			if s not in good and s not in bad:
+				if skip_dimension or n.is_full_dimensional():
+					good.add(s)
+					current.put(n)
+				else:
+					bad.add(s)
+		if count % 1 == 0:
+			print('\r%d %d %d %0.3f               ' % (len(good), len(bad), current.qsize(), float(current.qsize()) / len(good)), end='')
+			sys.stdout.flush()
+	print('')
+	print(len(good))
+
+if __name__ == '__main__':
+	# test()
+	
 	T = ColouredTriangulation.from_pA(flipper.load('S_1_1').mapping_class('aB'))  # [0]  # 2.
 	T = ColouredTriangulation.from_pA(flipper.load('S_1_2').mapping_class('abC'))  # [1, 1, -1, -1] # 8797 in 1m47s.
 	# T = ngon(6)  # [0, 0] # 18 in 1s.
 	# T = ngon(8)  # [4] # 120 in 3s.
 	T = ngon(10)  # [2, 2] # 2062 in 1m4s.
-	# T = ngon(12)  # [8] # 59342 in 52m21s.
+	# T = ngon(12)  # [8] # Was 59342 in 52m21s. Now 9116 in 17m8s.
 	# T = ngon(14)  # [4, 4] # 
 	
-	print('Stratum: %s' % T.stratum())
-	
-	current = Queue()
-	current.put(T)
-	count = 0
-	seen = set([T.iso_sig(T.good_starts())])
-	while not current.empty():
-		count += 1
-		T = current.get()
-		print(T.dimension(VERTICAL))
-		print(T.dimension(HORIZONTAL))
-		neighbours = [T.flip_edge(i, c) for i in T.flippable_edges() for c in [RED, BLUE]]
-		for n in neighbours:
-			s = n.iso_sig(n.good_starts())
-			if s not in seen:
-				current.put(n)
-				seen.add(s)
-		if count % 1 == 0:
-			print('\r %d %d %0.3f               ' % (len(seen), current.qsize(), float(current.qsize()) / len(seen)), end='\n')
-			sys.stdout.flush()
-	print('')
-	print(len(seen))
-
-if __name__ == '__main__':
-	# test()
-	build()
+	build(T)
 
