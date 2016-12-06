@@ -56,8 +56,14 @@ class ColouredTriangulation(object):
 	def __repr__(self):
 		return str(self)
 	
-	def full_dimension(self):
-		return 1 + self.zeta // 3  # Check this with Saul.
+	def is_abelian(self):
+		if any(d % 2 == 1 for d in self.stratum()): return False
+		# Perform BFT to check.
+		
+		return True
+	
+	def stratum_dimension(self):
+		return 2*self.triangulation.genus - 2 + self.triangulation.num_vertices + (1 if self.is_abelian() else 0)
 	
 	def colours_about_edge(self, i):
 		return [self.colouring[e.index] for e in self.triangulation.square_about_edge(i)]
@@ -80,13 +86,13 @@ class ColouredTriangulation(object):
 		colouring[norm(i)] = colour
 		return ColouredTriangulation(T, colouring)
 	
-	def matrix(self, orientation=VERTICAL):
+	def train_track_matrix(self, slope=VERTICAL):
 		M = []
 		for t in self.triangulation:
 			corner = [corner for corner in t.corners if self.colouring[corner.indices[1]] == self.colouring[corner.indices[2]]][0]
 			I = corner.indices
 			corner_colour = self.colouring[I[1]]
-			if (orientation == VERTICAL) != (corner_colour == RED):
+			if (slope == VERTICAL) != (corner_colour == RED):
 				# Vertical and Blue.
 				# Horizontal and Red.
 				# I[1] == I[0] + I[2].
@@ -99,9 +105,9 @@ class ColouredTriangulation(object):
 			M.append(row)
 		return M
 	
-	def dimension(self, orientation=VERTICAL):
+	def train_track_dimension(self, slope=VERTICAL):
 		# Uses PyParma.
-		M = self.matrix(orientation)
+		M = self.train_track_matrix(slope)
 		A = [[0] + [0] * i + [1] + [0] * (self.zeta - i - 1) for i in range(self.zeta)]
 		for row in M:
 			A.append([0] + [i for i in row])
@@ -109,11 +115,35 @@ class ColouredTriangulation(object):
 		
 		return Polyhedron(hrep=intize(A)).poly.affine_dimension()
 	
-	def is_full_dimensional(self, orientation=None):
-		if orientation is None:
-			return all(self.dimension(orientation) == 1 + self.zeta // 3 for orientation in [HORIZONTAL, VERTICAL])
-		else:
-			return self.dimension(orientation) == 1 + self.zeta // 3
+	def geometric_matrix(self):
+		G = []
+		for i in self.flippable_edges():
+			corner1 = self.triangulation.corner_lookup[i]
+			corner2 = self.triangulation.corner_lookup[~i]
+			
+			if self.colouring[corner1.indices[1]] == BLUE:  # Mostly horizontal.
+				row = [-1 if j == i else 0 for j in range(self.zeta)] + [1 if j == corner1.indices[1] or j == corner2.indices[2] else 0 for j in range(self.zeta)]
+			else:  # Mostly vertical.
+				row = [1 if j == corner1.indices[1] or j == corner2.indices[2] else 0  for j in range(self.zeta)] + [-1 if j == i else 0 for j in range(self.zeta)]
+			G.append(row)
+		return G
+	
+	def geometric_dimension(self):
+		V = self.train_track_matrix(VERTICAL)
+		H = self.train_track_matrix(HORIZONTAL)
+		G = self.geometric_matrix()
+		
+		A = [[0] + [0] * i + [1] + [0] * (2*self.zeta - i - 1) for i in range(2*self.zeta)]
+		for row in V:
+			A.append([0] + [i for i in row] + [0] * self.zeta)
+			A.append([-0] + [-i for i in row] + [-0] * self.zeta)
+		for row in V:
+			A.append([0] + [0] * self.zeta + [i for i in row])
+			A.append([-0] + [-0] * self.zeta + [-i for i in row])
+		for row in G:
+			A.append([0] + row)
+		
+		return Polyhedron(hrep=intize(A)).poly.affine_dimension()
 	
 	def vertex_data_dict(self):
 		return dict((CC[0].vertex, (len([c for c in CC if self.colouring[c.indices[1]] == BLUE and self.colouring[c.indices[2]] == RED]) - 2, len(CC))) for CC in self.triangulation.corner_classes)
@@ -197,13 +227,17 @@ def ngon(n):
 def build(T, skip_dimension=False):
 	
 	print('Computing stratum: %s' % T.stratum())
-	print('Full dimension: %d' % T.full_dimension())
+	print('Full dimension: %d' % T.stratum_dimension())
 	print('Good | Bad | current | ratio (current/good):')
 	
 	current = Queue()
 	current.put(T)
 	count = 0
-	if not skip_dimension: assert(T.is_full_dimensional())
+	d = T.stratum_dimension()
+	
+	def is_full_dimension(t):
+		return all(t.train_track_dimension(slope) == d for slope in [HORIZONTAL, VERTICAL])  # and t.geometric_dimension() >= 2*d - 1
+	
 	good = set([T.iso_sig(T.good_starts())])
 	bad = set()
 	while not current.empty():
@@ -213,7 +247,7 @@ def build(T, skip_dimension=False):
 		for n in neighbours:
 			s = n.iso_sig(n.good_starts())
 			if s not in good and s not in bad:
-				if skip_dimension or n.is_full_dimensional():
+				if skip_dimension or is_full_dimension(n):
 					good.add(s)
 					current.put(n)
 				else:
