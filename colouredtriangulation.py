@@ -286,6 +286,8 @@ def build(T, skip_dimension=False):
 			sys.stdout.flush()
 	print('')
 	print(len(good))
+	
+	return good
 
 if __name__ == '__main__':
 	# test()
@@ -294,10 +296,14 @@ if __name__ == '__main__':
 	T = ColouredTriangulation.from_pA(flipper.load('S_1_2').mapping_class('abC'))  # [1, 1, -1, -1] # 8797 in 1m47s.
 	T = ColouredTriangulation.from_pA(flipper.load('SB_4').mapping_class('s_0S_1'))  # [-1, -1, -1, -1] # 6 in 1.3s.
 	# T = ngon(6)  # [0, 0] # 18 in 1s.
-	# T = ngon(8)  # [4] # 120 in 3s now 86 in 5s.
+	T = ngon(8)  # [4] # 120 in 3s now 86 in 5s.
 	T = ngon(10)  # [2, 2] # 2062 in 1m4s.
 	# T = ngon(12)  # [8] # Was 59342 in 52m21s. Now 9116 in 17m8s.
 	# T = ngon(14)  # [4, 4] # 
 	
-	build(T)
+	sigs = build(T)
+	for sig in sigs:
+		T = ColouredTriangulation.from_iso_sig(sig)
+		print('Starting with %s' % tuple([sig]))
+		assert(len(build(T)) == len(sigs))
 
