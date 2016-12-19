@@ -106,6 +106,12 @@ class ColouredTriangulation(object):
 	def mostly_sloped_edges(self, slope):
 		return [i for i in self.flippable_edges() if self.colouring[self.triangulation.corner_lookup[i].indices[1]] == (BLUE if slope == VERTICAL else RED)]
 	
+	def is_isomorphic_to(self, other):
+		return self.iso_sig() == other.iso_sig()
+	
+	def isometries_to(self, other):
+		return [isom for isom in self.triangulation.isometries_to(other.triangulation) if all(self.colouring[i] == other.colouring[isom.index_map[i]] for i in range(self.zeta))]
+	
 	def flip_edge(self, i, colour):
 		assert(self.is_flippable(i))
 		
@@ -252,58 +258,69 @@ def ngon(n):
 	colouring = dict([(i, RED) for i in range(2*m)] + [(i, BLUE) for i in range(2*m, 3*m)])
 	return ColouredTriangulation(T, colouring)
 
-def build(T, skip_dimension=False):
+class Automaton(object):
+	def __init__(self, iso_sigs):
+		self.iso_sigs = set(iso_sigs)
+		self.index = dict((sig, index) for index, sig in enumerate(sorted(self.iso_sigs)))
+	def __len__(self):
+		return len(self.iso_sigs)
+	def __iter__(self):
+		return iter(self.iso_sigs)
+	def __contains__(self, item):
+		return item in self.iso_sigs
 	
-	print('Computing stratum: %s' % T.stratum())
-	print('Stratum dimension: %d' % T.stratum_dimension())
-	print('Orientable: %s' % T.is_abelian())
-	print('Good | Bad | current | ratio (current/good):')
-	
-	current = Queue()
-	current.put(T)
-	count = 0
-	d = T.stratum_dimension()
-	
-	def is_full_dimension(t):
-		return all(t.train_track_dimension(slope) == d for slope in [HORIZONTAL, VERTICAL])  # and t.geometric_dimension() >= 2*d - 1
-	
-	good = set([T.iso_sig(T.good_starts())])
-	bad = set()
-	while not current.empty():
-		count += 1
-		T = current.get()
-		neighbours = [T.flip_edge(i, c) for i in T.flippable_edges() for c in [RED, BLUE]]
-		for n in neighbours:
-			s = n.iso_sig(n.good_starts())
-			if s not in good and s not in bad:
-				if skip_dimension or is_full_dimension(n):
-					good.add(s)
-					current.put(n)
-				else:
-					bad.add(s)
-		if count % 1 == 0:
-			print('\r%d %d %d %0.3f               ' % (len(good), len(bad), current.qsize(), float(current.qsize()) / len(good)), end='')
-			sys.stdout.flush()
-	print('')
-	print(len(good))
-	
-	return good
+	@classmethod
+	def from_triangulation(self, T, verbose=False):
+		if verbose:
+			print('Computing stratum: %s' % T.stratum())
+			print('Stratum dimension: %d' % T.stratum_dimension())
+			print('Orientable: %s' % T.is_abelian())
+			print('Good | Bad | current | ratio (current/good):')
+		
+		current = Queue()
+		current.put(T)
+		count = 0
+		d = T.stratum_dimension()
+		
+		def is_full_dimension(t):
+			return all(t.train_track_dimension(slope) == d for slope in [HORIZONTAL, VERTICAL])  # and t.geometric_dimension() >= 2*d - 1
+		
+		good = set([T.iso_sig(T.good_starts())])
+		bad = set()
+		while not current.empty():
+			count += 1
+			T = current.get()
+			neighbours = [T.flip_edge(i, c) for i in T.flippable_edges() for c in [RED, BLUE]]
+			for n in neighbours:
+				s = n.iso_sig(n.good_starts())
+				if s not in good and s not in bad:
+					if is_full_dimension(n):
+						good.add(s)
+						current.put(n)
+					else:
+						bad.add(s)
+			if verbose and count % 10 == 0:
+				print('\r%d %d %d %0.3f               ' % (len(good), len(bad), current.qsize(), float(current.qsize()) / len(good)), end='')
+				sys.stdout.flush()
+		
+		return Automaton(good)
 
 if __name__ == '__main__':
 	# test()
 	
 	T = ColouredTriangulation.from_pA(flipper.load('S_1_1').mapping_class('aB'))  # [0]  # 2.
-	T = ColouredTriangulation.from_pA(flipper.load('S_1_2').mapping_class('abC'))  # [1, 1, -1, -1] # 8797 in 1m47s.
-	T = ColouredTriangulation.from_pA(flipper.load('SB_4').mapping_class('s_0S_1'))  # [-1, -1, -1, -1] # 6 in 1.3s.
+	T = ColouredTriangulation.from_pA(flipper.load('S_1_2').mapping_class('abC'))  # [1, 1, -1, -1] # 8797 in 1m47s Now 1658.
+	# T = ColouredTriangulation.from_pA(flipper.load('SB_4').mapping_class('s_0S_1'))  # [-1, -1, -1, -1] # 6 in 1.3s.
 	# T = ngon(6)  # [0, 0] # 18 in 1s.
 	T = ngon(8)  # [4] # 120 in 3s now 86 in 5s.
-	T = ngon(10)  # [2, 2] # 2062 in 1m4s.
+	# T = ngon(10)  # [2, 2] # 2062 in 1m4s now 876.
 	# T = ngon(12)  # [8] # Was 59342 in 52m21s. Now 9116 in 17m8s.
 	# T = ngon(14)  # [4, 4] # 
 	
-	sigs = build(T)
-	for sig in sigs:
-		T = ColouredTriangulation.from_iso_sig(sig)
-		print('Starting with %s' % tuple([sig]))
-		assert(len(build(T)) == len(sigs))
+	A = Automaton.from_triangulation(T, verbose=True)
+	if False:
+		for sig in sigs:
+			T = ColouredTriangulation.from_iso_sig(sig)
+			print('Starting with %s' % tuple([sig]))
+			assert(len(Automaton.from_triangulation(T).iso_sigs) == len(sigs))
 
