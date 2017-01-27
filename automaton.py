@@ -64,7 +64,7 @@ class Automaton(object):
 		def is_full_dimension(t):
 			if not all(t.train_track_dimension(slope) == d for slope in [HORIZONTAL, VERTICAL]): return False
 			# if not t.geometric_dimension() >= 2*d - 1: return False
-			if any(d2 == d for d2 in t.sub_train_track_dimensions()): return False
+			if any(d2 == d for slope in [HORIZONTAL, VERTICAL] for d2 in t.sub_train_track_dimensions(slope)): return False
 			return True
 		
 		if not is_full_dimension(T):
@@ -92,8 +92,8 @@ class Automaton(object):
 				if verbose and count % 10 == 0:
 					print('\r%d %d              ' % (len(seen), current.qsize()), end='')
 					sys.stdout.flush()
-			print('Found:')
-			print(start)
+			if start is None: raise ValueError('Stratum is empty.')
+			if verbose: print('Found: %s' % start)
 			T = start
 			current = Queue()
 			current.put(T)
