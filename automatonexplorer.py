@@ -5,7 +5,7 @@ from random import randint
 from itertools import product
 
 from colouredtriangulation import ColouredTriangulation, ngon
-from automata import Automaton
+from automaton import Automaton
 from constants import *
 
 import numpy
@@ -32,14 +32,14 @@ class Path(object):
 		self.sequence = []
 
 class AutomataExplorer(object):
-	def __init__(self, automata, start, max_value, skip_earlier=True):
-		self.automata = automata
+	def __init__(self, automaton, start, max_value, skip_earlier=True):
+		self.automaton = automaton
 		self.start = start
 		self.max_value = max_value
 		self.skip_earlier = skip_earlier
 		
-		self.zeta = self.automata.zeta
-		self.index = self.automata.index[self.start]
+		self.zeta = self.automaton.zeta
+		self.index = self.automaton.index[self.start]
 	
 	def all_paths(self, verbose=False):
 		P = Path(self.zeta, self.start)
@@ -48,19 +48,19 @@ class AutomataExplorer(object):
 			assert(len(P.sequence) == len(P.sigs) - 1)
 			if verbose:
 				if randint(0, 100) == 0:
-					print('\r[' + ', '.join('%d/%d' % (i+1, len(self.automata.graph[sig])) for i, sig in zip(P.sequence, P.sigs)) + ']' + ' '*10, end='')
-				# print('[' + ', '.join('%d/%d' % (i, len(self.automata.graph[sig])) for i, sig in zip(P.sequence, P.sigs)) + ']' + ' '*10)
-				# print([self.automata.index[sig] for sig in P.sigs])
+					print('\r[' + ', '.join('%d/%d' % (i+1, len(self.automaton.graph[sig])) for i, sig in zip(P.sequence, P.sigs)) + ']' + ' '*10, end='')
+				# print('[' + ', '.join('%d/%d' % (i, len(self.automaton.graph[sig])) for i, sig in zip(P.sequence, P.sigs)) + ']' + ' '*10)
+				# print([self.automaton.index[sig] for sig in P.sigs])
 			
-			if self.automata.index[P.sigs[-1]] >= self.index and numpy.sum(P.matrices[-1]) < self.max_value:  # Deeper.
+			if self.automaton.index[P.sigs[-1]] >= self.index and numpy.sum(P.matrices[-1]) < self.max_value:  # Deeper.
 				P.sequence.append(-1)
 			else:
 				P.matrices.pop()
 				P.sigs.pop()
 			
 			new_sig = None
-			while new_sig is None or self.automata.index[new_sig] < self.index:
-				while P.sequence[-1] == len(self.automata.graph[P.sigs[-1]]) - 1:
+			while new_sig is None or self.automaton.index[new_sig] < self.index:
+				while P.sequence[-1] == len(self.automaton.graph[P.sigs[-1]]) - 1:
 					P.sequence.pop()
 					P.matrices.pop()
 					P.sigs.pop()
@@ -68,7 +68,7 @@ class AutomataExplorer(object):
 						return
 				
 				P.sequence[-1] += 1
-				new_sig, trans_matrix = self.automata.graph[P.sigs[-1]][P.sequence[-1]]
+				new_sig, trans_matrix = self.automaton.graph[P.sigs[-1]][P.sequence[-1]]
 			
 			P.sigs.append(new_sig)
 			P.matrices.append(trans_matrix * P.matrices[-1])
