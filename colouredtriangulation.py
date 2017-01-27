@@ -1,10 +1,9 @@
 
 from __future__ import print_function
 
-import sys
-import string
 from Queue import Queue
 
+from constants import *
 
 try:
 	from pyparma import Polyhedron
@@ -15,9 +14,6 @@ except ImportError:
 
 import flipper
 norm = flipper.norm
-
-RED, BLUE = 'Red', 'Blue'
-HORIZONTAL, VERTICAL = 'Horizontal', 'Vertical'
 
 def best_rotation(X):
 	return min(X[i:] + X[:i] for i in range(len(X)))
@@ -163,6 +159,7 @@ class ColouredTriangulation(object):
 		return G
 	
 	def geometric_dimension(self):
+		# Uses PyParma.
 		V = self.train_track_matrix(VERTICAL)
 		H = self.train_track_matrix(HORIZONTAL)
 		G = self.geometric_matrix()
@@ -179,11 +176,26 @@ class ColouredTriangulation(object):
 		
 		return Polyhedron(hrep=intize(A)).poly.affine_dimension()
 	
+	def sub_train_track_dimensions(self, slope=VERTICAL):
+		# Uses PyParma.
+		M = self.train_track_matrix(slope)
+		for j in range(self.zeta):
+			A = [[0] + [0] * i + [1] + [0] * (self.zeta - i - 1) for i in range(self.zeta)]
+			for row in M:
+				A.append([0] + [i for i in row])
+				A.append([-0] + [-i for i in row])
+			A.append([-0] + [0] * j + [-1] + [0] * (self.zeta - j - 1))
+			yield Polyhedron(hrep=intize(A)).poly.affine_dimension()
+	
 	def vertex_data_dict(self):
 		return dict((CC[0].vertex, (len([c for c in CC if self.colouring[c.indices[1]] == BLUE and self.colouring[c.indices[2]] == RED]) - 2, len(CC))) for CC in self.triangulation.corner_classes)
 	
 	def stratum(self):
 		return sorted([d for d, v in self.vertex_data_dict().values()], reverse=True)
+	
+	def is_full_dimension(self):
+		d = self.stratum_dimension()
+		return all(self.train_track_dimension(slope) == d for slope in [HORIZONTAL, VERTICAL])  # and self.geometric_dimension() >= 2*d - 1
 	
 	def good_starts(self):
 		VD = self.vertex_data_dict()
@@ -197,9 +209,9 @@ class ColouredTriangulation(object):
 		
 		return [edge.label for edge in self.triangulation.edges if test(edge)]
 	
-	def iso_sig(self, start_edges=None):
-		best = None
-		if start_edges is None: start_edges = self.triangulation.labels
+	def best_translation(self):
+		best, best_translation = None, None
+		start_edges = self.good_starts()
 		for start_edge in start_edges:
 			translate = {start_edge: 0, ~start_edge: ~0}
 			num_seen_edges = 1
@@ -224,27 +236,20 @@ class ColouredTriangulation(object):
 			
 			if best is None or Y + X < best:
 				best = Y + X
+				best_translation = translate
 		
-		return best
-
-def test():
-	T = ColouredTriangulation(flipper.create_triangulation([(0,1,2), (~0,~1,~2)]), {0: RED, 1: BLUE, 2: RED})
+		return best, best_translation
 	
-	print(T)
-	print(T.stratum())
-	print(T.iso_sig())
-	T2 = ColouredTriangulation.from_iso_sig(T.iso_sig())
-	print(T2.iso_sig())
-	M = T.matrix()
-	for row in M:
-		print(row)
-	print(T.dimension())
+	def iso_sig(self):
+		return self.best_translation()[0]
 	
-	print(T.flippable_edges())
-	T2 = T.flip_edge(0, BLUE)
-	print(T2)
-	print(T2.stratum())
-	print(T2.iso_sig())
+	def canonical(self):
+		_, translate = self.best_translation()
+		inv_translate = dict((v, k) for (k, v) in translate.items())
+		
+		T = flipper.create_triangulation([[translate[edge.label] if edge.label > 0 else ~translate[~edge.label] for edge in triangle] for triangle in self.triangulation])
+		colouring = dict((i, self.colouring[norm(inv_translate[i])]) for i in range(self.zeta))
+		return ColouredTriangulation(T, colouring)
 
 def ngon(n):
 	assert(n > 4 and n % 2 == 0)
@@ -258,69 +263,24 @@ def ngon(n):
 	colouring = dict([(i, RED) for i in range(2*m)] + [(i, BLUE) for i in range(2*m, 3*m)])
 	return ColouredTriangulation(T, colouring)
 
-class Automaton(object):
-	def __init__(self, iso_sigs):
-		self.iso_sigs = set(iso_sigs)
-		self.index = dict((sig, index) for index, sig in enumerate(sorted(self.iso_sigs)))
-	def __len__(self):
-		return len(self.iso_sigs)
-	def __iter__(self):
-		return iter(self.iso_sigs)
-	def __contains__(self, item):
-		return item in self.iso_sigs
+def test():
+	T = ColouredTriangulation(flipper.create_triangulation([(0,1,2), (~0,~1,~2)]), {0: RED, 1: BLUE, 2: RED})
 	
-	@classmethod
-	def from_triangulation(self, T, verbose=False):
-		if verbose:
-			print('Computing stratum: %s' % T.stratum())
-			print('Stratum dimension: %d' % T.stratum_dimension())
-			print('Orientable: %s' % T.is_abelian())
-			print('Good | Bad | current | ratio (current/good):')
-		
-		current = Queue()
-		current.put(T)
-		count = 0
-		d = T.stratum_dimension()
-		
-		def is_full_dimension(t):
-			return all(t.train_track_dimension(slope) == d for slope in [HORIZONTAL, VERTICAL])  # and t.geometric_dimension() >= 2*d - 1
-		
-		good = set([T.iso_sig(T.good_starts())])
-		bad = set()
-		while not current.empty():
-			count += 1
-			T = current.get()
-			neighbours = [T.flip_edge(i, c) for i in T.flippable_edges() for c in [RED, BLUE]]
-			for n in neighbours:
-				s = n.iso_sig(n.good_starts())
-				if s not in good and s not in bad:
-					if is_full_dimension(n):
-						good.add(s)
-						current.put(n)
-					else:
-						bad.add(s)
-			if verbose and count % 10 == 0:
-				print('\r%d %d %d %0.3f               ' % (len(good), len(bad), current.qsize(), float(current.qsize()) / len(good)), end='')
-				sys.stdout.flush()
-		
-		return Automaton(good)
+	print(T)
+	print(T.stratum())
+	print(T.iso_sig())
+	T2 = ColouredTriangulation.from_iso_sig(T.iso_sig())
+	print(T2.iso_sig())
+	print(T.geometric_dimension())
+	
+	print(T.flippable_edges())
+	T2 = T.flip_edge(0, BLUE)
+	print(T2)
+	print(T2.stratum())
+	print(T2.iso_sig())
+	
+	print(T2.canonical())
 
 if __name__ == '__main__':
-	# test()
-	
-	T = ColouredTriangulation.from_pA(flipper.load('S_1_1').mapping_class('aB'))  # [0]  # 2.
-	T = ColouredTriangulation.from_pA(flipper.load('S_1_2').mapping_class('abC'))  # [1, 1, -1, -1] # 8797 in 1m47s Now 1658.
-	# T = ColouredTriangulation.from_pA(flipper.load('SB_4').mapping_class('s_0S_1'))  # [-1, -1, -1, -1] # 6 in 1.3s.
-	# T = ngon(6)  # [0, 0] # 18 in 1s.
-	T = ngon(8)  # [4] # 120 in 3s now 86 in 5s.
-	# T = ngon(10)  # [2, 2] # 2062 in 1m4s now 876.
-	# T = ngon(12)  # [8] # Was 59342 in 52m21s. Now 9116 in 17m8s.
-	# T = ngon(14)  # [4, 4] # 
-	
-	A = Automaton.from_triangulation(T, verbose=True)
-	if False:
-		for sig in sigs:
-			T = ColouredTriangulation.from_iso_sig(sig)
-			print('Starting with %s' % tuple([sig]))
-			assert(len(Automaton.from_triangulation(T).iso_sigs) == len(sigs))
+	test()
 

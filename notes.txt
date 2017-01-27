@@ -1,4 +1,6 @@
 
-6/12/16:
-	Looks like core (full horizontal and vertical dimension) ==> geometric (full geometric dimension).
-	No way!?!?
+2016-12-06
+
+Limited experiments suggest that core (full horizontal and vertical
+dimension) ==> geometric (full geometric dimension).  This seem
+super-unlikely to me (SS).
