@@ -12,17 +12,6 @@ import numpy
 
 import flipper
 
-def is_PF(matrix):
-	if any(entry < 0 for row in matrix for entry in row): return False
-	
-	M = flipper.kernel.Matrix([[entry & 1 for entry in row] for row in matrix])
-	c = 1
-	while c < matrix.width**2:
-		M = flipper.kernel.Matrix([[entry & 1 for entry in row] for row in M*M])
-		c *= 2
-	
-	return all(entry > 0 for row in matrix for entry in row)
-
 class Path(object):
 	def __init__(self, zeta, start):
 		self.zeta = zeta
