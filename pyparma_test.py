@@ -18,5 +18,6 @@ B = [
 	[0,-1,0]
 	]
 Q = Polyhedron(hrep=intize(B))  # Build Polyhedron corresponding to A.x + b >= 0.
+print(P.poly.affine_dimension())  # Print dimension of Polyhedron.
 print(Q.poly.affine_dimension())  # Print dimension of Polyhedron.
-print(P.poly == Q.poly)
+print(P.poly != Q.poly)
