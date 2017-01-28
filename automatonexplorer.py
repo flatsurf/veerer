@@ -87,7 +87,7 @@ if __name__ == '__main__':
 	# T = ColouredTriangulation.from_pA(flipper.load('SB_4').mapping_class('s_0S_1'))  # [-1, -1, -1, -1] # 6 in 1.3s.
 	# T = ColouredTriangulation.from_pA(flipper.load('S_1_2').mapping_class('abC'))  # [1, 1, -1, -1] # 8797 in 1m47s Now 1658.
 	# T = ngon(8)  # [4] # 86.
-	for c in product([RED, BLUE], repeat=12):
+	for c in product(COLOURS, repeat=12):
 		try:
 			T = ColouredTriangulation(flipper.create_triangulation([(~11, 4, 7), (~10, ~7, 6), (~9, ~6, 5), (~8, ~5, ~0), (~4, 3, 11), (~3, 2, 10), (~2, 1, 9), (~1, 0, 8)]), dict(enumerate(c)), sanity=True)
 			print(T.stratum())

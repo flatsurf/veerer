@@ -62,9 +62,9 @@ class Automaton(object):
 		d = T.stratum_dimension()
 		
 		def is_full_dimension(t):
-			if not all(t.train_track_dimension(slope) == d for slope in [HORIZONTAL, VERTICAL]): return False
+			if not all(t.train_track_dimension(slope) == d for slope in SLOPES): return False
 			# if not t.geometric_dimension() >= 2*d - 1: return False
-			if any(d2 == d for slope in [HORIZONTAL, VERTICAL] for d2 in t.sub_train_track_dimensions(slope)): return False
+			if any(d2 == d for slope in SLOPES for d2 in t.sub_train_track_dimensions(slope)): return False
 			return True
 		
 		if not is_full_dimension(T):
@@ -76,7 +76,7 @@ class Automaton(object):
 				count += 1
 				T = current.get()
 				for i in T.flippable_edges():
-					for c in [RED, BLUE]:
+					for c in COLOURS:
 						neighbour = T.flip_edge(i, c)
 						s, _ = neighbour.best_translation()
 						if s not in seen:
@@ -107,7 +107,7 @@ class Automaton(object):
 			T = current.get()
 			neighbours = []
 			for i in T.mostly_sloped_edges(slope):
-				for c in [RED, BLUE]:
+				for c in COLOURS:
 					neighbour = T.flip_edge(i, c)
 					s, t = neighbour.best_translation()
 					if s not in good and s not in bad:
@@ -139,7 +139,7 @@ if __name__ == '__main__':
 	T = ColouredTriangulation.from_pA(flipper.load('S_1_1').mapping_class('aB'))  # [0]  # 2.
 	T = ColouredTriangulation.from_pA(flipper.load('S_1_2').mapping_class('abC'))  # [1, 1, -1, -1] # 8797 in 1m47s Now 1658.
 	# T = ColouredTriangulation.from_pA(flipper.load('SB_4').mapping_class('s_0S_1'))  # [-1, -1, -1, -1] # 6 in 1.3s.
-	T = ColouredTriangulation(flipper.create_triangulation([(~11, ~10, ~8), (~9, ~4, 10), (~7, ~6, 11), (~5, 7, ~2), (~3, 8, 9), (~1, 5, 6), (~0, 3, 4), (0, 1, 2)]), {0: RED, 1: BLUE, 2: BLUE, 3: BLUE, 4: BLUE, 5: RED, 6: RED, 7: RED, 8: RED, 9: RED, 10: RED, 11: BLUE})  # [3, 1] # 16.
+	T = ColouredTriangulation(flipper.create_triangulation([(~11, ~10, ~8), (~9, ~4, 10), (~7, ~6, 11), (~5, 7, ~2), (~3, 8, 9), (~1, 5, 6), (~0, 3, 4), (0, 1, 2)]), [RED, BLUE, BLUE, BLUE, BLUE, RED, RED, RED, RED, RED, RED, BLUE])  # [3, 1] # 16.
 	# T = ngon(6)  # [0, 0] # 16 in 1s.
 	# T = ngon(8)  # [4] # 120 in 3s now 86 in 5s.
 	# T = ngon(10)  # [2, 2] # 2062 in 1m4s now 876.

@@ -24,14 +24,15 @@ class ColouredTriangulation(object):
 		self.colouring = colouring  # A dict : edge_indices --> {Red, Blue}
 		self.zeta = self.triangulation.zeta
 		if sanity:
-			assert(all(self.colouring[i] in [RED, BLUE] for i in self.triangulation.indices))
+			assert(all(colour in COLOURS for colour in self.colouring))
+			assert(len(self.colouring) == self.zeta)
 			assert(all(0 < [self.colouring[i] for i in t.indices].count(RED) < 3 for t in self.triangulation))
 	
 	@classmethod
 	def from_pA(self, h):
 		F = h.flat_structure()
 		T = F.triangulation
-		colouring = dict((edge.index, RED if (F.edge_vectors[edge].x > 0) == (F.edge_vectors[edge].y > 0) else BLUE) for edge in F.edge_vectors)
+		colouring = [RED if (F.edge_vectors[T.edge_lookup[i]].x > 0) == (F.edge_vectors[T.edge_lookup[i]].y > 0) else BLUE for i in range(T.zeta)]
 		return ColouredTriangulation(T, colouring, sanity=True)
 	
 	@classmethod
@@ -44,7 +45,7 @@ class ColouredTriangulation(object):
 		# Hence len(sig) = zeta + F(S) = 5 / 3 zeta
 		zeta = 3 * len(sig) // 5
 		T = flipper.create_triangulation(sig[zeta:])
-		colouring = dict(zip(range(zeta), sig[:zeta]))
+		colouring = sig[:zeta]
 		return ColouredTriangulation(T, colouring, sanity=True)
 	
 	def __str__(self):
@@ -112,7 +113,7 @@ class ColouredTriangulation(object):
 		assert(self.is_flippable(i))
 		
 		T = self.triangulation.flip_edge(i)
-		colouring = dict(self.colouring)
+		colouring = list(self.colouring)
 		colouring[norm(i)] = colour
 		return ColouredTriangulation(T, colouring)
 	
@@ -195,7 +196,7 @@ class ColouredTriangulation(object):
 	
 	def is_full_dimension(self):
 		d = self.stratum_dimension()
-		return all(self.train_track_dimension(slope) == d for slope in [HORIZONTAL, VERTICAL])  # and self.geometric_dimension() >= 2*d - 1
+		return all(self.train_track_dimension(slope) == d for slope in SLOPES)  # and self.geometric_dimension() >= 2*d - 1
 	
 	def good_starts(self):
 		VD = self.vertex_data_dict()
@@ -248,7 +249,7 @@ class ColouredTriangulation(object):
 		inv_translate = dict((v, k) for (k, v) in translate.items())
 		
 		T = flipper.create_triangulation([[translate[edge.label] if edge.label > 0 else ~translate[~edge.label] for edge in triangle] for triangle in self.triangulation])
-		colouring = dict((i, self.colouring[norm(inv_translate[i])]) for i in range(self.zeta))
+		colouring = [self.colouring[norm(inv_translate[i])] for i in range(self.zeta)]
 		return ColouredTriangulation(T, colouring)
 
 def ngon(n):
@@ -260,11 +261,11 @@ def ngon(n):
 		[(m+i, ~(2*m+i), ~(m+i+1)) for i in range(1, m-1)] + \
 		[(2*m-1, ~(3*m-1), m)]
 		)
-	colouring = dict([(i, RED) for i in range(2*m)] + [(i, BLUE) for i in range(2*m, 3*m)])
+	colouring = [RED] * (2*m) + [BLUE] * m
 	return ColouredTriangulation(T, colouring)
 
 def test():
-	T = ColouredTriangulation(flipper.create_triangulation([(0,1,2), (~0,~1,~2)]), {0: RED, 1: BLUE, 2: RED})
+	T = ColouredTriangulation(flipper.create_triangulation([(0,1,2), (~0,~1,~2)]), [RED, BLUE, RED])
 	
 	print(T)
 	print(T.stratum())
