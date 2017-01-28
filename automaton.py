@@ -4,6 +4,7 @@ from __future__ import print_function
 import sys
 from Queue import Queue
 from numpy import matrix as Matrix
+from math import log
 
 from constants import *
 from colouredtriangulation import ColouredTriangulation, ngon
@@ -12,20 +13,22 @@ import flipper
 norm = flipper.norm
 
 def compress_iso_sig(sig):
+	d = len(CHARS)
 	zeta = 3 * len(sig) // 5
 	colours, tuples = sig[:zeta], sig[zeta:]
 	
-	if 2*zeta < 63:
+	if 2*zeta < d - 1:
 		char_start = CHARS[zeta]
 		digits = 1
 	else:
-		digits = int(log(2*zeta) / log(64)) + 1
-		char_start = CHARS[63] + CHARS[digits] + ''.join(CHARS[(2*zeta // 64**i) % 64] for i in range(digits))
+		digits = int(log(2*zeta) / log(d)) + 1
+		char_start = CHARS[-1] + CHARS[digits] + ''.join(CHARS[(2*zeta // d**i) % d] for i in range(digits))
 	
-	colours = colours + tuple([BLUE] * 6)  # Padding, just in case.
-	char_colours = ''.join(CHARS[sum(2**i if colours[j+i] == RED else 0 for i in range(6))] for j in range(0, zeta, 6))
+	step = int(log(d) / log(2))
+	colours = colours + tuple([BLUE] * step)  # Padding, just in case.
+	char_colours = ''.join(CHARS[sum(2**i if colours[j+i] == RED else 0 for i in range(step))] for j in range(0, zeta, step))
 	
-	char_edges = ''.join(''.join(CHARS[(i+zeta // 64**j) % 64] for j in range(digits)) for t in tuples for i in t)
+	char_edges = ''.join(''.join(CHARS[(i+zeta // d**j) % d] for j in range(digits)) for t in tuples for i in t)
 	
 	return char_start + '.' + char_colours + '.' + char_edges
 
@@ -139,7 +142,7 @@ if __name__ == '__main__':
 	T = ColouredTriangulation.from_pA(flipper.load('S_1_1').mapping_class('aB'))  # [0]  # 2.
 	T = ColouredTriangulation.from_pA(flipper.load('S_1_2').mapping_class('abC'))  # [1, 1, -1, -1] # 8797 in 1m47s Now 1658.
 	# T = ColouredTriangulation.from_pA(flipper.load('SB_4').mapping_class('s_0S_1'))  # [-1, -1, -1, -1] # 6 in 1.3s.
-	T = ColouredTriangulation(flipper.create_triangulation([(~11, ~10, ~8), (~9, ~4, 10), (~7, ~6, 11), (~5, 7, ~2), (~3, 8, 9), (~1, 5, 6), (~0, 3, 4), (0, 1, 2)]), [RED, BLUE, BLUE, BLUE, BLUE, RED, RED, RED, RED, RED, RED, BLUE])  # [3, 1] # 16.
+	# T = ColouredTriangulation(flipper.create_triangulation([(~11, ~10, ~8), (~9, ~4, 10), (~7, ~6, 11), (~5, 7, ~2), (~3, 8, 9), (~1, 5, 6), (~0, 3, 4), (0, 1, 2)]), [RED, BLUE, BLUE, BLUE, BLUE, RED, RED, RED, RED, RED, RED, BLUE])  # [3, 1] # 16.
 	# T = ngon(6)  # [0, 0] # 16 in 1s.
 	# T = ngon(8)  # [4] # 120 in 3s now 86 in 5s.
 	# T = ngon(10)  # [2, 2] # 2062 in 1m4s now 876.
