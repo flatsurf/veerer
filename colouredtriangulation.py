@@ -16,6 +16,8 @@ except ImportError:
     print('PyParma unavailable.')
     pass
 
+from automaton import Automaton
+
 import flipper
 norm = flipper.norm
 
@@ -286,8 +288,11 @@ class ColouredTriangulation(object):
         colouring = [self.colouring[norm(inv_translate[i])] for i in range(self.zeta)]
         return ColouredTriangulation(T, colouring)
     
-    def neighbours(self):
-        return [self.flip_edge(i, c) for i in T.flippable_edges() for c in COLOURS]
+    def neighbours(self, slope=HORIZONTAL, core=True, d=None):
+        adjacent = [self.flip_edge(i, c) for i in self.mostly_sloped_edges(slope) for c in COLOURS]
+        
+        if core: adjancent = [t for t in adjacent if t.is_core(d)]
+        return adjacent
 
 def ngon(n):
     assert(n > 4 and n % 2 == 0)
@@ -320,8 +325,6 @@ def test():
     
     print(T2.canonical())
 
-
-if __name__ == '__main__':
     T = ColouredTriangulation.from_pA(flipper.load('S_1_1').mapping_class('aB'))  # [0]  # 2.
     T = ColouredTriangulation.from_pA(flipper.load('S_1_2').mapping_class('abC'))  # [1, 1, -1, -1] # 8797 in 1m47s Now 1658.
     T = ColouredTriangulation.from_pA(flipper.load('S_1_2').mapping_class('aaaBc'))  # [0, 0]
@@ -348,4 +351,15 @@ if __name__ == '__main__':
         (~5, 6, ~17)
         ]), [BLUE,BLUE,BLUE,BLUE,BLUE,BLUE,RED,RED,RED,RED,RED,RED,RED,RED,RED,RED,RED,RED])
     print(T.iso_sig() + '\t' + str(T.stratum()))
+
+if __name__ == '__main__':
+    # RRBBRRBRR_adcbfegqrhopimnjkl  [4]
+    import argparse
+    parser = argparse.ArgumentParser(description='Build automata')
+    parser.add_argument('--sig', type=str, required=True, help='signature to load')
+    args = parser.parse_args()
+    
+    T = ColouredTriangulation.from_iso_sig(args.sig)
+    A = Automaton.from_triangulation(T, verbose=True)
+    A.export('graphs/' + args.sig + '.dot')
 
