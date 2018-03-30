@@ -1,4 +1,9 @@
 
+2017-12-22
+
+Core ==> Geometric appears to have been caused by a bug in the geometric
+dimension code (MB).
+
 2016-12-06
 
 Limited experiments suggest that core (full horizontal and vertical
