@@ -1,8 +1,139 @@
 
+2018-08-15
+
+Here are two nice coloured triangulations that differ by a reflection
+about x = y:
+
+sage: import flipper
+sage: Tri1 = [(~0r, 1r, ~4r),(~1r, 4r, 2r),(~2r, 3r, ~5r),(~3r, 5r, 0r)]
+sage: Tri2 = [(0r, 5r, ~3r), (3r, ~2r, ~5r), (2r, 4r, ~1r), (1r, ~0r, ~4r)]
+sage: from constants import *
+sage: colours = [RED]*4 + [BLUE]*2
+sage: import colouredtriangulation
+sage: CT1 = colouredtriangulation.ColouredTriangulation(T1, colours)
+sage: CT2 = colouredtriangulation.ColouredTriangulation(T2, colours)
+sage: CT1.iso_sig()
+'RRBRBR_acbdlefjkghi'
+sage: CT2.iso_sig()
+'RRBRBR_acbdfjeklghi'
+
+So the code correctly sees that these are not isomorphic via an
+orientation preserving isomorphism.
+
+2018-07-10
+
+Facts:
+
+The codimension one faces of the (normalised) geometric polytope can
+arise from a degeneration of the Keane condition.  Very sad.  But
+these are easy to detect and avoid using the centre - just check for
+zeros.
+
+[2018-08-15: Ian Frankel points out: A Keane face may be subdivided
+into infinitely many faces... these should fall into nicely modular
+families that differ by Dehn twists parallel to the edge with the
+"degenerating" coordinate.]
+
+Not all polytopes have the same number of flippable faces.
+
+There are polytopes where the flippable faces have supports of
+different sizes.
+
+In a hyperelliptic stratum there can be polyopes with flippable faces
+with support being a single saddle connection. That's cool!
+  (I assume that the saddle connection runs through a Weierstrass point...(SS))
+
+Question:
+
+The current version uses the centre for everything - is there a way to
+avoid this?  Why is it so slow?
+
+Conjectures:
+
+Different flippable faces of the (normalised) geometric polytope have
+"disjoint support" - a saddle connection is involved in at most one
+multiflip.  (If true, this gives a strong upper bound on the number of
+faces...)
+
+In a multiflip all of the saddle connections have the same colour
+before, and have the same colour after.  (Surely this follows from
+M-parallelism.)
+
+In strata, multiflips have size one or two... (Ask Saul why he thought
+this might be true... It is definitely false in more special orbit
+closures)
+
+2018-07-09
+
+Current wish-list for Veerer:
+
+0. Detect hyperelliptic, spin
+
+1. Build the geometric automaton.
+
+2. Zorich acceleration.
+
+3. Linear submanifolds.
+
+4. Splitting zeros.
+
+Applications - look for separators (good cuts) of the geometric
+automaton.  Use that to prove a spectral gap.
+
+2018-06-30
+
+Vincent asks: Can we modify veerer to allow poles in the centers of
+edges?
+
+This is very, very similar to Ian's desire -- see the discussion on
+2015-09-06.  However, this completely breaks flippers underlying data
+structure for triangulations.  So this is not going to happen. 
+
+One wonders if the heavier data structure (where you have triangles
+and edge gluings instead of triples of edges) is paid back for by the
+reduction in size of the automaton?
+
+Here is a more serious objection than "flipper does not work that
+way": If we want to have a chance at splitting poles off of zeros (or
+merging them with) then we need the poles at vertices.
+
+Another objection: All of the proofs are in terms of empty
+squares... The symmetric bigons around a pole are pretty, but I don't
+think that justifies doubling the lengths of all of the proofs???
+
+2018-06-29
+
+Chatting with Curt: 
+
+1. You should implement carrying around a linear subspace. Bite the
+bullet and deal with number fields.
+
+2. You should implement carrying around a quadratic condition (as
+sometimes those can be defined over \ZZ and you won't have to pay the
+cost of the number field).  [I actually do not understand this - I
+thought that being an eigenvector is a linear condition?  Ok, but not
+over \QQ.]
+
+3. If you start at a ramdom triangulation, with a random linear space,
+you can perhaps prove that it won't terminate by finding a nice loop
+(that moves you further and further into the corner of some polytope).
+
+4. Using (1), compute generating matrices for Veech groups.  Compute
+Euler characteristics for Veech curves... There are conjectures (about
+growth of square-tiled surfaces) that could be supported or falsified
+this way.  Of course we want this in higher dimension as well, but
+start small.
+
+[This is dumb, or very subtle, or both... all Euler characteristics
+are zero because the parameter space is a circle bundle - we are
+allowed to rotate! The SO(2) action is going to be very difficult to
+remove, so... sorry, we cannot do this. Obtaining matrices still seems
+possible for Veech groups.  Try this for the golden table?]
+
 2017-12-22
 
-Core ==> Geometric appears to have been caused by a bug in the geometric
-dimension code (MB).
+"Core ==> Geometric" was caused by a bug in the geometric dimension
+code (MB).
 
 2016-12-06
 

@@ -9,6 +9,9 @@ except ImportError:
 
 from constants import *
 
+from itertools import product
+from sage.all import Polyhedron
+
 try:
     from pyparma import Polyhedron
     from pyparma.utils import intize
@@ -16,10 +19,13 @@ except ImportError:
     print('PyParma unavailable.')
     pass
 
-from automaton import Automaton
+# from automaton import Automaton
 
 import flipper
 norm = flipper.norm
+
+def dot(A, B):
+    return sum(a*b for a, b in zip(A, B))
 
 def best_rotation(X):
     return min(X[i:] + X[:i] for i in range(len(X)))
@@ -161,7 +167,7 @@ class ColouredTriangulation(object):
             A.append([0] + [i for i in row])
             A.append([-0] + [-i for i in row])
         
-        return Polyhedron(hrep=intize(A)).poly.affine_dimension()
+        return Polyhedron(ieqs=A).dim()
     
     def geometric_matrix(self):
         G = []
@@ -176,7 +182,7 @@ class ColouredTriangulation(object):
             G.append(row)
         return G
     
-    def geometric_polytope(self):
+    def geometric_polytope(self, normalise=False):
         # Uses PyParma.
         V = self.train_track_matrix(VERTICAL)
         H = self.train_track_matrix(HORIZONTAL)
@@ -191,11 +197,14 @@ class ColouredTriangulation(object):
             A.append([-0] + [-0] * self.zeta + [-i for i in row])
         for row in G:
             A.append([0] + row)
+        if normalise:
+            A.append([-1] + [1] * self.zeta * 2)
+            A.append([1] + [-1] * self.zeta * 2)
         
-        return Polyhedron(hrep=intize(A))
+        return Polyhedron(ieqs=A)
     
     def geometric_dimension(self):
-        return self.geometric_polytope().poly.affine_dimension()
+        return self.geometric_polytope().dim()
     
     def geometric_solution(self):
         return self.geometric_polytope().vrep()[1:, 1:].sum(axis=0).tolist()
@@ -209,10 +218,12 @@ class ColouredTriangulation(object):
                 A.append([0] + [i for i in row])
                 A.append([-0] + [-i for i in row])
             A.append([-0] + [0] * j + [-1] + [0] * (self.zeta - j - 1))
-            yield Polyhedron(hrep=intize(A)).poly.affine_dimension()
+            yield Polyhedron(ieqs=A).dim()
     
     def vertex_data_dict(self):
-        return dict((CC[0].vertex, (len([c for c in CC if self.colouring[c.indices[1]] == BLUE and self.colouring[c.indices[2]] == RED]) - 2, len(CC))) for CC in self.triangulation.corner_classes)
+        return dict((CC[0].vertex, (len([c for c in CC if self.colouring[c.indices[1]] == BLUE
+                                         and self.colouring[c.indices[2]] == RED]) - 2, len(CC)))
+                    for CC in self.triangulation.corner_classes)
     
     def stratum(self):
         return sorted([d for d, v in self.vertex_data_dict().values()], reverse=True)
@@ -288,11 +299,40 @@ class ColouredTriangulation(object):
         colouring = [self.colouring[norm(inv_translate[i])] for i in range(self.zeta)]
         return ColouredTriangulation(T, colouring)
     
-    def neighbours(self, slope=HORIZONTAL, core=True, d=None):
-        adjacent = [self.flip_edge(i, c) for i in self.mostly_sloped_edges(slope) for c in COLOURS]
+    def neighbours_core(self, slope=HORIZONTAL, core=True, d=None):
+        adjacent = [(self.flip_edge(i, c), '%s;0.5:%s;0.5' % (self.colouring[i], c)) for i in self.mostly_sloped_edges(slope) for c in COLOURS]
         
-        if core: adjancent = [t for t in adjacent if t.is_core(d)]
+        if core: adjacent = [(t, c) for (t, c) in adjacent if t.is_core(d)]
         return adjacent
+    
+    def neighbours_geometric(self, slope=HORIZONTAL, core=True, d=None):
+        P = self.geometric_polytope(normalise=True)
+        assert P.is_compact()
+        
+        G = self.geometric_matrix()
+        
+        adjacent = []
+        for face in P.faces(P.dim() - 1):
+            Q = face.as_polyhedron()
+            c = Q.center()
+            if all(c):
+                flipped = [edge for row, edge in zip(G, self.flippable_edges()) if dot(c, row) == 0]
+                print('XXX:', flipped)
+                print([self.colouring[norm(i)] for i in flipped])
+                
+                for colours in product(COLOURS, repeat=len(flipped)):
+                    T = self
+                    for edge, colour in zip(flipped, colours):
+                        T = T.flip_edge(edge, colour)
+                    if T.is_geometric():
+                        adjacent.append((T, 'Black'))
+                        print(colours)
+        
+        # `if core: adjacent = [(t, c) for (t, c) in adjacent if t.is_core(d)]
+        return adjacent
+    
+#    neighbours = neighbours_core
+#    neighbours = neighbours_geometric
 
 def ngon(n):
     assert(n > 4 and n % 2 == 0)
