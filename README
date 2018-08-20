@@ -1,0 +1,26 @@
+Veerer
+======
+
+veerer is a Python module to deal with Veering triangulations and
+their associated flat structures.
+
+To install the module you need Python (version 2 or 3) and
+pplpy (see https://gitlab.com/videlec/pplpy). It is advised
+to use it inside SageMath (http://www.sagemath.org/).
+
+Example
+-------
+
+    sage: from veerer import *
+    sage: T = ColouredTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
+    sage: F = T.flat_structure()
+    sage: F.plot(vertical_train_track=True)
+    sage: F.plot(horizontal_train_track=True)
+
+
+Authors
+-------
+
+- Mark Bell
+- Vincent Delecroix
+- Saul Schleimer
