@@ -355,6 +355,8 @@ class Triangulation(object):
 
         EXAMPLES::
 
+            sage: from veerer import *
+
             sage: T = Triangulation([(0,1,2),(-1,-2,-3)])
             sage: T.to_string()
             'efdcab'
