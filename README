@@ -19,6 +19,13 @@ Example
     sage: F.plot(horizontal_train_track=True)
 
 
+Testing
+-------
+
+Install the module (with pip) and run
+
+    $ sage -t --force-lib veerer/
+
 Authors
 -------
 
