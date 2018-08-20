@@ -13,16 +13,11 @@ setup(
     author_email='vincent.delecroix@u-bordeaux.fr',
     url='https://framagit.org/saulsch/Veerer',
     # Remember to update these if the directory structure changes.
-    packages=[
-        'veerer',
-        'veerer.constants',
-        'veerer.even_permutation',
-        'veerer.coloured_triangulation',
-        'veerer.layout'],
-    install_requires=[
-        'pplpy',
-        'surface_dynamics'
-        ],
+    packages=['veerer/'],
+#    install_requires=[
+#        'pplpy',
+#        'surface_dynamics'
+#        ],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Science/Research',

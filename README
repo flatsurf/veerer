@@ -6,7 +6,8 @@ their associated flat structures.
 
 To install the module you need Python (version 2 or 3) and
 pplpy (see https://gitlab.com/videlec/pplpy). It is advised
-to use it inside SageMath (http://www.sagemath.org/).
+to use it inside SageMath (http://www.sagemath.org/). The
+installation is done via pip.
 
 Example
 -------
