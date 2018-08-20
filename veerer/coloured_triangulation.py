@@ -1,11 +1,5 @@
 r"""
-H(0)      [(~2, 1, ~0), (~1, 0, 2)], [RED, BLUE, BLUE]
-H(0,0)    [(~5, 2, ~1), (~4, 1, 5), (~3, 0, 4), (~2, 3, ~0)], [RED, RED, BLUE, BLUE, BLUE, BLUE]
-H(2)      [(~8, 3, ~1), (~7, 1, 8), (~6, 2, 7), (~5, 0, 6), (~4, 5, ~0), (~3, 4, ~2)], [RED, RED, RED, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE]
-Q(1,-1^5) [(~11, 4, ~3), (~10, ~0, 11), (~9, 0, 10), (~8, 9, 1), (~7, 8, ~1), (~6, 7, 2), (~5, 6, ~2), (~4, 5, 3)], [RED, RED, RED, RED, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE]
-Q(2^2)    [(~11, 4, ~3), (~10, ~1, 11), (~9, 2, 10), (~8, 1, 9), (~7, 0, 8), (~6, 7, ~2), (~5, 6, 3), (~4, 5, ~0)], [RED, RED, RED, RED, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE]
-
-
+Veering triangulations of surfaces.
 """
 from __future__ import print_function, absolute_import
 
@@ -175,6 +169,8 @@ class ColouredTriangulation(object):
 
         # make sure c is converted into a cylinder diagram
         if isinstance(c, Stratum):
+            if not c.is_connected():
+                print('Warning: the stratum %s is not connected' % c)
             c = c.one_component().one_cylinder_diagram()
         elif isinstance(c, StratumComponent):
             c = c.one_cylinder_diagram()
@@ -228,7 +224,7 @@ class ColouredTriangulation(object):
         EXAMPLES::
 
             sage: from veerer import *
-            
+
             sage: T = ColouredTriangulation.from_string('BBR_eacdfb')
             sage: T.to_string()
             'BBR_eacdfb'
@@ -310,9 +306,9 @@ class ColouredTriangulation(object):
         Return whether this coloured triangulation is Abelian.
 
         EXAMPLES:
-        
+
             sage: from veerer import *
-        
+
             sage: T = ColouredTriangulation([(-3, 1, -1), (-2, 0, 2)], [RED, BLUE, BLUE])
             sage: T.is_abelian()
             True
@@ -500,7 +496,7 @@ class ColouredTriangulation(object):
             f = vp[e]
             if self._colouring[f] != BLUE:
                 continue
-            
+
             # build the word
             w = []
             g = f
@@ -537,7 +533,7 @@ class ColouredTriangulation(object):
         EXAMPLES::
 
             sage: from veerer import *
-            
+
             sage: T = ColouredTriangulation([(-3, 1, -1), (-2, 0, 2)], [RED, BLUE, BLUE])
             sage: T.relabel([2, -2, -1, 0, 1, -3])
             [(~2, 0, ~1), (~0, 1, 2)], ['Blue', 'Blue', 'Red']
@@ -830,7 +826,7 @@ class ColouredTriangulation(object):
     def flat_structure(self):
         r"""
         Return a flat structure with this Veering triangulation.
-        
+
         Note that this triangulation must be core. The point is chosen
         by taking the interior point of the polytope obtained by
         summing each ray.
@@ -966,7 +962,7 @@ class ColouredTriangulation(object):
 
             sage: t = [(-6, -4, -5), (-3, -1, 3), (-2, 0, 4), (1, 5, 2)]
             sage: c = [RED, RED, BLUE, RED, BLUE, RED]
-            sage: T0 = ColouredTriangulation(t, c) 
+            sage: T0 = ColouredTriangulation(t, c)
             sage: T0.is_core()
             True
 
@@ -1098,15 +1094,15 @@ class ColouredTriangulation(object):
         dim = self.stratum().dimension()
         assert self.is_core()
         for slope in [HORIZONTAL, VERTICAL]:
-            for i in self.mostly_sloped_edges(slope):
+            for e in self.mostly_sloped_edges(slope):
                 for col in [BLUE, RED]:
                     T = self.copy()
-                    T.flip(i, col)
-                    test1 = T.edge_has_curve(i)
+                    T.flip(e, col)
+                    test1 = T.edge_has_curve(e)
                     test2 = T.train_track_polytope(slope).affine_dimension() == dim
                     if test1 != test2:
-                        T.edge_has_curve(i, verbose=True) 
-                        raise RuntimeError("failed\nT = {}\ni = {}\ncolour = {}\nhas curve={}\nstratum dim={}\nhoriz tt dim={}\nvert tt dim={}".format(T, i, col, test1, dim,
+                        T.edge_has_curve(e, verbose=True)
+                        raise RuntimeError("failed\nT = {}\nedge = {}\ncolour = {}\nhas curve={}\nstratum dim={}\nhoriz tt dim={}\nvert tt dim={}".format(T, e, col, test1, dim,
                             T.train_track_polytope(HORIZONTAL).affine_dimension(),
                             T.train_track_polytope(VERTICAL).affine_dimension()))
 
@@ -1156,6 +1152,5 @@ def ngon(n):
         [(2*m-1, ~(3*m-1), m)]
     colouring = [RED] * (2*m) + [BLUE] * m
     return ColouredTriangulation(T, colouring)
-
 
 
