@@ -11,6 +11,7 @@ class Automaton(object):
     EXAMPLES::
 
         sage: from veerer import *
+        sage: from surface_dynamics import *
 
         sage: T = ColouredTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
         sage: A = Automaton.from_triangulation(T)
