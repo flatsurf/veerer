@@ -9,5 +9,6 @@ from __future__ import absolute_import
 from .constants import RED, BLUE, HORIZONTAL, VERTICAL
 from .triangulation import Triangulation
 from .coloured_triangulation import ColouredTriangulation
+from .automaton import Automaton
 
 del absolute_import

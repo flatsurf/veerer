@@ -136,6 +136,27 @@ class Triangulation(object):
     def __repr__(self):
         l = self.faces()
         return '[' + ', '.join('(' + ', '.join(edge_label(e) for e in f) + ')' for f in l) + ']'
+
+    def copy(self):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T = Triangulation([[0,1,2],[-1,-2,-3]])
+            sage: U = T.copy()
+            sage: T == U
+            True
+            sage: T.flip(0)
+            sage: T == U
+            False
+        """
+        T = Triangulation.__new__(Triangulation)
+        T._n = self._n
+        T._vp = self._vp[:]
+        T._fp = self._fp[:]
+        return T
+
     def num_vertices(self):
         return len(self.vertices())
 
@@ -195,6 +216,9 @@ class Triangulation(object):
         return a,b,c,d
 
     def flip(self, e):
+        r"""
+        Flip the edge ``e``.
+        """
         # Use the following for reference:
         # v<----------u     v<----------u
         # |     a    ^^     |^    a     ^
@@ -249,8 +273,92 @@ class Triangulation(object):
         # self._vl[e] = x
         # self._vl[~e] = v
 
+    def back_flip(self, e):
+        r"""
+        Flip back the edge ``e``.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: T0 = Triangulation([(0,1,2),(-1,-2,-3)])
+            sage: T = T0.copy()
+            sage: T.flip(0)
+            sage: T.back_flip(0)
+            sage: T == T0
+            True
+
+            sage: T.flip(1); T.flip(2)
+            sage: T.back_flip(2); T.back_flip(1)
+            sage: T == T0
+            True
+        """
+        # Use the following for reference:
+        # v<----------u     v<----------u
+        # |     a    ^^     |\    a     ^
+        # |         / |     | \         |
+        # |  F     /  |     |  \     F  |
+        # |       /   |     |   \       |
+        # |b    e/   d| --> |b   \e    d|
+        # |     /     |     |     \     |
+        # |    /      |     |      \    |
+        # |   /       |     |       \   |
+        # |  /     G  |     | G      \  |
+        # | /         |     |         \ |
+        # v/    c     |     v     c    v|
+        # w---------->x     w---------->x
+
+        e = int(e)
+
+        a = self._fp[e]
+        b = self._fp[a]
+        if a == ~e or b == ~e:
+            raise ValueError('edge %s is not flippable' % edge_label(e))
+        c = self._fp[~e]
+        d = self._fp[c]
+
+        # TODO: below is wrong
+        # F = self._fl[e]
+        # G = self._fl[~e]
+
+        # v = self._vl[b]
+        # x = self._vl[d]
+
+        # fix face perm and cycles
+        self._fp[e] = d
+        self._fp[d] = a
+        self._fp[a] = e
+        self._fp[b] = c
+        self._fp[c] = ~e
+        self._fp[~e] = b
+
+        # Face labels
+        # TODO: below is wrong
+        # self._fl[a] = G
+        # self._fl[c] = F
+
+        # fix vertex perm
+        self._vp[a] = ~d
+        self._vp[b] = e
+        self._vp[e] = ~a
+        self._vp[c] = ~b
+        self._vp[d] = ~e
+        self._vp[~e] = ~c
+
+        # Vertex labels
+        # TODO: below is wrong
+        # self._vl[e] = x
+        # self._vl[~e] = v
 
     def to_string(self):
+        r"""
+        Serialize this triangulation as a string.
+
+        EXAMPLES::
+
+            sage: T = Triangulation([(0,1,2),(-1,-2,-3)])
+            sage: T.to_string()
+            'efdcab'
+        """
         return even_perm_base64_str(self._fp)
 
     @staticmethod

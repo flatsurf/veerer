@@ -47,9 +47,15 @@ class ColouredTriangulation(object):
     - no monochrome triangle
     - no monochrome vertex
     """
+    __slots__ = ['_triangulation', '_colouring']
     def __init__(self, triangulation,  colouring, check=True):
-        self._triangulation = Triangulation(triangulation)
+        if isinstance(triangulation, Triangulation):
+            self._triangulation = triangulation.copy()
+        else:
+            self._triangulation = Triangulation(triangulation)
+
         self._colouring = colouring + colouring[::-1] # A list : edge_indices --> {Red, Blue}
+
         if check:
             n = self._triangulation.num_edges()
             assert(all(colour in COLOURS for colour in self._colouring))
@@ -75,6 +81,30 @@ class ColouredTriangulation(object):
         if type(self) != type(other):
             raise TypeError
         return self._triangulation != other._triangulation or self._colouring != other._colouring
+
+    def copy(self):
+        r"""
+        Return a copy of this coloured triangulation
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T = ColouredTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
+            sage: S1 = T.copy()
+            sage: S2 = T.copy()
+            sage: T == S1 == S2
+            True
+            sage: S1.flip(1,BLUE)
+            sage: T == S1
+            False
+            sage: T == S2
+            True
+        """
+        T = ColouredTriangulation.__new__(ColouredTriangulation)
+        T._triangulation = self._triangulation.copy()
+        T._colouring = self._colouring[:]
+        return T
 
     @classmethod
     def from_pA(cls, h):
@@ -188,20 +218,32 @@ class ColouredTriangulation(object):
         return ColouredTriangulation(triangles, colors)
 
     @classmethod
-    def from_string(cls, sig):
+    def from_string(cls, s):
         r"""
-        >>> 
-        """
-        # sig == (Edge._colourings | triangles)
-        # Hence len(sig) = n + F(S) = 5 / 3 n
+        Deserialization from the string ``s``.
 
-        colours, triangulation = sig.split('_')
+        Such string is typically obtained from :meth:`to_string` or
+        :meth:`iso_sig`. Not by calling ``str(triangulation)``.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            
+            sage: T = ColouredTriangulation.from_string('BBR_eacdfb')
+            sage: T.to_string()
+            'BBR_eacdfb'
+            sage: T.iso_sig()
+            'RBB_adbecf'
+        """
+        colours, triangles = s.split('_')
         n = len(colours)
 
-        p = even_perm_from_base64_str(triangulation, n)
+        p = even_perm_from_base64_str(triangles, n)
         triangles = even_perm_cycles(p)[0]
         colours = [RED if colour == 'R' else BLUE for colour in colours]
         return ColouredTriangulation(triangles, colours, check=True)
+
+    from_iso_sig = from_string
 
     def __str__(self):
         n = self._triangulation.num_edges()
@@ -209,6 +251,10 @@ class ColouredTriangulation(object):
 
     def __repr__(self):
         return str(self)
+
+    def colour(self, e):
+        e = int(e)
+        return self._colouring[e]
 
     def angles(self):
         r"""
@@ -310,6 +356,13 @@ class ColouredTriangulation(object):
         return True
 
     def stratum(self):
+        r"""
+        Return the Abelian or quadratic stratum of this coloured triagulation.
+
+        EXAMPLES::
+
+            sage:
+        """
         A = self.angles()
         if any(a%2 for a in A) or not self.is_abelian():
             from surface_dynamics import QuadraticStratum
@@ -319,7 +372,7 @@ class ColouredTriangulation(object):
             return AbelianStratum([(a-2)/2 for a in A])
 
     def stratum_dimension(self):
-        dim1 = 2*self._triangulation.genus - 2 + self._triangulation.num_vertices + (1 if self.is_abelian() else 0)
+        dim1 = 2*self._triangulation.genus() - 2 + self._triangulation.num_vertices() + (1 if self.is_abelian() else 0)
         dim2 = self.stratum().dimension()
         assert dim1 == dim2
         return dim1
@@ -348,7 +401,6 @@ class ColouredTriangulation(object):
             False
         """
         e = int(e)
-
         return self._triangulation.is_flippable(e) and \
                self.alternating_square(e)
 
@@ -559,6 +611,28 @@ class ColouredTriangulation(object):
 
         return char_colours + '_' + char_edges, best_translation, best_inv_translation
 
+    def to_string(self):
+        r"""
+        Serialization to string.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: from surface_dynamics import *
+
+            sage: T = ColouredTriangulation.from_stratum(QuadraticStratum({1:20}))
+            sage: s = T.to_string()
+            sage: s
+            'RRR...a3aza'
+            sage: TT = ColouredTriangulation.from_string(s)
+            sage: T == TT
+            True
+        """
+        n = self._triangulation.num_edges()
+        colours = ''.join('R' if self._colouring[i] == RED else 'B' for i in range(n))
+        perm = even_perm_base64_str(self._triangulation.face_permutation())
+        return colours + '_' + perm
+
     def iso_sig(self):
         r"""
         Return a canonical string ("isomorphism signature").
@@ -640,6 +714,32 @@ class ColouredTriangulation(object):
         self._triangulation.flip(i)
         self._colouring[i] = self._colouring[~i] = col
 
+    def back_flip(self, i, col):
+        r"""
+        Flip backward an edge in place
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T0 = ColouredTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
+            sage: T = T0.copy()
+            sage: T.flip(1, RED); T.flip(0, RED)
+            sage: T.back_flip(0, RED); T.back_flip(1, RED)
+            sage: T == T0
+            True
+
+            sage: T.flip(1, BLUE); T.flip(2, BLUE)
+            sage: T.back_flip(2, BLUE); T.back_flip(1, RED)
+            sage: T == T0
+            True
+        """
+        i = int(i)
+        assert(self.is_flippable(i))
+
+        self._triangulation.back_flip(i)
+        self._colouring[i] = self._colouring[~i] = col
+
     def train_track_polytope(self, slope=VERTICAL):
         r"""
         Return the polytope determined by the constraints.
@@ -688,19 +788,18 @@ class ColouredTriangulation(object):
 
         return ppl.C_Polyhedron(cs)
 
-    def geometric_matrix(self):
-        raise NotImplementedError
-        G = []
-        for i in self.flippable_edges():
+    def geometric_polytope(self):
+        # 1. train-track conditions
+        P = self.train_track_polytope(HORIZONTAL)
+        P.concatenate_assign(self.train_track_polytope(VERTICAL))
+
+        # 2. flip conditions
+        for e in self.flippable_edges():
+            raise NotImplementedError
             corner1 = self._triangulation.corner_lookup[i]
             corner2 = self._triangulation.corner_lookup[~i]
 
-            if self._colouring[corner1.indices[1]] == BLUE:  # Mostly horizontal.
-                row = [-1 if j == i else 0 for j in range(self.zeta)] + [1 if j == corner1.indices[1] or j == corner2.indices[2] else 0 for j in range(self.zeta)]
-            else:  # Mostly vertical.
-                row = [1 if j == corner1.indices[1] or j == corner2.indices[2] else 0  for j in range(self.zeta)] + [-1 if j == i else 0 for j in range(self.zeta)]
-            G.append(row)
-        return G
+        return P
 
     def geometric_polytope(self, normalise=False):
         raise NotImplementedError
@@ -806,8 +905,32 @@ class ColouredTriangulation(object):
                     for CC in self._triangulation.corner_classes)
 
     def is_core(self, d=None):
-        if d is None: d = self.stratum_dimension()
-        return all(self.train_track_dimension(slope) == d for slope in SLOPES)
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: triangles = [(-24, -2, -23), (-22, 2, 22), (-21, 3, 21), (-20, 4, 20),
+            ....:              (-19, 1, 19), (-18, 6, 18), (-17, 7, 17), (-16, 16, -1),
+            ....:              (-15, -8, -14), (-13, 13, -7), (-12, 12, -6), (-11, 11, -5),
+            ....:              (-10, -4, 8), (-9, -3, 23), (0, 15, 14), (5, 10, 9)]
+            sage: colours = [RED, RED, RED, RED, RED, RED, RED, RED, BLUE, BLUE, BLUE,
+            ....:            BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE,
+            ....:            BLUE, BLUE, BLUE]
+
+            sage: T = ColouredTriangulation(triangles, colours)
+            sage: T.is_core()
+            True
+            sage: T.flip(14,RED)
+            sage: T.is_core()
+            True
+            sage: T.flip(14,RED)
+            sage: T.is_core()
+            False
+        """
+        if d is None: d = self.stratum().dimension()
+        return self.train_track_polytope(HORIZONTAL).affine_dimension() == d and \
+               self.train_track_polytope(VERTICAL).affine_dimension() == d
 
     def is_geometric(self, d=None):
         if d is None: d = self.stratum_dimension()
@@ -821,21 +944,6 @@ class ColouredTriangulation(object):
     def neighbours(self, slope=HORIZONTAL):
          return [(self.flip_edge(i, c), '%s;0.5:%s;0.5' % (self._colouring[i], c)) for i in self.mostly_sloped_edges(slope) for c in COLOURS]
 
-    def check_edge_has_curve(self):
-        r"""
-        Check the function ``edge_has_curve``
-        """
-        dim = self.stratum_dimension()
-        assert self.is_core()
-        for slope in [HORIZONTAL, VERTICAL]:
-            for i in self.mostly_sloped_edges(slope):
-                for col in [BLUE, RED]:
-                    T = self.flip_edge(i, col)
-                    test1 = T.edge_has_curve(i)
-                    test2 = T.train_track_dimension(slope) == dim
-                    if test1 != test2:
-                        T.edge_has_curve(i, verbose=True) 
-                        raise RuntimeError("failed\nT = {}\ni = {}\nhas curve={}\nstratum dim={}\nhoriz tt dim={}\nvert tt dim={}".format(T, i, test1, dim, T.train_track_dimension(HORIZONTAL), T.train_track_dimension(VERTICAL)))
 
     def neighbours_core(self, slope=HORIZONTAL, core=True, d=None):
         adjacent = [(self.flip_edge(i, c), '%s;0.5:%s;0.5' % (self._colouring[i], c)) for i in self.mostly_sloped_edges(slope) for c in COLOURS]
@@ -858,28 +966,35 @@ class ColouredTriangulation(object):
 
             sage: t = [(-6, -4, -5), (-3, -1, 3), (-2, 0, 4), (1, 5, 2)]
             sage: c = [RED, RED, BLUE, RED, BLUE, RED]
-
-        Flipping edge 1 in RED is fine::
-
-            sage: TT = ColouredTriangulation(t, c) 
-            sage: TT.flip(1, RED)
-            sage: TT.edge_has_curve(1)
+            sage: T0 = ColouredTriangulation(t, c) 
+            sage: T0.is_core()
             True
-            sage: TT.train_track_polytope(HORIZONTAL).affine_dimension()
-            3
-            sage: TT.train_track_polytope(VERTICAL).affine_dimension()
-            3
 
-        But flipping edge 1 in BLUE leads to a non-core triangulation::
+        Flipping edge 1 in RED is fine (it remains a core triangulation)::
 
-            sage: TT = ColouredTriangulation(t, c)
-            sage: TT.flip(1,BLUE)
-            sage: TT.edge_has_curve(1)
+            sage: T = T0.copy()
+            sage: T.flip(1, RED)
+            sage: T.edge_has_curve(1)
+            True
+            sage: T.is_core()
+            True
+
+        However, flipping edge 1 in BLUE leads to a non-core triangulation
+        (both edges 1 and 3 degenerate)::
+
+            sage: T = T0.copy()
+            sage: T.flip(1,BLUE)
+            sage: T.edge_has_curve(1)
             False
-            sage: TT.train_track_polytope(HORIZONTAL).affine_dimension()
+            sage: T.edge_has_curve(3)
+            False
+
+            sage: PH = T.train_track_polytope(HORIZONTAL)
+            sage: PH.affine_dimension()
             2
-            sage: TT.train_track_polytope(VERTICAL).affine_dimension()
-            3
+            sage: [g.coefficients() for g in PH.generators() if g.is_ray()]
+            [(mpz(0), mpz(0), mpz(0), mpz(0), mpz(1), mpz(1)),
+             (mpz(1), mpz(0), mpz(1), mpz(0), mpz(0), mpz(0))]
         """
         # TODO: we should not allow more than one pair (i, ~i) to be
         # both seen
@@ -887,10 +1002,9 @@ class ColouredTriangulation(object):
         # TODO: we want the._colouring to also take care of negative edges
         # (bad alternative: take "norm" function from flipper)
         colouring = self._colouring
-        col = colouring[e]
 
         if verbose:
-            print('[edge_has_curve] checking edge %s with color %s' % (edge_label(e), col))
+            print('[edge_has_curve] checking edge %s with color %s' % (edge_label(e), colouring[e]))
 
         a,b,c,d = self._triangulation.square_about_edge(e)
         if colouring[a] == BLUE:
@@ -907,16 +1021,18 @@ class ColouredTriangulation(object):
         assert colouring[c] == colouring[a]
         assert colouring[d] == colouring[b]
 
-        if col == NEG:
+        if colouring[e] == NEG:
             start = b
             end = ~d
+            if verbose:
+                print('[edge_has_curve] try to find path from b=%s to ~d=%s' %
+                         (edge_label(start), edge_label(end)))
         else:
             start = a
             end = ~c
-
-        if verbose:
-            print('[edge_has_curve] try to find path from %s to %s' %
-                     (edge_label(start), edge_label(end)))
+            if verbose:
+                print('[edge_has_curve] try to find path from a=%s to ~c=%s' %
+                         (edge_label(start), edge_label(end)))
 
         if start == end:
             return True
@@ -930,11 +1046,11 @@ class ColouredTriangulation(object):
         while q:
             f = q.popleft()
             if verbose:
-                print('[edge_has_curve] exploring %s' % edge_label(f))
+                print('[edge_has_curve] crossing %s' % edge_label(f))
 
             # NOTE: would be much nicer to have a face permutation!
             # here we set r and s so that the triangle is (r, s, ~f)
-            r = fp[f]
+            r = fp[~f]
             s = fp[r]
             if verbose:
                 print('[edge_has_curve] switch with r=%s s=%s' % (edge_label(r), edge_label(s)))
@@ -958,6 +1074,41 @@ class ColouredTriangulation(object):
                     print('[edge_has_curve] adding %s on top of the queue' % edge_label(s))
 
         return False
+
+    def _check_edge_has_curve(self):
+        r"""
+        Check the function ``edge_has_curve``
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: T = ColouredTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
+            sage: T._check_edge_has_curve()
+
+            sage: triangles = [(-24, -2, -23), (-22, 2, 22), (-21, 3, 21), (-20, 4, 20),
+            ....:              (-19, 1, 19), (-18, 6, 18), (-17, 7, 17), (-16, 16, -1),
+            ....:              (-15, -8, -14), (-13, 13, -7), (-12, 12, -6), (-11, 11, -5),
+            ....:              (-10, -4, 8), (-9, -3, 23), (0, 15, 14), (5, 10, 9)]
+            sage: colours = [RED, RED, RED, RED, RED, RED, RED, RED, BLUE, BLUE, BLUE,
+            ....:            BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE,
+            ....:            BLUE, BLUE, BLUE]
+            sage: T = ColouredTriangulation(triangles, colours)
+            sage: T._check_edge_has_curve()
+        """
+        dim = self.stratum().dimension()
+        assert self.is_core()
+        for slope in [HORIZONTAL, VERTICAL]:
+            for i in self.mostly_sloped_edges(slope):
+                for col in [BLUE, RED]:
+                    T = self.copy()
+                    T.flip(i, col)
+                    test1 = T.edge_has_curve(i)
+                    test2 = T.train_track_polytope(slope).affine_dimension() == dim
+                    if test1 != test2:
+                        T.edge_has_curve(i, verbose=True) 
+                        raise RuntimeError("failed\nT = {}\ni = {}\ncolour = {}\nhas curve={}\nstratum dim={}\nhoriz tt dim={}\nvert tt dim={}".format(T, i, col, test1, dim,
+                            T.train_track_polytope(HORIZONTAL).affine_dimension(),
+                            T.train_track_polytope(VERTICAL).affine_dimension()))
 
     def neighbours_core_vert(self, slope=HORIZONTAL, core=True, d=None):
         # adjacent = [(self.flip_edge(i, c), '%s;0.5:%s;0.5' % (self._colouring[i], c)) for i in self.mostly_sloped_edges(slope) for c in COLOURS]
@@ -995,75 +1146,16 @@ class ColouredTriangulation(object):
         # `if core: adjacent = [(t, c) for (t, c) in adjacent if t.is_core(d)]
         return adjacent
 
-#    neighbours = neighbours_core
-#    neighbours = neighbours_geometric
-
 def ngon(n):
+    n = int(n)
     assert(n > 4 and n % 2 == 0)
     m = (n - 2) // 2
-    T = flipper.create_triangulation( \
-        [(i, 2*m+i, ~(i+1)) for i in range(m)] + \
+    T = [(i, 2*m+i, ~(i+1)) for i in range(m)] + \
         [(~0, ~(2*m), ~(m+1))] + \
         [(m+i, ~(2*m+i), ~(m+i+1)) for i in range(1, m-1)] + \
         [(2*m-1, ~(3*m-1), m)]
-        )
     colouring = [RED] * (2*m) + [BLUE] * m
     return ColouredTriangulation(T, colouring)
 
 
-def test():
-    T = ColouredTriangulation(flipper.create_triangulation([(0,1,2), (~0,~1,~2)]), [RED, BLUE, RED])
-
-    print(T)
-    print(T.stratum())
-    print(T.iso_sig())
-    T2 = ColouredTriangulation.from_iso_sig(T.iso_sig())
-    print(T2.iso_sig())
-    print(T.geometric_dimension())
-
-    print(T.flippable_edges())
-    T2 = T.flip_edge(0, BLUE)
-    print(T2)
-    print(T2.stratum())
-    print(T2.iso_sig())
-
-    print(T2.canonical())
-
-    T = ColouredTriangulation.from_pA(flipper.load('S_1_1').mapping_class('aB'))  # [0]  # 2.
-    T = ColouredTriangulation.from_pA(flipper.load('S_1_2').mapping_class('abC'))  # [1, 1, -1, -1] # 8797 in 1m47s Now 1658.
-    T = ColouredTriangulation.from_pA(flipper.load('S_1_2').mapping_class('aaaBc'))  # [0, 0]
-    T = ColouredTriangulation.from_pA(flipper.load('SB_4').mapping_class('s_0S_1'))  # [-1, -1, -1, -1] # 6 in 1.3s.
-    T = ColouredTriangulation(flipper.create_triangulation([(~11, ~10, ~8), (~9, ~4, 10), (~7, ~6, 11), (~5, 7, ~2), (~3, 8, 9), (~1, 5, 6), (~0, 3, 4), (0, 1, 2)]), [RED, BLUE, BLUE, BLUE, BLUE, RED, RED, RED, RED, RED, RED, BLUE])  # [3, 1] # 16.
-    T = ngon(6)  # [0, 0] # 16 in 1s.
-    T = ngon(8)  # [4] # 120 in 3s now 86 in 5s.
-    T = ngon(10)  # [2, 2] # 2062 in 1m4s now 876.
-    T = ColouredTriangulation.from_pA(flipper.load('S_2_1').mapping_class('a.a.a.a.B.c.d'))  # [2, 1, 1] # 16896.
-    T = ngon(12)  # [8] # Was 59342 in 52m21s. Now 9116 in 17m8s.
-    T = ngon(14)  # [4, 4] #
-    T = ColouredTriangulation(flipper.create_triangulation([
-        (~0, ~6, 12),
-        (~1, ~7, 13),
-        (~2, ~8, 14),
-        (0, ~9, 15),
-        (1, ~10, 16),
-        (2, ~11, 17),
-        (3, 7, ~12),
-        (4, 8, ~13),
-        (5, 9, ~14),
-        (~3, 10, ~15),
-        (~4, 11, ~16),
-        (~5, 6, ~17)
-        ]), [BLUE,BLUE,BLUE,BLUE,BLUE,BLUE,RED,RED,RED,RED,RED,RED,RED,RED,RED,RED,RED,RED])
-    print(T.iso_sig() + '\t' + str(T.stratum()))
-
-#if __name__ == '__main__':
-#    # RRBBRRBRR_adcbfegqrhopimnjkl  [4]
-#    import argparse
-#    parser = argparse.ArgumentParser(description='Build automata')
-#    parser.add_argument('--sig', type=str, required=True, help='signature to load')
-#    args = parser.parse_args()
-#
-#    T = ColouredTriangulation.from_iso_sig(args.sig)
-#    A = Automaton.from_triangulation(T, verbose=True)
-#    A.export('graphs/' + args.sig + '.dot')
 
