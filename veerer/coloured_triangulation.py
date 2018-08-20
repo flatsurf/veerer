@@ -36,10 +36,31 @@ class ColouredTriangulation(object):
     r"""
     Triangulation with B/R color
 
-    Assumtions:
+    Assumptions:
 
-    - no monochrome triangle
-    - no monochrome vertex
+    - no monochromatic triangles
+    - no monochromatic vertices
+
+    EXAMPLES::
+
+        sage: from veerer import *
+
+    Built from an explicit triangulation and list of colors::
+
+        sage: ColouredTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
+        [(~2, ~0, ~1), (0, 1, 2)], ['Red', 'Red', 'Blue']
+
+    From a stratum::
+
+        sage: from surface_dynamics import *
+
+        sage: ColouredTriangulation.from_stratum(AbelianStratum(2))
+        [(~8, 3, ~1), (~7, 1, 8), (~6, 2, 7), (~5, 0, 6), (~4, 5, ~0), (~3, 4, ~2)], ['Red', 'Red', 'Red', 'Blue', 'Blue', 'Blue', 'Blue', 'Blue', 'Blue']
+
+        sage: ColouredTriangulation.from_stratum(QuadraticStratum({1:4}))
+        [(~17, 6, ~2), (~16, 4, 17), ..., (~6, 7, ~5)], ['Red', 'Red', ..., 'Blue']
+
+    From a flipper pseudo-Anosov (TO BE DONE)!
     """
     __slots__ = ['_triangulation', '_colouring']
     def __init__(self, triangulation,  colouring, check=True):
