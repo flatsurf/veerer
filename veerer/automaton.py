@@ -98,26 +98,26 @@ class Automaton(object):
                 print('[automaton] going along (%s, %s)' % (e, col))
 
             # some safety check to be disabled
-            assert len(flips) + 1 == len(iso_sigs) == len(branch)
-            assert iso_sig == iso_sigs[-1]
-            assert T.iso_sig() == iso_sig
-
+            #assert len(flips) + 1 == len(iso_sigs) == len(branch)
+            #assert iso_sig == iso_sigs[-1]
+            #assert T.iso_sig() == iso_sig
 
             # go down in DFS
             old_col = T.colour(e)
             T.flip(e, col)
 
-            new_iso_sig = T.iso_sig()
             if verbose:
-                print('[automaton] ... landed at %s with iso_sig %s' % (T.to_string(), new_iso_sig))
+                print('[automaton] ... landed at %s' % T.to_string())
 
-            if new_iso_sig not in graph:
+            if T.edge_has_curve(e): # = T is core
+                new_iso_sig = T.iso_sig()
                 if verbose:
-                    print('[automaton] vertex unexplored')
-                # new vertex
-                if T.is_core():
+                    print('[automaton] it is core with iso_sig %s' % new_iso_sig)
+
+
+                if new_iso_sig not in graph:
                     if verbose:
-                        print('[automaton] new core')
+                        print('[automaton] new vertex')
                     # new core
                     flips.append((e,old_col))
                     graph[new_iso_sig] = []
@@ -132,15 +132,12 @@ class Automaton(object):
                     e,col = branch[-1].pop()
                     continue
                 else:
+                    # (e,col) leads to an already visited vertex
                     if verbose:
-                        print('[automaton] not core')
-                    # not core
-
-            else:
-                # (e,col) leads to an already visited vertex
-                if verbose:
-                    print('[automaton] known vertex')
-                graph[iso_sig].append(new_iso_sig)
+                        print('[automaton] known vertex')
+                    graph[iso_sig].append(new_iso_sig)
+            elif verbose:
+                print('[automaton] not core')
 
             # not core or already visited
             T.back_flip(e, old_col)
