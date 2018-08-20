@@ -29,15 +29,20 @@ CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+-'
 CHARS_INV = {j:i for i,j in enumerate(CHARS)}
 def int_to_base64(n, l=None):
     r"""
-    sage: int_to_base64(15)
-    'p'
-    sage: int_to_base64(15, 3)
-    'paa'
+    EXAMPLES::
+
+        sage: from veerer.even_permutation import int_to_base64
+
+        sage: int_to_base64(15)
+        'p'
+        sage: int_to_base64(15, 3)
+        'paa'
     """
+    n = int(n)
     s = ''
     while n:
         s += CHARS[n % 64]
-        n /= 64
+        n //= 64
     if l is not None:
         if len(s) > l:
             raise ValueError
@@ -47,8 +52,12 @@ def int_to_base64(n, l=None):
 
 def base64_to_int(s):
     r"""
-    sage: base64_to_int('mqb')
-    5132
+    EXAMPLES::
+
+        sage: from veerer.even_permutation import base64_to_int
+
+        sage: base64_to_int('mqb')
+        5132
     """
     n = 0
     d = 1
@@ -64,10 +73,14 @@ def even_perm_base64_str(p):
 
 def even_perm_from_base64_str(s, n):
     r"""
-    sage: p = signed_permutation_random(253)
-    sage: s = even_perm_base64_str(p)
-    sage: even_perm_from_base64_str(s, 253) == p
-    True
+    EXAMPLES::
+
+        sage: from veerer.even_permutation import *
+
+        sage: p = signed_permutation_random(253)
+        sage: s = even_perm_base64_str(p)
+        sage: even_perm_from_base64_str(s, 253) == p
+        True
     """
     l = int(log(2*n, 64)) + 1 # number of digits used for each entry
     if len(s) != (2 * n * l):
