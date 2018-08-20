@@ -300,9 +300,9 @@ class FlatTriangulation:
             wait.extend(self._edges[t])
 
         if horizontal_train_track:
-            G += self._plot_train_track(HORIZONTAL, pos, For, 'green')
+            G += self._plot_train_track(HORIZONTAL, pos, For, 'purple')
         if vertical_train_track:
-            G += self._plot_train_track(VERTICAL, pos, For, 'purple')
+            G += self._plot_train_track(VERTICAL, pos, For, 'green')
 
         #print pos
         G.set_aspect_ratio(1)
