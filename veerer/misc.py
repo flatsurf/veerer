@@ -2,6 +2,12 @@ r"""
 Utility functions.
 """
 
+from sage.rings.all import ZZ, QQ, AA, RIF
+from sage.rings.number_field.number_field import NumberField
+from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
+
+QQx = PolynomialRing(QQ, 'x')
+
 def flipper_nf_to_sage(K, name='a'):
     r"""
     Convert a flipper number field to Sage.
@@ -25,6 +31,7 @@ def flipper_nf_element_to_sage(x, K=None):
     EXAMPLES::
 
         sage: import flipper
+        sage: from veerer.misc import flipper_nf_element_to_sage
 
         sage: S = flipper.load('S_2_1')
         sage: h = S.mapping_class('acBD')
