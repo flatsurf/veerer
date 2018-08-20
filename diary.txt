@@ -1,3 +1,22 @@
+2018-08-19 [Vincent, Saul]
+
+The code to generate automata was way too slow because of two reasons:
+
+- A new triangulation is computed for each edge. That can be avoided
+  by making inplace flips. flipper Triangulation is not well
+  adapted to this and we reimplemented a simpler datastructure
+  in triangulation.py.
+
+- it is not necessary to compute polytopes in order to know if a flip
+  is valid. It is enough to look for curves that gives appropriate
+  weight. This is implemented in the (currently broken) method
+  edge_has_curve of ColouredTriangulation.
+
+New features:
+
+- flat layout + pictures of flat triangulations with train-tracks
+
+- write a simple setup.py to simplify installation
 
 2018-08-15
 
