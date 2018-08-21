@@ -230,7 +230,6 @@ class Triangulation(object):
         r"""
         Flip the edge ``e``.
         """
-        # Use the following for reference:
         # v<----------u     v<----------u
         # |     a    ^^     |^    a     ^
         # |         / |     | \         |
@@ -254,6 +253,7 @@ class Triangulation(object):
         c = self._fp[~e]
         d = self._fp[c]
 
+        # Disabled for now
         # F = self._fl[e]
         # G = self._fl[~e]
 
@@ -327,7 +327,7 @@ class Triangulation(object):
         c = self._fp[~e]
         d = self._fp[c]
 
-        # TODO: below is wrong
+        # Disabled for now
         # F = self._fl[e]
         # G = self._fl[~e]
 
@@ -343,7 +343,7 @@ class Triangulation(object):
         self._fp[~e] = b
 
         # Face labels
-        # TODO: below is wrong
+        # Disabled for now
         # self._fl[a] = G
         # self._fl[c] = F
 
@@ -356,7 +356,7 @@ class Triangulation(object):
         self._vp[~e] = ~c
 
         # Vertex labels
-        # TODO: below is wrong
+        # Disabled for now
         # self._vl[e] = x
         # self._vl[~e] = v
 
