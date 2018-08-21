@@ -75,16 +75,22 @@ class Triangulation(object):
 
     def _check(self):
         n = self._n
-        
+
         if not isinstance(self._fp, array) or len(self._fp) != 2*n:
             raise RuntimeError('wrong face perm')
         if not isinstance(self._vp, array) or len(self._vp) != 2*n:
             raise RuntimeError('wrong vertex perm')
         even_perm_check(self._fp)
         even_perm_check(self._vp)
+
+        # The vertex, edge, and face permutations vp, ep (= ~), and fp
+        # must satisfy the relations ep^2 = fp^3 = ep.vp.fp = Id.
+        # Note that this is a representation of PSL(2, \ZZ) \isom
+        # S^2(2, 3, \infty) into the symmetric group.
+
         for i in range(-n, n):
             if ~self._vp[self._fp[i]] != i:
-                raise RuntimeError('vef condition not satisfied')
+                raise RuntimeError('vfe condition not satisfied')
             if self._fp[self._fp[self._fp[i]]] != i:
                 raise ValueError('not a triangulation')
 
