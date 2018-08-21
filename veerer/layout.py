@@ -1,9 +1,9 @@
 r"""
-Flat triangulations.
-
-TODO: find a better terminology since these are not *any*
-flat triangulation but only the one with 'good' triangles.
+Flat veering triangulations.
 """
+# Note that these are not "flat structures" as there are real
+# restrictions on the possible shapes of triangles coming from the
+# veering structure.  
 
 from sage.structure.sequence import Sequence
 
