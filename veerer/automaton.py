@@ -101,7 +101,7 @@ class Automaton(object):
                 print('[automaton] going along (%s, %s)' % (e, col))
             elif verbose:
                 if len(graph) > old_size + 500:
-                    print('\r[automaton] %8d      %8d      %.3f' % (len(graph),len(branch),time()-t0), end='')
+                    print('\r[automaton] %8d      %8d      %.3f      ' % (len(graph),len(branch),time()-t0), end='')
                     sys.stdout.flush()
                     old_size = len(graph)
 
@@ -164,5 +164,5 @@ class Automaton(object):
         
 
         if verbose == 1:
-            print('\r[automaton] %8d      %8d      %.3f' % (len(graph),len(branch),time()-t0))
+            print('\r[automaton] %8d      %8d      %.3f      ' % (len(graph),len(branch),time()-t0))
         return Automaton(graph)
