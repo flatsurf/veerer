@@ -995,6 +995,30 @@ class ColouredTriangulation(object):
 
             insert(x[norm(l)] == x[norm(s1)] + x[norm(s2)])
 
+    def _set_geometric_constraints(self, insert, x, y):
+        r"""
+        Set the geometric constraints.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T  = ColouredTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
+
+            sage: l = []
+            sage: x = [SR.var("x0"), SR.var("x1"), SR.var("x2")]
+            sage: y = [SR.var("y0"), SR.var("y1"), SR.var("y2")]
+            sage: T._set_geometric_constraints(l.append, x, y)
+            sage: l
+            [x1 <= y0 + y2, y0 <= x1 + x2]
+        """
+        for e in self.forward_flippable_edges():
+            a,b,c,d = self._triangulation.square_about_edge(e)
+            insert(x[norm(e)] <= y[norm(a)] + y[norm(d)])
+        for e in self.backward_flippable_edges():
+            a,b,c,d = self._triangulation.square_about_edge(e)
+            insert(y[norm(e)] <= x[norm(a)] + x[norm(d)])
+
     def train_track_polytope(self, slope=VERTICAL):
         r"""
         Return the polytope determined by the constraints.
@@ -1064,45 +1088,33 @@ class ColouredTriangulation(object):
         return [x[e] for e in range(n)]
 
     def geometric_polytope(self):
-        raise NotImplementedError
-        # 1. train-track conditions
-        P = self.train_track_polytope(HORIZONTAL)
-        P.concatenate_assign(self.train_track_polytope(VERTICAL))
+        r"""
+        EXAMPLES::
 
-        # 2. flip conditions
-        for e in self.flippable_edges():
-            raise NotImplementedError
-            corner1 = self._triangulation.corner_lookup[i]
-            corner2 = self._triangulation.corner_lookup[~i]
+            sage: from veerer import *
+
+            sage: T = ColouredTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
+            sage: T.geometric_polytope()
+            A 4-dimensional polyhedron in QQ^6 defined as the convex hull of 1 point, 7 rays
+        """
+        try:
+            import ppl
+        except ImportError:
+            raise ImportError('pplpy is not installed on your computer. Follow '
+                              'the instructions at https://gitlab.com/videlec/pplpy')
+
+        n = self._triangulation.num_edges()
+
+        # 1. train-track conditions
+        P = self.train_track_polytope(VERTICAL)
+        P.concatenate_assign(self.train_track_polytope(HORIZONTAL))
+
+        x = [ppl.Variable(e) for e in range(n)]
+        y = [ppl.Variable(n+e) for e in range(n)]
+
+        self._set_geometric_constraints(P.add_constraint, x, y)
 
         return P
-
-    def geometric_polytope(self, normalise=False):
-        raise NotImplementedError
-
-        # Uses PyParma.
-        V = self.train_track_matrix(VERTICAL)
-        H = self.train_track_matrix(HORIZONTAL)
-        G = self.geometric_matrix()
-
-        A = [[0] + [0] * i + [1] + [0] * (2*self.zeta - i - 1) for i in range(2*self.zeta)]
-        for row in V:
-            A.append([0] + [i for i in row] + [0] * self.zeta)
-            A.append([-0] + [-i for i in row] + [-0] * self.zeta)
-        for row in H:  ### 2017-12-20 - SS - Was V for some reason???
-            A.append([0] + [0] * self.zeta + [i for i in row])
-            A.append([-0] + [-0] * self.zeta + [-i for i in row])
-        for row in G:
-            A.append([0] + row)
-        if normalise:
-            A.append([-1] + [1] * self.zeta * 2)
-            A.append([1] + [-1] * self.zeta * 2)
-
-        return Polyhedron(ieqs=A)
-
-    def geometric_dimension(self):
-        raise NotImplementedError
-        return self.geometric_polytope().dim()
 
     def _flat_structure_from_train_track_lengths(self, VH, VV, base_ring=None):
         r"""
@@ -1198,6 +1210,28 @@ class ColouredTriangulation(object):
         """
         VH = self.train_track_min_solution(HORIZONTAL, allow_degenerations=allow_degenerations)
         VV = self.train_track_min_solution(VERTICAL, allow_degenerations=allow_degenerations)
+
+        return self._flat_structure_from_train_track_lengths(VH, VV)
+
+    def flat_structure_geometric_middle(self):
+        r"""
+        Return a geometric flat structure obtained by averaging the
+        vertices of the geometric polytope.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T = ColouredTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
+            sage: T.flat_structure_geometric_middle()
+            Flat Triangulation made of 2 triangles
+        """
+        n = self._triangulation.num_edges()
+
+        P = self.geometric_polytope()
+        r = [g.coefficients() for g in P.generators() if g.is_ray()]
+        VV = [sum(v[i] for v in r) for i in range(n)]
+        VH = [sum(v[n+i] for v in r) for i in range(n)]
 
         return self._flat_structure_from_train_track_lengths(VH, VV)
 
