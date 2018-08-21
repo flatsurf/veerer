@@ -13,6 +13,7 @@ New features:
 - automorphisms!
 
 TODO:
+[See also 2018-07-09]
 
 - detect component of stratum (hyp/even/odd in abelian case and reg/irr in quad)
 - cylinders and cylinder decompositions
@@ -20,7 +21,7 @@ TODO:
 
 2018-08-19 [Vincent, Saul]
 
-The code to generate automata was way too slow because of two reasons:
+The code to generate automata was too slow because of two reasons:
 
 - A new triangulation is computed for each edge. That can be avoided
   by making inplace flips. flipper Triangulation is not well
@@ -109,13 +110,9 @@ closures)
 Current wish-list for Veerer:
 
 0. Detect hyperelliptic, spin
-
 1. Build the geometric automaton.
-
 2. Zorich acceleration.
-
 3. Linear subvarieties.
-
 4. Splitting zeros.
 
 Applications - look for separators (good cuts) of the geometric
