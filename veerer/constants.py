@@ -1,7 +1,11 @@
 
 import string
 
-RED, BLUE = 'Red', 'Blue'
+RED = 'Red'
+BLUE = 'Blue'
+PURPLE = 'Purple'
+GREEN = 'Green'
+
 HORIZONTAL, VERTICAL = 'Horizontal', 'Vertical'
 
 COLOURS = [RED, BLUE]
