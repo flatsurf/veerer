@@ -48,7 +48,7 @@ class ColouredTriangulation(object):
         [(~8, 3, ~1), (~7, 1, 8), (~6, 2, 7), (~5, 0, 6), (~4, 5, ~0), (~3, 4, ~2)], ['Red', 'Red', 'Red', 'Blue', 'Blue', 'Blue', 'Blue', 'Blue', 'Blue']
 
         sage: ColouredTriangulation.from_stratum(QuadraticStratum({1:4}))
-        [(~17, 6, ~2), (~16, 4, 17), ..., (~6, 7, ~5)], ['Red', 'Red', ..., 'Blue']
+        [(~17, 6, ~3), (~16, 4, 17), ..., (~6, 7, ~2)], ['Red', 'Red', ..., 'Blue']
 
     From a flipper pseudo-Anosov (TO BE DONE)!
     """
@@ -121,26 +121,17 @@ class ColouredTriangulation(object):
             sage: from veerer import *
 
             sage: ColouredTriangulation.from_stratum(AbelianStratum(2))
-            [(~8, 3, ~1), (~7, 1, 8), (~6, 2, 7), (~5, 0, 6),
-             (~4, 5, ~0), (~3, 4, ~2)],
-             ['Red', 'Red', 'Red', 'Blue', 'Blue', 'Blue', 'Blue',
+            [(~8, 3, ~1), (~7, 1, 8), ..., (~3, 4, ~2)], ['Red', 'Red', ..., 'Blue',
               'Blue', 'Blue']
 
             sage: Q = QuadraticStratum(9,-1)
-            sage: ColouredTriangulation.from_stratum(Q.regular_component())
-            [(~17, 6, ~5), (~16, ~2, 17), (~15, ~1, 16), (~14, 2, 15),
-             (~13, 1, 14), (~12, 0, 13), (~11, 12, ~0), (~10, 11, 3),
-             (~9, 10, 4), (~8, 9, ~3), (~7, 8, ~4), (~6, 7, 5)],
-             ['Red', 'Red', 'Red', 'Red', 'Red', 'Red', 'Blue', 'Blue',
-             'Blue', 'Blue', 'Blue', 'Blue', 'Blue', 'Blue', 'Blue',
-             'Blue', 'Blue', 'Blue']
-            sage: ColouredTriangulation.from_stratum(Q.irregular_component())
-            [(~17, 6, ~5), (~16, 1, 17), (~15, ~0, 16), (~14, 0, 15),
-             (~13, 14, ~1), (~12, 13, 2), (~11, 12, 3), (~10, 11, 4),
-             (~9, 10, 5), (~8, 9, ~2), (~7, 8, ~3), (~6, 7, ~4)],
-             ['Red', 'Red', 'Red', 'Red', 'Red', 'Red', 'Blue', 'Blue', 'Blue',
-              'Blue', 'Blue', 'Blue', 'Blue', 'Blue', 'Blue', 'Blue', 'Blue',
-              'Blue']
+            sage: CTreg = ColouredTriangulation.from_stratum(Q.regular_component())
+            sage: CTreg.stratum()
+            Q_3(9, -1)
+
+            sage: CTirr = ColouredTriangulation.from_stratum(Q.irregular_component())
+            sage: CTirr.stratum()
+            Q_3(9, -1)
 
         Some examples built from cylinder diagram::
 
@@ -150,7 +141,7 @@ class ColouredTriangulation(object):
 
             sage: c = QuadraticCylinderDiagram('(0,0)-(1,1,2,2,3,3)')
             sage: ColouredTriangulation.from_stratum(c)
-            [(~11, 4, ~3), (~10, ~0, 11), (~9, 0, 10), (~8, 9, 1), (~7, 8, ~1), (~6, 7, 2), (~5, 6, ~2), (~4, 5, 3)], ['Red', 'Red', 'Red', 'Red', 'Blue', 'Blue', 'Blue', 'Blue', 'Blue', 'Blue', 'Blue', 'Blue']
+            [(~11, 4, ~3), (~10, ~0, 11), ..., (~4, 5, 3)], ['Red', 'Red', ..., 'Blue']
 
             sage: c = CylinderDiagram('(0,6,4,5)-(3,6,5) (1,3,2)-(0,1,4,2)')
             sage: CT = ColouredTriangulation.from_stratum(c)
@@ -769,8 +760,6 @@ class ColouredTriangulation(object):
 
             sage: T = ColouredTriangulation.from_stratum(QuadraticStratum({1:20}))
             sage: s = T.to_string()
-            sage: s
-            'RRR...a3aza'
             sage: TT = ColouredTriangulation.from_string(s)
             sage: T == TT
             True
@@ -873,6 +862,86 @@ class ColouredTriangulation(object):
 
         self._triangulation.flip(i)
         self._colouring[i] = self._colouring[~i] = col
+
+    def cylinders(self, col):
+        r"""
+        Return the cylinders of color ``col``.
+
+        Each cylinder is given as a list of edges crossed (in order) by
+        the circumference of the cylinder.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+        The torus::
+
+            sage: T = ColouredTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
+            sage: T.cylinders(RED)
+            [[0, -2]]
+            sage: T.cylinders(BLUE)
+            []
+
+            sage: T = ColouredTriangulation("(0,1,2)(~0,~1,~2)", "BRB")
+            sage: T.cylinders(BLUE)
+            [[0, -3]]
+            sage: T.cylinders(RED)
+            []
+
+        An example with both blue and red cylinders in Q(1,1,1,1)::
+
+            sage: T = ColouredTriangulation.from_string('BBRBBBRRBRBRRBBRRB_uBFyjzCdocvwqsemEbrgtxlAJkHDnGihfaIp')
+            sage: T.cylinders(BLUE)
+            [[3, 8, 4, -11]]
+            sage: T.cylinders(RED)
+            [[9, 15]]
+        """
+        n = self._triangulation.num_edges()
+        fp = self._triangulation.face_permutation(copy=False)
+        cols = self._colouring
+
+        cylinders = []
+
+        seen = [False] * (2*n)
+        for a in range(n):
+            if seen[a]:
+                continue
+
+            # compute the triangle (a,b,c)
+            b = fp[a]
+            c = fp[b]
+            if seen[a] or seen[b] or seen[c] or \
+               (cols[a] == col) + (cols[b] == col) + (cols[c] == col) != 2:
+                seen[a] = seen[~a] = seen[b] = seen[~b] = seen[c] = seen[~c] = True
+                continue
+
+            # find an edge to cross
+            if cols[a] == col:
+                door = a
+            else:
+                door = b
+
+            cc = []  # cycle to be stored
+            cyl = True
+            while not seen[door]:
+                seen[door] = seen[~door] = True
+                cc.append(door)
+
+                # pass through the door
+                a = ~door
+                b = fp[a]
+                c = fp[b]
+                if cols[b] == col:
+                    door = b
+                elif cols[c] == col:
+                    door = c
+                else:
+                    cyl = False
+                    break
+            if cyl:
+                cylinders.append(cc)
+
+        return cylinders
 
     def back_flip(self, i, col):
         r"""
