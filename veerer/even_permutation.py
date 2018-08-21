@@ -12,7 +12,12 @@ from __future__ import absolute_import, print_function
 from array import array
 from math import log
 
-from sage.misc.prandom import shuffle, randint
+try:
+    import sage.all
+except ImportError:
+    from random import shuffle, randint
+else:
+    from sage.misc.prandom import shuffle, randint
 
 def is_signed_perm(p):
     if not isinstance(p, array):

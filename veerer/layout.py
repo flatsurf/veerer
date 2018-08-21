@@ -1,5 +1,8 @@
 r"""
-Layout for flat flipper triangulations in Sage.
+Flat triangulations.
+
+TODO: find a better terminology since these are not *any*
+flat triangulation but only the one with 'good' triangles.
 """
 
 from sage.structure.sequence import Sequence

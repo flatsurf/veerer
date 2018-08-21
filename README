@@ -1,28 +1,37 @@
 Veerer
 ======
 
-veerer is a Python module to deal with Veering triangulations and
-their associated flat structures.
+veerer is a Python module to deal with Veering triangulations and their
+associated flat structures.
 
-To install the module you need Python (version 2 or 3) and
-pplpy (see https://gitlab.com/videlec/pplpy). It is advised
-to use it inside SageMath (http://www.sagemath.org/). The
-installation is done via pip.
+To install the module you need Python (version 2 or 3).
+
+Computations involving polytopes are only available if the Python module
+pplpy is available (see https://gitlab.com/videlec/pplpy).
+
+Additional features are available if this module is used inside SageMath
+(http://www.sagemath.org/).
+
+The installation is done via pip.
 
 Example
 -------
 
-    sage: from veerer import *
-    sage: T = ColouredTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
-    sage: F = T.flat_structure()
-    sage: F.plot(vertical_train_track=True)
-    sage: F.plot(horizontal_train_track=True)
+    >>> from veerer import 
+    >>> T = ColouredTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
+    >>> T.is_core()
+    True
 
+If you are in SageMath you can obtain flat structures and plots
+
+    >>> F = T.flat_structure()
+    >>> F.plot(vertical_train_track=True)
+    >>> F.plot(horizontal_train_track=True)
 
 Testing
 -------
 
-Install the module (with pip) and run
+To run the SageMath doctests, install the module (with pip) and run
 
     $ sage -t --force-lib veerer/
 

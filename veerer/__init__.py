@@ -10,6 +10,15 @@ from .constants import RED, BLUE, HORIZONTAL, VERTICAL
 from .triangulation import Triangulation
 from .coloured_triangulation import ColouredTriangulation
 from .automaton import Automaton
-from .layout import FlatTriangulation
+
+try:
+    import sage.all
+except ImportError:
+    HAS_SAGE = False
+else:
+    HAS_SAGE = True
+
+if HAS_SAGE:
+    from .layout import FlatTriangulation
 
 del absolute_import

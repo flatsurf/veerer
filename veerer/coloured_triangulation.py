@@ -7,12 +7,6 @@ from math import log
 from collections import deque
 from itertools import product
 
-try:
-    import ppl
-except ImportError:
-    raise ImportError('pplpy is not installed on your computer. Follow '
-                      'the instructions at https://gitlab.com/videlec/pplpy')
-
 from .constants import *
 from .even_permutation import *
 from .misc import det2
@@ -102,27 +96,15 @@ class ColouredTriangulation(object):
             [(~5, ~3, ~1), (~4, 1, ~0), (~2, 0, 3), (2, 5, 4)],
             ['Blue', 'Blue', 'Blue', 'Red', 'Red', 'Blue']
         """
-        from .misc import flipper_nf_to_sage
-        from sage.modules.free_module import VectorSpace
-
         f = h.flat_structure()
         n = f.triangulation.zeta
 
-        x = next(f.edge_vectors.itervalues()).x
-        K = flipper_nf_to_sage(x.number_field)
-        V = VectorSpace(K, 2)
-        X = {i.label: K(e.x.linear_combination)
-                for i,e in f.edge_vectors.iteritems()}
-        Y = {i.label: K(e.y.linear_combination)
-                for i,e in f.edge_vectors.iteritems()}
+        X = {i.label: e.x for i,e in f.edge_vectors.iteritems()}
+        Y = {i.label: e.y for i,e in f.edge_vectors.iteritems()}
 
         triangles = [[x.label for x in t] for t in f.triangulation]
         colours = [RED if X[e]*Y[e] > 0 else BLUE for e in range(n)]
         return ColouredTriangulation(triangles, colours)
-
-    @classmethod
-    def from_QD(cls, QD):
-        return NotImplemented
 
     @classmethod
     def from_stratum(cls, c):
@@ -172,10 +154,10 @@ class ColouredTriangulation(object):
             sage: CT.stratum()
             H_4(6)
         """
-        try:
-            import sage.all
-        except ImportError:
+        from . import HAS_SAGE
+        if not HAS_SAGE:
             raise ValueError("this module only works within SageMath")
+
         try:
             from surface_dynamics.flat_surfaces.strata import Stratum, StratumComponent
             from surface_dynamics.flat_surfaces.separatrix_diagram import \
@@ -407,8 +389,18 @@ class ColouredTriangulation(object):
 
         EXAMPLES::
 
-            sage:
+            sage: from veerer import *
+
+            sage: T = ColouredTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
+            sage: T.stratum()
+            H_1(0)
         """
+        from . import HAS_SAGE
+        if not HAS_SAGE:
+            raise ValueError('this method is only available inside SageMath. You '
+                             'can use the method .angles() to get the list of '
+                             'vertex angles.')
+
         A = self.angles()
         if any(a%2 for a in A) or not self.is_abelian():
             from surface_dynamics import QuadraticStratum
@@ -900,6 +892,12 @@ class ColouredTriangulation(object):
             sage: P.generators()
             Generator_System {point(0/1, 0/1, 0/1), ray(1, 1, 0), ray(0, 1, 1)}
         """
+        try:
+            import ppl
+        except ImportError:
+            raise ImportError('pplpy is not installed on your computer. Follow '
+                              'the instructions at https://gitlab.com/videlec/pplpy')
+
         cs = ppl.Constraint_System()
         n = self._triangulation.num_edges()
         variables = [ppl.Variable(e) for e in range(n)]
@@ -1122,6 +1120,9 @@ class ColouredTriangulation(object):
             return self.train_track_polytope(HORIZONTAL).affine_dimension() == d and \
                    self.train_track_polytope(VERTICAL).affine_dimension() == d
         elif method == 'LP':
+            from . import HAS_SAGE
+            if not HAS_SAGE:
+                raise ValueError('the option LP is only available in SageMath')
             from sage.numerical.mip import MixedIntegerLinearProgram, MIPSolverException
 
             n = self._triangulation.num_edges()

@@ -2,11 +2,6 @@ r"""
 Utility functions.
 """
 
-from sage.rings.all import ZZ, QQ, AA, RIF
-from sage.rings.number_field.number_field import NumberField
-from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
-
-QQx = PolynomialRing(QQ, 'x')
 
 def det2(u, v):
     return u[0]*v[1] - u[1]*v[0]
@@ -19,6 +14,12 @@ def flipper_nf_to_sage(K, name='a'):
 
         Currently, the code is not careful at all with root isolation.
     """
+    from sage.rings.all import ZZ, QQ, AA, RIF
+    from sage.rings.number_field.number_field import NumberField
+    from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
+
+    QQx = PolynomialRing(QQ, 'x')
+
     r = K.lmbda.interval_approximation()
     l = r.lower * ZZ(10)**(-r.precision)
     u = r.upper * ZZ(10)**(-r.precision)
