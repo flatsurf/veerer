@@ -20,7 +20,7 @@ from sage.plot.text import text
 from sage.plot.bezier_path import bezier_path
 
 from .constants import BLUE, RED, HORIZONTAL, VERTICAL
-from .misc import flipper_nf_to_sage, flipper_nf_element_to_sage
+from .misc import flipper_nf_to_sage, flipper_nf_element_to_sage, det2
 from .triangulation import Triangulation
 
 QQx = PolynomialRing(QQ, 'x')
@@ -31,7 +31,7 @@ def edge_label(i):
         return '~%d' % (-i-1)
     else:
         return str(i)
-    
+
 def draw_my_segment(s, t, pos, **kwds):
     x,y = (pos[t] - pos[s])
     if y.is_zero():
@@ -48,7 +48,7 @@ def draw_my_triangle(e1,e2,e3,pos):
     G = Graphics()
 
     G += polygon2d([pos[e1],pos[e2],pos[e3],pos[e1]], alpha=0.41, color='gray')
-    
+
     G += draw_my_segment(e1, e2, pos)
     G += draw_my_segment(e2, e3, pos)
     G += draw_my_segment(e3, e1, pos)
@@ -84,9 +84,44 @@ def has_intersection(triangles, new_triangle, pos):
     return False
 
 class FlatTriangulation:
+    r"""
+    A flat triangulation.
+
+    EXAMPLES:
+
+        sage: from veerer import *
+
+    A flat triangulation can either be built from a list of triangles and
+    vectors::
+
+        sage: triangles = [(0, 1, 2), (-1, -2, -3)]
+        sage: vecs = [(1, 2), (-2, -1), (1, -1), (1, -1), (-2, -1), (1, 2)]
+        sage: FlatTriangulation(triangles, vecs)
+        Flat Triangulation made of 2 triangles
+
+    Or a coloured triangulation (in that situation the "smallest" integral
+    solution is picked)::
+
+        sage: T = ColouredTriangulation.from_string('RBBBBRBBRBRBRBB_dBnzCaeyDgkbmjficAlhxwvutspqor')
+        sage: FlatTriangulation.from_coloured_triangulation(T)
+        Flat Triangulation made of 10 triangles
+
+    Or a pseudo-Anosov homeomorphism from flipper::
+
+        sage: from flipper import *
+
+        sage: T = flipper.load('S_2_1')
+        sage: h = T.mapping_class('abCeF')
+        sage: FlatTriangulation.from_pseudo_anosov(h)
+        Flat Triangulation made of 12 triangles
+    """
     def __init__(self, triangles, vectors):
         r"""
-        INPUT: triangle (or triangulation) and vectors
+        INPUT:
+
+        - triangles - a triangulation
+
+        - vectors - a list of 2n vectors
         """
         if isinstance(triangles, Triangulation):
             triangles = triangles.faces()
@@ -106,7 +141,7 @@ class FlatTriangulation:
             vectors.extend(vectors[::-1])
         if len(vectors) != 2*n:
             raise ValueError('wrong number of vectors')
-        
+
         vectors = Sequence([vector(v) for v in vectors])
         self._V = vectors.universe()
         self._K = self._V.base_ring()
@@ -131,16 +166,33 @@ class FlatTriangulation:
             vc = self._vectors[c]
             if va + vb + vc:
                 raise ValueError('vec[%s] = %s, vec[%s] = %s and vec[%s] = %s do not sum to zero' % (edge_label(a), va, edge_label(b), vb, edge_label(c), vc))
+            if det2(va, vb) <= 0 or det2(vb, vc) <= 0 or det2(vc, va) <= 0:
+                raise ValueError('(%s, %s, %s) is a clockwise triangle' %
+                        (edge_label(a), edge_label(b), edge_label(c)))
 
         # spanning tree for display
         self._root = None
         self._edges = None
 
-    @staticmethod
-    def from_flipper(F):
+    @classmethod
+    def from_pseudo_anosov(cls, h):
+        r"""
+        Construct the flat structure from a pseudo-Anosov homeomorphism.
+
+        EXAMPLES::
+
+            sage: from flipper import *
+            sage: from veerer import *
+
+            sage: T = flipper.load('SB_4')
+            sage: h = T.mapping_class('s_0S_1s_2S_3s_1S_2')
+            sage: FlatTriangulation.from_pseudo_anosov(h)
+            Flat Triangulation made of 4 triangles
+        """
+        F = h.flat_structure()
         triangles = [(e.label, f.label, g.label) for e,f,g in F.triangulation]
         n = 3 * len(triangles) / 2
-        x = F.edge_vectors.values()[0][0]
+        x = F.edge_vectors.values()[0].x
         K = flipper_nf_to_sage(x.number_field)
         V = VectorSpace(K, 2)
         # translate into Sage number field
@@ -150,20 +202,22 @@ class FlatTriangulation:
         vectors = [Vec[i] for i in range(n)]
         vectors.extend(Vec[i] for i in range(-n, 0))
 
-        return Triangulation(triangles, vectors)
+        return FlatTriangulation(triangles, vectors)
 
-    @staticmethod
-    def from_coloured_triangulation(T):
-        PH = T.train_track_polytope(HORIZONTAL)
-        PV = T.train_track_polytope(VERTICAL)
+    @classmethod
+    def from_coloured_triangulation(cls, T):
+        r"""
+        Construct a flat triangulation associated to a given coloured triangulation.
 
-        # normalization
-        PH.add_constraint(c)
-        PV.add_constraint(c)
+        EXAMPLES::
 
-        # pick vertices
-        PH.generators()
-        PV.generators()
+            sage: from veerer import *
+
+            sage: T = ColouredTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
+            sage: FlatTriangulation.from_coloured_triangulation(T)
+            Flat Triangulation made of 2 triangles
+        """
+        return T.flat_structure_min()
 
     def xy_scaling(self, sx, sy):
         for i,v in enumerate(self._vectors):
@@ -201,7 +255,7 @@ class FlatTriangulation:
                     face_seen[f] = True
                     faces.append(f)
                     wait.append(f)
-        
+
     def _plot_train_track(self, slope, pos, For, color):
         V2 = VectorSpace(RDF, 2)
         G = Graphics()
@@ -258,6 +312,17 @@ class FlatTriangulation:
 
     def plot(self, horizontal_train_track=False,
                    vertical_train_track=False):
+        r"""
+        Return a graphics.
+
+        INPUT:
+
+        - ``horizontal_train_track`` - boolean - whether to plot the horizontal
+          train-track on the surface
+
+        - ``vertical_train_track`` - boolean - whether to plot the vertical
+          train-track on the surface
+        """
         if self._root is None:
             self.set_random_spanning_tree()
 

@@ -8,6 +8,9 @@ from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 
 QQx = PolynomialRing(QQ, 'x')
 
+def det2(u, v):
+    return u[0]*v[1] - u[1]*v[0]
+
 def flipper_nf_to_sage(K, name='a'):
     r"""
     Convert a flipper number field to Sage.

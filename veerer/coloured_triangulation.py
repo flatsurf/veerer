@@ -15,13 +15,11 @@ except ImportError:
 
 from .constants import *
 from .even_permutation import *
+from .misc import det2
 from .triangulation import Triangulation, edge_label, norm
 
 def dot(A, B):
     return sum(a*b for a, b in zip(A, B))
-
-def det2(u, v):
-    return u[0]*v[1] - u[1]*v[0]
 
 def best_rotation(X):
     return min(X[i:] + X[:i] for i in range(len(X)))
@@ -34,12 +32,10 @@ def edge_label(i):
 
 class ColouredTriangulation(object):
     r"""
-    Triangulation with B/R color
+    Coloured triangulation.
 
-    Assumptions:
-
-    - no monochromatic triangles
-    - no monochromatic vertices
+    A triangulation with a label blue or red set to each color so that there
+    is no monochromatic face and no monochromatic vertex.
 
     EXAMPLES::
 
@@ -63,6 +59,7 @@ class ColouredTriangulation(object):
     From a flipper pseudo-Anosov (TO BE DONE)!
     """
     __slots__ = ['_triangulation', '_colouring']
+
     def __init__(self, triangulation,  colouring, check=True):
         if isinstance(triangulation, Triangulation):
             self._triangulation = triangulation.copy()
@@ -87,50 +84,48 @@ class ColouredTriangulation(object):
             for V in self._triangulation.vertices():
                 assert set(self._colouring[e] for e in V) == cols
 
-    def __eq__(self, other):
-        if type(self) != type(other):
-            raise TypeError
-        return self._triangulation == other._triangulation and self._colouring == other._colouring
-
-    def __ne__(self, other):
-        if type(self) != type(other):
-            raise TypeError
-        return self._triangulation != other._triangulation or self._colouring != other._colouring
-
-    def copy(self):
+    @classmethod
+    def from_pseudo_anosov(cls, h):
         r"""
-        Return a copy of this coloured triangulation
+        Construct the coloured triangulation of a pseudo-Anosov homeomorphism.
 
         EXAMPLES::
 
+            sage: from flipper import *
             sage: from veerer import *
 
-            sage: T = ColouredTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
-            sage: S1 = T.copy()
-            sage: S2 = T.copy()
-            sage: T == S1 == S2
+            sage: T = flipper.load('SB_4')
+            sage: h = T.mapping_class('s_0S_1s_2S_3s_1S_2')
+            sage: h.is_pseudo_anosov()
             True
-            sage: S1.flip(1,BLUE)
-            sage: T == S1
-            False
-            sage: T == S2
-            True
+            sage: ColouredTriangulation.from_pseudo_anosov(h)
+            [(~5, ~3, ~1), (~4, 1, ~0), (~2, 0, 3), (2, 5, 4)],
+            ['Blue', 'Blue', 'Blue', 'Red', 'Red', 'Blue']
         """
-        T = ColouredTriangulation.__new__(ColouredTriangulation)
-        T._triangulation = self._triangulation.copy()
-        T._colouring = self._colouring[:]
-        return T
+        from .misc import flipper_nf_to_sage
+        from sage.modules.free_module import VectorSpace
+
+        f = h.flat_structure()
+        n = f.triangulation.zeta
+
+        x = next(f.edge_vectors.itervalues()).x
+        K = flipper_nf_to_sage(x.number_field)
+        V = VectorSpace(K, 2)
+        X = {i.label: K(e.x.linear_combination)
+                for i,e in f.edge_vectors.iteritems()}
+        Y = {i.label: K(e.y.linear_combination)
+                for i,e in f.edge_vectors.iteritems()}
+
+        triangles = [[x.label for x in t] for t in f.triangulation]
+        colours = [RED if X[e]*Y[e] > 0 else BLUE for e in range(n)]
+        return ColouredTriangulation(triangles, colours)
 
     @classmethod
-    def from_pA(cls, h):
-        raise NotImplementedError
-
-    @classmethod
-    def from_QD(self, QD):
+    def from_QD(cls, QD):
         return NotImplemented
 
-    @staticmethod
-    def from_stratum(c):
+    @classmethod
+    def from_stratum(cls, c):
         r"""
         Return a Veering triangulation from either a stratum, a component
         of stratum or a cylinder diagram.
@@ -261,6 +256,40 @@ class ColouredTriangulation(object):
         return ColouredTriangulation(triangles, colours, check=True)
 
     from_iso_sig = from_string
+
+    def __eq__(self, other):
+        if type(self) != type(other):
+            raise TypeError
+        return self._triangulation == other._triangulation and self._colouring == other._colouring
+
+    def __ne__(self, other):
+        if type(self) != type(other):
+            raise TypeError
+        return self._triangulation != other._triangulation or self._colouring != other._colouring
+
+    def copy(self):
+        r"""
+        Return a copy of this coloured triangulation
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T = ColouredTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
+            sage: S1 = T.copy()
+            sage: S2 = T.copy()
+            sage: T == S1 == S2
+            True
+            sage: S1.flip(1,BLUE)
+            sage: T == S1
+            False
+            sage: T == S2
+            True
+        """
+        T = ColouredTriangulation.__new__(ColouredTriangulation)
+        T._triangulation = self._triangulation.copy()
+        T._colouring = self._colouring[:]
+        return T
 
     def __str__(self):
         n = self._triangulation.num_edges()
@@ -757,35 +786,82 @@ class ColouredTriangulation(object):
         self._triangulation.back_flip(i)
         self._colouring[i] = self._colouring[~i] = col
 
-    def train_track_polytope(self, slope=VERTICAL):
+    def _set_train_track_constraints(self, insert, x, slope, integral, allow_degenerations):
         r"""
-        Return the polytope determined by the constraints.
+        Sets the equation and inequations for train tracks.
+
+        INPUT:
+
+        - ``insert`` - a function to be called for each equation or inequation
+
+        - ``x`` - variable factory (the variable for edge ``e`` is constructed
+          via ``x[e]``
+
+        - ``slope`` - the slope of the train-track
+
+        - ``integral`` - boolean - whether to set lower bounds to 0 or 1
+
+        - ``allow_degenerations`` - boolean - when ``integral`` is also set to ``True``
+          then allows certain lengths to be 0
 
         EXAMPLES::
 
             sage: from veerer import *
 
-            sage: T = ColouredTriangulation([(0,1,2),(-1,-2,-3)], [RED, RED, BLUE])
-            sage: P = T.train_track_polytope(VERTICAL)
-            sage: P
-            A 2-dimensional polyhedron in QQ^3 defined as the convex hull of 1 point, 2 rays
-            sage: P.generators()
-            Generator_System {point(0/1, 0/1, 0/1), ray(1, 1, 0), ray(0, 1, 1)}
+            sage: T  = ColouredTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
+
+            sage: l = []
+            sage: x = [SR.var("x0"), SR.var("x1"), SR.var("x2")]
+            sage: T._set_train_track_constraints(l.append, x, HORIZONTAL, False, False)
+            sage: l
+            [x0 >= 0, x1 >= 0, x2 >= 0, x0 == x1 + x2, x0 == x1 + x2]
+
+            sage: l = []
+            sage: x = [SR.var("x0"), SR.var("x1"), SR.var("x2")]
+            sage: T._set_train_track_constraints(l.append, x, HORIZONTAL, True, False)
+            sage: l
+            [x0 >= 1, x1 >= 1, x2 >= 1, x0 == x1 + x2, x0 == x1 + x2]
+
+            sage: l = []
+            sage: x = [SR.var("x0"), SR.var("x1"), SR.var("x2")]
+            sage: T._set_train_track_constraints(l.append, x, HORIZONTAL, True, True)
+            sage: l
+            [x0 >= 1, x1 >= 0, x2 >= 1, x0 == x1 + x2, x0 == x1 + x2]
+
+        This can also be used to check that a given vector satisfies the train-track
+        equations::
+
+            sage: def check(x):
+            ....:     if not x:
+            ....:         raise AssertionError
+            sage: T._set_train_track_constraints(check, [2,1,1], HORIZONTAL, False, False)
+            sage: T._set_train_track_constraints(check, [1,1,1], HORIZONTAL, False, False)
+            Traceback (most recent call last):
+            ...
+            AssertionError
         """
         if slope == VERTICAL:
             POS = BLUE
             NEG = RED
-        else:
+        elif slope == HORIZONTAL:
             POS = RED
             NEG = BLUE
+        else:
+            raise ValueError('bad slope parameter')
 
-        cs = ppl.Constraint_System()
-
-        # positivity
         n = self._triangulation.num_edges()
-        for e in range(n):
-            cs.insert(ppl.Variable(e) >= 0)
 
+        # non-negativity
+        for e in range(n):
+            if not integral or \
+                (allow_degenerations and \
+                 ((slope == HORIZONTAL and self.is_forward_flippable(e)) or \
+                 (slope == VERTICAL and self.is_backward_flippable(e)))):
+                insert(x[e] >= 0)
+            else:
+                insert(x[e] >= 1)
+
+        # switches relation
         for (i,j,k) in self._triangulation.faces():
             # find the large edge
             # if horizontal, this is the one opposite to the RED/BLUE transition
@@ -800,12 +876,75 @@ class ColouredTriangulation(object):
                 # j is large
                 l,s1,s2 = j,k,i
             else:
-                raise ValueError
-            cs.insert(ppl.Variable(norm(l)) == ppl.Variable(norm(s1)) + ppl.Variable(norm(s2)))
+                raise ValueError('can not determine the big edge on triangle (%s, %s, %s' %
+                                 (edge_label(i), edge_label(j), edge_label(k)))
 
+            insert(x[norm(l)] == x[norm(s1)] + x[norm(s2)])
+
+    def train_track_polytope(self, slope=VERTICAL):
+        r"""
+        Return the polytope determined by the constraints.
+
+        INPUT:
+
+        - ``slope`` - the slope for the train track
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T = ColouredTriangulation([(0,1,2),(-1,-2,-3)], [RED, RED, BLUE])
+            sage: P = T.train_track_polytope(VERTICAL)
+            sage: P
+            A 2-dimensional polyhedron in QQ^3 defined as the convex hull of 1 point, 2 rays
+            sage: P.generators()
+            Generator_System {point(0/1, 0/1, 0/1), ray(1, 1, 0), ray(0, 1, 1)}
+        """
+        cs = ppl.Constraint_System()
+        n = self._triangulation.num_edges()
+        variables = [ppl.Variable(e) for e in range(n)]
+        self._set_train_track_constraints(cs.insert, variables, slope, False, False)
         return ppl.C_Polyhedron(cs)
 
+    def train_track_min_solution(self, slope=VERTICAL, allow_degenerations=False):
+        r"""
+        Return the minimal integral point satisfying the constraints.
+
+        INPUT:
+
+        - ``slope`` - the slope of the train track
+
+        - ``allow_degenerations`` - boolean - if ``True`` then allow certain
+          degenerations to occur.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T = ColouredTriangulation([(0,1,2),(-1,-2,-3)], [RED, RED, BLUE])
+            sage: T.train_track_min_solution(VERTICAL)
+            [1.0, 2.0, 1.0]
+            sage: T.train_track_min_solution(VERTICAL, allow_degenerations=True)
+            [0.0, 1.0, 1.0]
+
+            sage: T.train_track_min_solution(HORIZONTAL)
+            [2.0, 1.0, 1.0]
+            sage: T.train_track_min_solution(HORIZONTAL, allow_degenerations=True)
+            [1.0, 0.0, 1.0]
+        """
+        from sage.numerical.mip import MixedIntegerLinearProgram
+
+        n = self._triangulation.num_edges()
+        M = MixedIntegerLinearProgram(maximization=False)
+        x = M.new_variable(integer=True)
+        M.set_objective(M.sum(x[e] for e in range(n))) # try to minimize length
+        self._set_train_track_constraints(M.add_constraint, x, slope, True, allow_degenerations)
+        M.solve()
+        x = M.get_values(x)
+        return [x[e] for e in range(n)]
+
     def geometric_polytope(self):
+        raise NotImplementedError
         # 1. train-track conditions
         P = self.train_track_polytope(HORIZONTAL)
         P.concatenate_assign(self.train_track_polytope(VERTICAL))
@@ -842,49 +981,29 @@ class ColouredTriangulation(object):
         return Polyhedron(ieqs=A)
 
     def geometric_dimension(self):
+        raise NotImplementedError
         return self.geometric_polytope().dim()
 
-    def flat_structure(self):
+    def _flat_structure_from_train_track_lengths(self, VH, VV, base_ring=None):
         r"""
-        Return a flat structure with this Veering triangulation.
-
-        Note that this triangulation must be core. The point is chosen
-        by taking the interior point of the polytope obtained by
-        summing each ray.
-
-        EXAMPLES::
-
-            sage: from surface_dynamics import *
-            sage: from veerer import *
-
-            sage: Q = QuadraticStratum({1:4, -1:4})
-            sage: CT = ColouredTriangulation.from_stratum(Q)
-            sage: F = CT.flat_structure()
-            sage: F
-            Flat Triangulation made of 16 triangles
+        Return a flat structure from two vectors ``VH`` and ``VV``
+        satisfying the train track equations.
         """
-        from sage.rings.rational_field import QQ
         from sage.modules.free_module import VectorSpace
 
+        if base_ring is None:
+            from sage.rings.rational_field import QQ
+            base_ring = QQ
 
         n = self._triangulation.num_edges()
+        assert len(VH) == len(VV) == n
+        assert all(x >=0 for x in VH)
+        assert all(x >= 0 for x in VV)
 
-        PH = self.train_track_polytope(HORIZONTAL)
-        PV = self.train_track_polytope(VERTICAL)
-
-        # pick sum of rays
-        VH = [g.coefficients() for g in PH.generators() if g.is_ray()]
-        VH = [sum(v[i] for v in VH) for i in range(n)]
-        VV = [g.coefficients() for g in PV.generators() if g.is_ray()]
-        VV = [sum(v[i] for v in VV) for i in range(n)]
-
-        from sage.modules.free_module import VectorSpace
-
-        V = VectorSpace(QQ, 2)
+        V = VectorSpace(base_ring, 2)
         vectors = [V((x, y if self._colouring[i] == RED else -y)) for \
                    i,(x,y) in enumerate(zip(VV, VH))]
         vectors.extend(vectors[::-1])
-        assert len(vectors) == 2*n
 
         # get correct signs for each triangle
         for i,j,k in self._triangulation:
@@ -902,27 +1021,78 @@ class ColouredTriangulation(object):
         from .layout import FlatTriangulation
         return FlatTriangulation(self._triangulation, vectors)
 
+    def flat_structure_middle(self):
+        r"""
+        Return a flat structure with this Veering triangulation.
+
+        Note that this triangulation must be core. The point is chosen
+        by taking the interior point of the polytope obtained by
+        summing each ray.
+
+        EXAMPLES::
+
+            sage: from surface_dynamics import *
+            sage: from veerer import *
+
+            sage: Q = QuadraticStratum({1:4, -1:4})
+            sage: CT = ColouredTriangulation.from_stratum(Q)
+            sage: F = CT.flat_structure_middle()
+            sage: F
+            Flat Triangulation made of 16 triangles
+        """
+        n = self._triangulation.num_edges()
+
+        PH = self.train_track_polytope(HORIZONTAL)
+        PV = self.train_track_polytope(VERTICAL)
+
+        # pick sum of rays
+        VH = [g.coefficients() for g in PH.generators() if g.is_ray()]
+        VH = [sum(v[i] for v in VH) for i in range(n)]
+        VV = [g.coefficients() for g in PV.generators() if g.is_ray()]
+        VV = [sum(v[i] for v in VV) for i in range(n)]
+
+        return self._flat_structure_from_train_track_lengths(VH, VV)
+
+    def flat_structure_min(self, allow_degenerations=False):
+        r"""
+        Return a flat structure with this Veering triangulation.
+
+        Note that this triangulation must be core. The point is chosen
+        by taking the minimum integral point in the cone.
+
+        EXAMPLES::
+
+            sage: from surface_dynamics import *
+            sage: from veerer import *
+
+            sage: Q = QuadraticStratum({1:4, -1:4})
+            sage: CT = ColouredTriangulation.from_stratum(Q)
+            sage: CT.flat_structure_min()
+            Flat Triangulation made of 16 triangles
+
+        By allowing degenerations you can get a simpler solution but
+        with some of the edges horizontal or vertical::
+
+            sage: CT.flat_structure_min(True)
+            Flat Triangulation made of 16 triangles
+        """
+        VH = self.train_track_min_solution(HORIZONTAL, allow_degenerations=allow_degenerations)
+        VV = self.train_track_min_solution(VERTICAL, allow_degenerations=allow_degenerations)
+
+        return self._flat_structure_from_train_track_lengths(VH, VV)
+
     def geometric_flat_structure(self):
+        raise NotImplementedError
         return self.geometric_polytope().vrep()[1:, 1:].sum(axis=0).tolist()
 
-    def sub_train_track_dimensions(self, slope=VERTICAL):
-        # Uses PyParma.
-        M = self.train_track_matrix(slope)
-        for j in range(self.zeta):
-            A = [[0] + [0] * i + [1] + [0] * (self.zeta - i - 1) for i in range(self.zeta)]
-            for row in M:
-                A.append([0] + [i for i in row])
-                A.append([-0] + [-i for i in row])
-            A.append([-0] + [0] * j + [-1] + [0] * (self.zeta - j - 1))
-            yield Polyhedron(ieqs=A).dim()
-
-    def vertex_data_dict(self):
-        return dict((CC[0].vertex, (len([c for c in CC if self._colouring[c.indices[1]] == BLUE
-                                         and self._colouring[c.indices[2]] == RED]) - 2, len(CC)))
-                    for CC in self._triangulation.corner_classes)
-
-    def is_core(self, d=None):
+    def is_core(self, method='polytope'):
         r"""
+        Test whether this coloured triangulation is core.
+
+        INPUT:
+
+        - ``method`` - a string which should either be ``'polytope'`` or ``'LP'``
+
         EXAMPLES::
 
             sage: from veerer import *
@@ -945,28 +1115,36 @@ class ColouredTriangulation(object):
             sage: T.is_core()
             False
         """
-        if d is None: d = self.stratum().dimension()
-        return self.train_track_polytope(HORIZONTAL).affine_dimension() == d and \
-               self.train_track_polytope(VERTICAL).affine_dimension() == d
+        # In theory LP should be much faster but in practice (in small dimensions)
+        # polytope is much better
+        if method == 'polytope':
+            d = self.stratum().dimension()
+            return self.train_track_polytope(HORIZONTAL).affine_dimension() == d and \
+                   self.train_track_polytope(VERTICAL).affine_dimension() == d
+        elif method == 'LP':
+            from sage.numerical.mip import MixedIntegerLinearProgram, MIPSolverException
+
+            n = self._triangulation.num_edges()
+            for slope in (HORIZONTAL, VERTICAL):
+                M = MixedIntegerLinearProgram(maximization=False)
+                x = M.new_variable()
+                M.set_objective(M.sum(x[e] for e in range(n))) # try to minimize length
+                self._set_train_track_constraints(M.add_constraint, x, slope, True, False)
+
+                try:
+                    M.solve()
+                except MIPSolverException:
+                    return False
+
+            return True
+
+        else:
+            raise ValueError("method must be either 'polytope' or 'LP'")
 
     def is_geometric(self, d=None):
+        raise NotImplementedError
         if d is None: d = self.stratum_dimension()
         return all(self.train_track_dimension(slope) == d for slope in SLOPES) and self.geometric_dimension() == 2*d
-
-    def type(self):
-        return NONE
-        return NONE if not self.is_core() else CORE if not self.is_geometric() else GEOMETRIC
-
-
-    def neighbours(self, slope=HORIZONTAL):
-         return [(self.flip_edge(i, c), '%s;0.5:%s;0.5' % (self._colouring[i], c)) for i in self.mostly_sloped_edges(slope) for c in COLOURS]
-
-
-    def neighbours_core(self, slope=HORIZONTAL, core=True, d=None):
-        adjacent = [(self.flip_edge(i, c), '%s;0.5:%s;0.5' % (self._colouring[i], c)) for i in self.mostly_sloped_edges(slope) for c in COLOURS]
-
-        if core: adjacent = [(t, c) for (t, c) in adjacent if t.is_core(d)]
-        return adjacent
 
     def edge_has_curve(self, e, verbose=False):
         r"""
@@ -1101,16 +1279,6 @@ class ColouredTriangulation(object):
             sage: from veerer import *
             sage: T = ColouredTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
             sage: T._check_edge_has_curve()
-
-            sage: triangles = [(-24, -2, -23), (-22, 2, 22), (-21, 3, 21), (-20, 4, 20),
-            ....:              (-19, 1, 19), (-18, 6, 18), (-17, 7, 17), (-16, 16, -1),
-            ....:              (-15, -8, -14), (-13, 13, -7), (-12, 12, -6), (-11, 11, -5),
-            ....:              (-10, -4, 8), (-9, -3, 23), (0, 15, 14), (5, 10, 9)]
-            sage: colours = [RED, RED, RED, RED, RED, RED, RED, RED, BLUE, BLUE, BLUE,
-            ....:            BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE,
-            ....:            BLUE, BLUE, BLUE]
-            sage: T = ColouredTriangulation(triangles, colours)
-            sage: T._check_edge_has_curve()
         """
         dim = self.stratum().dimension()
         assert self.is_core()
@@ -1126,42 +1294,6 @@ class ColouredTriangulation(object):
                         raise RuntimeError("failed\nT = {}\nedge = {}\ncolour = {}\nhas curve={}\nstratum dim={}\nhoriz tt dim={}\nvert tt dim={}".format(T, e, col, test1, dim,
                             T.train_track_polytope(HORIZONTAL).affine_dimension(),
                             T.train_track_polytope(VERTICAL).affine_dimension()))
-
-    def neighbours_core_vert(self, slope=HORIZONTAL, core=True, d=None):
-        # adjacent = [(self.flip_edge(i, c), '%s;0.5:%s;0.5' % (self._colouring[i], c)) for i in self.mostly_sloped_edges(slope) for c in COLOURS]
-
-        for i in self.mostly_sloped_edges(slope):
-            c = self._colouring[i]
-
-        if d is None: d = self.stratum_dimension()
-        adjacent = [(t, c) for (t, c) in adjacent if t.train_track_dimension(slope=VERTICAL) == d]
-        return adjacent
-
-    def neighbours_geometric(self, slope=HORIZONTAL, core=True, d=None):
-        P = self.geometric_polytope(normalise=True)
-        assert P.is_compact()
-
-        G = self.geometric_matrix()
-
-        adjacent = []
-        for face in P.faces(P.dim() - 1):
-            Q = face.as_polyhedron()
-            c = Q.center()
-            if all(c):
-                flipped = [edge for row, edge in zip(G, self.flippable_edges()) if dot(c, row) == 0]
-                print('XXX:', flipped)
-                print([self._colouring[i] for i in flipped])
-
-                for colours in product(COLOURS, repeat=len(flipped)):
-                    T = self
-                    for edge, colour in zip(flipped, colours):
-                        T = T.flip_edge(edge, colour)
-                    if T.is_geometric():
-                        adjacent.append((T, 'Black'))
-                        print(colours)
-
-        # `if core: adjacent = [(t, c) for (t, c) in adjacent if t.is_core(d)]
-        return adjacent
 
 def ngon(n):
     n = int(n)
