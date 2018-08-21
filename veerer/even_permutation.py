@@ -168,6 +168,8 @@ def even_perm_init(data):
     r"""
     EXAMPLES::
 
+        sage: from veerer.even_permutation import even_perm_init
+
         sage: even_perm_init([-1,0])
         array('l', [-1, 0])
 
@@ -178,9 +180,9 @@ def even_perm_init(data):
         sage: even_perm_init([(-1,3)])
         array('l', [0, 1, 2, -1, -4, -3, -2, 3])
 
-        sage: even_perm_init('(0,~1,3),(2,1,~3)')
+        sage: even_perm_init('(0,~1,3)(2,1,~3)')
         array('l', [-2, -4, 1, 0, 2, -3, 3, -1])
-        sage: even_perm_init('(0,~1, 3 ),(2,  1 ,  ~3)')
+        sage: even_perm_init('(0,~1, 3 )(2,  1 ,  ~3)')
         array('l', [-2, -4, 1, 0, 2, -3, 3, -1])
     """
     if isinstance(data, (array, tuple, list)):
