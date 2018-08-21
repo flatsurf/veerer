@@ -1,5 +1,13 @@
 2018-08-21 [Vincent, Saul]
 
+Question:
+
+- The vertices of the vertical and horizontal polytopes are vertex
+  cycles, aka low weight curves... What do the vertices of the
+  geometric polytope mean?  How can we find one quickly?
+- Idea - use linear programming to decide if the geometric polytope is
+  the correct dimension.
+
 New features:
 - input from strings
 - automorphisms!
