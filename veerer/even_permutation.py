@@ -95,6 +95,34 @@ def even_perm_from_base64_str(s, n):
 def even_perm_to_str(p):
     return '[' + ', '.join(edge_label(e) for e in p) + ']'
 
+def label_to_int(s):
+    r"""
+    EXAMPLES::
+
+        sage: from veerer.even_permutation import label_to_int
+
+        sage: label_to_int('0')
+        0
+        sage: label_to_int('35')
+        35
+        sage: label_to_int('~0')
+        -1
+        sage: label_to_int('~35')
+        -36
+    """
+    if s.startswith('~'):
+        if len(s) == 1:
+            raise ValueError('invalid string')
+        e = int(s[1:])
+        if e < 0:
+            raise ValueError('invalid string')
+        return ~e
+    else:
+        e = int(s)
+        if e < 0:
+            raise ValueError('invalid string')
+        return e
+
 def signed_permutations(n):
     r"""
     EXAMPLES::
@@ -116,7 +144,6 @@ def signed_permutations(n):
                     q[~i] = ~q[~i]
                 yield q
 
-
 def signed_permutation_random(n):
     q = range(n)
     shuffle(q)
@@ -136,18 +163,73 @@ def even_permutations(n):
     for p in permutations(range(-n, n)):
         yield array('l', p)
 
+
 def even_perm_init(data):
-    if isinstance(data, (tuple, list)):
+    r"""
+    EXAMPLES::
+
+        sage: even_perm_init([-1,0])
+        array('l', [-1, 0])
+
+        sage: even_perm_init([(-1,0)])
+        array('l', [-1, 0])
+        sage: even_perm_init([(-1,),(0,)])
+        array('l', [0, -1])
+        sage: even_perm_init([(-1,3)])
+        array('l', [0, 1, 2, -1, -4, -3, -2, 3])
+
+        sage: even_perm_init('(0,~1,3),(2,1,~3)')
+        array('l', [-2, -4, 1, 0, 2, -3, 3, -1])
+        sage: even_perm_init('(0,~1, 3 ),(2,  1 ,  ~3)')
+        array('l', [-2, -4, 1, 0, 2, -3, 3, -1])
+    """
+    if isinstance(data, (array, tuple, list)):
         if not data:
             return []
         if isinstance(data[0], (tuple,list)):
             return even_perm_from_cycles(data)
         else:
-            return [int(x) for x in data]
-    if isinstance(data,str):
-        raise NotImplementedError
+            return array('l', data)
+    if isinstance(data, str):
+        return even_perm_from_string(data)
 
-    raise TypeError("The input must be list, tuple or string")
+    raise TypeError("The input must be array, list, tuple or string")
+
+def even_perm_from_cycles(l):
+    r"""
+    EXAMPLES::
+
+        sage: from veerer.even_permutation import even_perm_from_cycles
+
+        sage: even_perm_from_cycles([(0,1,2),(-1,-2,-3)])
+        array('l', [1, 2, 0, -1, -3, -2])
+
+        sage: even_perm_from_cycles([(0,3)])
+        array('l', [3, 1, 2, 0, -4, -3, -2, -1])
+    """
+    n = max(max(c) for c in l) + 1
+    a = array('l', range(n) + range(-n,0))
+    for c in l:
+        for i in range(len(c)-1):
+            a[c[i]] = c[i+1]
+        a[c[-1]] = c[0]
+    return a
+
+def even_perm_from_string(s):
+    r"""
+    EXAMPLES::
+
+        sage: from veerer.even_permutation import even_perm_from_string
+
+        sage: even_perm_from_string('(0,3)(1,~2)')
+        array('l', [3, -3, 2, 0, -4, 1, -2, -1])
+    """
+    if not s.startswith('(') or not s.endswith(')'):
+        raise ValueError('invalid string input')
+    cycles = [c.split(',') for c in s[1:-1].split(')(')]
+    for i,c in enumerate(cycles):
+        cycles[i] = [label_to_int(e.strip()) for e in c]
+    return even_perm_from_cycles(cycles)
 
 def even_perm_check(p):
     r"""

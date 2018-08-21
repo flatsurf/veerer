@@ -35,7 +35,7 @@ class ColouredTriangulation(object):
 
         sage: from veerer import *
 
-    Built from an explicit triangulation and list of colors::
+    Built from an explicit triangulation (in cycle or list form) and a list of colors::
 
         sage: ColouredTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
         [(~2, ~0, ~1), (0, 1, 2)], ['Red', 'Red', 'Blue']
@@ -59,6 +59,9 @@ class ColouredTriangulation(object):
             self._triangulation = triangulation.copy()
         else:
             self._triangulation = Triangulation(triangulation)
+
+        if isinstance(colouring, str):
+            colouring = [RED if c == 'R' else BLUE for c in colouring]
 
         self._colouring = colouring + colouring[::-1] # A list : edge_indices --> {Red, Blue}
 
@@ -212,7 +215,7 @@ class ColouredTriangulation(object):
         return ColouredTriangulation(triangles, colors)
 
     @classmethod
-    def from_string(cls, s):
+    def from_string(cls, s, *args, **kwds):
         r"""
         Deserialization from the string ``s``.
 
@@ -235,7 +238,7 @@ class ColouredTriangulation(object):
         p = even_perm_from_base64_str(triangles, n)
         triangles = even_perm_cycles(p)[0]
         colours = [RED if colour == 'R' else BLUE for colour in colours]
-        return ColouredTriangulation(triangles, colours, check=True)
+        return ColouredTriangulation(triangles, colours, *args, **kwds)
 
     from_iso_sig = from_string
 
@@ -257,7 +260,7 @@ class ColouredTriangulation(object):
 
             sage: from veerer import *
 
-            sage: T = ColouredTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
+            sage: T = ColouredTriangulation([(0,1,2), (-1,-2,-3)], "RRB")
             sage: S1 = T.copy()
             sage: S2 = T.copy()
             sage: T == S1 == S2
@@ -543,6 +546,8 @@ class ColouredTriangulation(object):
             w = []
             g = f
             while True:
+
+                # go along the v permutation and write a word in BLUE/RED
                 # run through all the BLUE
                 n = 0
                 while self._colouring[g] == BLUE:
@@ -595,59 +600,105 @@ class ColouredTriangulation(object):
 
         return ColouredTriangulation(triangles, colours)
 
-    def best_translation(self):
+    def _relabelling_from(self, start_edge):
         n = self._triangulation.num_edges()
-
-        best, best_translation = None, None
-        empty = [None] * (2 * n)
-        translate = empty[:]
-        inv_translate = empty[:]
-
         vp = self._triangulation.vertex_permutation()
-        fp = self._triangulation.face_permutation()
+
+        relabelling = [None] * (2*n)
+        relabelling[start_edge] = 0
+        relabelling[~start_edge] = ~0
+
+        k = 1  # current new label
 
         to_process = []
+        to_process.append(start_edge)
+        to_process.append(~start_edge)
+        while to_process:
+            e0 = to_process.pop()
+            e = vp[e0]
+            while e != e0:
+                if relabelling[e] is None:
+                    relabelling[e] = k
+                    relabelling[~e] = ~k
+                    k += 1
+                    to_process.append(~e)
+                e = vp[e]
+
+        return relabelling
+
+    def best_relabelling(self):
+        n = self._triangulation.num_edges()
+        fp = self._triangulation.face_permutation(copy=False)
+        best = None
+
         for start_edge in self.good_starts():
-            translate[start_edge] = 0
-            translate[~start_edge] = ~0
-            inv_translate[0] = start_edge
-            inv_translate[~0] = ~start_edge
+            relabelling = self._relabelling_from(start_edge)
 
-            k = 1  # current number
-
-            to_process.append(start_edge)
-            to_process.append(~start_edge)
-            while to_process:
-                e = to_process.pop()
-                f = vp[e]
-                while f != e:
-                    if translate[f] is None:
-                        translate[f] = k
-                        translate[~f] = ~k
-                        inv_translate[k] = f
-                        inv_translate[~k] = ~f
-                        k += 1
-                        to_process.append(~f)
-                    f = vp[f]
-
-            X = [None] * (2*n)
+            # relabelled face permutation
+            fp_new = [None] * (2*n)
             for e in range(-n, n):
-                X[e] = translate[fp[inv_translate[e]]]
-            Y = [self._colouring[inv_translate[i]] for i in range(n)]
-            Z = (Y,X)
-            if best is None or Z < best:
-                best = Z
-                best_translation = translate[:]
-                best_inv_translation = inv_translate[:]
+                #fp_new[e] = relabelling[fp[inv_relabelling[e]]]
+                fp_new[relabelling[e]] = relabelling[fp[e]]
 
-            # reset translate
-            translate = empty[:]
+            # relabelled colouring
+            colouring_new = [None] * n
+            for e in range(n):
+                colouring_new[norm(relabelling[e])] = self._colouring[e]
 
-        colours, fp = best
-        char_colours = ''.join('R' if colours[i] == RED else 'B' for i in range(n))
-        char_edges = even_perm_base64_str(fp)
+            T = (colouring_new, fp_new)
+            if best is None or T < best:
+                best = T
+                best_relabelling = relabelling
 
-        return char_colours + '_' + char_edges, best_translation, best_inv_translation
+        return best_relabelling, best
+
+    def automorphisms(self):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: p = "(0,~1,2)(~0,1,~3)(4,~5,3)(~4,6,~2)(7,~6,8)(~7,5,~9)(10,~11,9)(~10,11,~8)"
+            sage: cols = 'BRBBBRRBBBBR'
+            sage: T = ColouredTriangulation(p, cols)
+            sage: A = T.automorphisms()
+            sage: len(A)
+            4
+            sage: all(T.relabel(a) == T for a in A)
+            True
+        """
+        n = self._triangulation.num_edges()
+        fp = self._triangulation.face_permutation(copy=False)
+
+        best = None
+        best_relabellings = []
+
+        fp_new = [None] * (2*n)
+        colouring_new = [None] * n
+        for start_edge in self.good_starts():
+            relabelling = self._relabelling_from(start_edge)
+
+            # relabelled face permutation
+            for e in range(-n, n):
+                #fp_new[e] = relabelling[fp[inv_relabelling[e]]]
+                fp_new[relabelling[e]] = relabelling[fp[e]]
+
+            # relabelled colouring
+            for e in range(n):
+                colouring_new[norm(relabelling[e])] = self._colouring[e]
+
+            T = (colouring_new, fp_new)
+            if best is None or T == best:
+                best_relabellings.append(relabelling)
+                if best is None:
+                    best = (colouring_new[:], fp_new[:])
+            elif T < best:
+                del best_relabellings[:]
+                best_relabellings.append(relabelling)
+                best = (colouring_new[:], fp_new[:])
+
+        p0 = even_perm_invert(best_relabellings[0])
+        return [even_perm_compose(p, p0) for p in best_relabellings]
 
     def to_string(self):
         r"""
@@ -702,8 +753,21 @@ class ColouredTriangulation(object):
             False
             sage: T.is_isomorphic_to(T2)
             True
+
+        TESTS::
+
+            sage: T = ColouredTriangulation.from_string('RBBBBRBRB_aqhbprdgcfeonmjkil')
+            sage: p = [2, 3, 5, 0, -5, -8, 6, -9, 1, -2, 8, -7, 7, 4, -1, -6, -4, -3]
+            sage: T.iso_sig() == T.relabel(p).iso_sig()
+            True
         """
-        return self.best_translation()[0]
+        n = self._triangulation.num_edges()
+        _, (colours, fp) = self.best_relabelling()
+
+        char_colours = ''.join('R' if colours[i] == RED else 'B' for i in range(n))
+        char_edges = even_perm_base64_str(fp)
+
+        return char_colours + '_' + char_edges
 
     def canonical(self):
         r"""

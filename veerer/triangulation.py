@@ -27,9 +27,7 @@ class Triangulation(object):
 
         sage: from veerer import *
 
-        sage: preparser(False)
-
-        sage: T = Triangulation([(-3, 1, -1), (-2, 0, 2)])
+        sage: T = Triangulation("(~2, 1, ~0)(~1, 0, 2)")
         sage: T.genus()
         1
         sage: T.num_faces()
@@ -49,22 +47,27 @@ class Triangulation(object):
 
     def __init__(self, triangles, check=True):
         if isinstance(triangles, Triangulation):
-            triangles = triangles.faces()
+            self._fp = triangles.face_permutation(copy=True)
+        else:
+            self._fp = even_perm_init(triangles)
 
-        n = self._n = (3 * len(triangles)) / 2  # number of edges
+        fp = self._fp
+
+        n = self._n = len(fp) / 2
 
         base = [0] * (2 * n)
-        fp = self._fp = array('l', base)  # face permutation
+        # TODO: face labels are disabled for now. We should
+        # actually make it a *partition* of the vertices
+        # (two vertices are allowed to have the same labels)
+        # The trivial partition {0,1,2,...,n-1} would correspond
+        # to no label and the atomic {{0},{1},...,{n-1}} would
+        # correspond to everybody labeled
         # fl = self._fl = [None] * (2 * n)  # face labels
         vp = self._vp = array('l', base)  # vertex permutation
 
-        for i,t in enumerate(triangles):
-            for j in range(3):
-                # self._fl[t[j]] = i
-                fp[t[j]] = t[(j+1) % 3]
-
         for i in range(-n, n):
             vp[fp[i]] = ~i
+        # TODO: vertex labels are disabled for now
         # self._vl = even_perm_cycles(vp)[1]
 
         if check:
@@ -82,13 +85,8 @@ class Triangulation(object):
         for i in range(-n, n):
             if ~self._vp[self._fp[i]] != i:
                 raise RuntimeError('vef condition not satisfied')
-            if self._fp[~self._vp[i]] != i:
-                raise RuntimeError('vef condition not satisfied')
-
-            # if self._vl[i] != self._vl[self._vp[i]]:
-            #    raise RuntimeError("vl bad")
-            # if self._fl[i] != self._fl[self._fp[i]]:
-            #    raise RuntimeError("fl bad")
+            if self._fp[self._fp[self._fp[i]]] != i:
+                raise ValueError('not a triangulation')
 
     def __eq__(self, other):
         if type(self) != type(other):
@@ -100,15 +98,28 @@ class Triangulation(object):
             raise TypeError
         return self._n != other._n or self._fp != other._fp
     
-    def vertex_permutation(self):
-        return self._vp
+    def vertex_permutation(self, copy=True):
+        if copy:
+            return self._vp[:]
+        else:
+            return self._vp
 
-    def face_permutation(self):
-        return self._fp
+    def face_permutation(self, copy=True):
+        if copy:
+            return self._fp[:]
+        else:
+            return self._fp
 
     def faces(self):
         r"""
-        Return the faces ordered by their labels.
+        Return the list faces as triple of signed integers.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: t = Triangulation([1, 2, 0, -1, -3, -2])
+            sage: t.faces()
+            [(-3, -1, -2), (0, 1, 2)]
         """
         return list(self)
 
@@ -177,7 +188,7 @@ class Triangulation(object):
 
             sage: from veerer import Triangulation
 
-            sage: T = Triangulation([(0,1,-1),(2,-2,-3)])
+            sage: T = Triangulation("(0,1,~0)(2,~1,~2)")
             sage: T.genus()
             0
 
@@ -370,12 +381,10 @@ class Triangulation(object):
 
             sage: from veerer import Triangulation
 
-            sage: T = Triangulation([(-12, 4, -4), (-11, -1, 11), (-10, 0, 10),
-            ....:                    (-9, 9, 1), (-8, 8, -2), (-7, 7, 2), (-6, 6, -3), (-5, 5, 3)])
+            sage: T = Triangulation("(~11,4,~3)(~10,~0,11)(~9,0,10)(~8,9,1)(~7,8,~1)(~6,7,2)(~5,6,~2)(~4,5,3)")
             sage: Triangulation.from_string(T.to_string(), T.num_edges()) == T
             True
         """
         fp = even_perm_from_base64_str(s, n)
-        faces = even_perm_cycles(fp)[0]
-        return Triangulation(faces)
+        return Triangulation(fp)
 
