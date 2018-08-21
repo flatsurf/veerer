@@ -22,7 +22,7 @@ from sage.plot.polygon import polygon2d
 from sage.plot.text import text
 from sage.plot.bezier_path import bezier_path
 
-from .constants import BLUE, RED, HORIZONTAL, VERTICAL
+from .constants import BLUE, RED, PURPLE, GREEN, HORIZONTAL, VERTICAL
 from .misc import flipper_nf_to_sage, flipper_nf_element_to_sage, det2
 from .triangulation import Triangulation
 
@@ -34,6 +34,17 @@ def edge_label(i):
         return '~%d' % (-i-1)
     else:
         return str(i)
+
+def edge_slope(e, f, pos):
+    v = pos[f] - pos[e]
+    if v[0] == 0:
+        return GREEN
+    elif v[1] == 0:
+        return PURPLE
+    elif v[0] * v[1] > 0:
+        return RED
+    else:
+        return BLUE
 
 def draw_my_segment(s, t, pos, **kwds):
     x,y = (pos[t] - pos[s])
@@ -50,7 +61,23 @@ def draw_my_segment(s, t, pos, **kwds):
 def draw_my_triangle(e1,e2,e3,pos):
     G = Graphics()
 
-    G += polygon2d([pos[e1],pos[e2],pos[e3],pos[e1]], alpha=0.41, color='gray')
+    # computing slopes in order to determine filling color
+    nred = nblue = 0
+    for e,f in ((e1,e2),(e2,e3),(e3,e1)):
+        slope = edge_slope(e, f, pos)
+        if slope == RED:
+            nred += 1
+        elif slope == BLUE:
+            nblue += 1
+
+    if nred == 2:
+        color = (.75, 0.5, 0.5)
+    elif nblue == 2:
+        color = (.5, 0.5, .75)
+    else:
+        color = (.5, 0.5, 0.5)
+
+    G += polygon2d([pos[e1],pos[e2],pos[e3],pos[e1]], alpha=0.41, color=color)
 
     G += draw_my_segment(e1, e2, pos)
     G += draw_my_segment(e2, e3, pos)
