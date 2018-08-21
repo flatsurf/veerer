@@ -1452,6 +1452,33 @@ class ColouredTriangulation(object):
                             T.train_track_polytope(HORIZONTAL).affine_dimension(),
                             T.train_track_polytope(VERTICAL).affine_dimension()))
 
+    def random_forward_flip(self, repeat=1):
+        r"""
+        Apply a forward flip randomly among the ones that keeps the triangulation core.
+
+        INPUT:
+
+        - ``repeat`` - integer (default 1) - if provided make ``repeat`` flips instead of 1.
+        """
+        from . import HAS_SAGE
+
+        if HAS_SAGE:
+            from sage.misc.prandom import choice, shuffle
+        else:
+            from random import choice, shuffle
+
+        cols = [RED, BLUE]
+        for _ in range(repeat):
+            e = choice(self.forward_flippable_edges())
+            old_col = self._colouring[e]
+            shuffle(cols)
+            for c in cols:
+                self.flip(e, c)
+                if self.edge_has_curve(e):
+                    break
+                else:
+                    self.back_flip(e, old_col)
+
 def ngon(n):
     n = int(n)
     assert(n > 4 and n % 2 == 0)
