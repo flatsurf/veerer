@@ -2,6 +2,7 @@
 from __future__ import print_function, absolute_import
 
 import sys
+from time import time
 
 from .coloured_triangulation import ColouredTriangulation, ngon
 from .constants import *
@@ -66,15 +67,14 @@ class Automaton(object):
             open_filepath.write('}\n')
     
     @classmethod
-    def from_triangulation(self, T, verbose=False, mode='core', **kwargs):
+    def from_triangulation(self, T, verbose=0, mode='core', **kwargs):
         assert T.is_core()
 
         if verbose:
-            print('Computing stratum: %s' % T.stratum())
-            print('Stratum dimension: %d' % T.stratum().dimension())
-            print('Orientable: %s' % T.is_abelian())
-            print('Is Core: %s' % T.is_core())
-            print('Good | current:')
+            print('[automaton] stratum: %s' % T.stratum())
+            print('[automaton] stratum dimension: %d' % T.stratum().dimension())
+        if verbose == 1:
+            print('[automaton] size(graph)   size(path)    time')
 
         T = T.copy()
         iso_sig = T.iso_sig()
@@ -92,11 +92,18 @@ class Automaton(object):
         branch[-1].extend((x,BLUE) for x in ffe)
         branch[-1].extend((x,RED) for x in ffe)
         e,col = branch[-1].pop()
+        old_size = 0
+        t0 = time()
         while True:
-            if verbose:
+            if verbose >= 2:
                 print('[automaton] NEW LOOP')
                 print('[automaton] at %s with iso_sig %s' % (T.to_string(), iso_sig))
                 print('[automaton] going along (%s, %s)' % (e, col))
+            elif verbose:
+                if len(graph) > old_size + 500:
+                    print('\r[automaton] %8d      %8d      %.3f' % (len(graph),len(branch),time()-t0), end='')
+                    sys.stdout.flush()
+                    old_size = len(graph)
 
             # some safety check to be disabled
             #assert len(flips) + 1 == len(iso_sigs) == len(branch)
@@ -107,17 +114,17 @@ class Automaton(object):
             old_col = T.colour(e)
             T.flip(e, col)
 
-            if verbose:
+            if verbose >= 2:
                 print('[automaton] ... landed at %s' % T.to_string())
 
             if T.edge_has_curve(e): # = T is core
                 new_iso_sig = T.iso_sig()
-                if verbose:
+                if verbose >= 2:
                     print('[automaton] it is core with iso_sig %s' % new_iso_sig)
 
 
                 if new_iso_sig not in graph:
-                    if verbose:
+                    if verbose >= 2:
                         print('[automaton] new vertex')
                     # new core
                     flips.append((e,old_col))
@@ -134,10 +141,10 @@ class Automaton(object):
                     continue
                 else:
                     # (e,col) leads to an already visited vertex
-                    if verbose:
+                    if verbose >= 2:
                         print('[automaton] known vertex')
                     graph[iso_sig].append(new_iso_sig)
-            elif verbose:
+            elif verbose >= 2:
                 print('[automaton] not core')
 
             # not core or already visited
@@ -155,4 +162,7 @@ class Automaton(object):
             iso_sig = iso_sigs[-1]
             e,col = branch[-1].pop()
         
+
+        if verbose == 1:
+            print('\r[automaton] %8d      %8d      %.3f' % (len(graph),len(branch),time()-t0))
         return Automaton(graph)
