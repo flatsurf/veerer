@@ -531,15 +531,18 @@ class ColouredTriangulation(object):
         Start at a RED before a BLUE.
         """
         starts = []
-        best = None
+        best_word = None
 
         n = self._triangulation.num_edges()
-        vp = self._triangulation.vertex_permutation()
+        vp = self._triangulation.vertex_permutation(copy=False)
+        cols = self._colouring
+
+        # first run: compare edges using colors and vertex permutation orbits
         for e in range(-n, n):
-            if self._colouring[e] != RED:
+            if cols[e] != RED:
                 continue
             f = vp[e]
-            if self._colouring[f] != BLUE:
+            if cols[f] != BLUE:
                 continue
 
             # build the word
@@ -550,26 +553,67 @@ class ColouredTriangulation(object):
                 # go along the v permutation and write a word in BLUE/RED
                 # run through all the BLUE
                 n = 0
-                while self._colouring[g] == BLUE:
+                while cols[g] == BLUE:
                     g = vp[g]
                     n += 1
                 w.append(n)
                 # run through all the RED
-                while self._colouring[g] == RED:
+                while cols[g] == RED:
                     g = vp[g]
                     n += 1
                 w.append(n)
 
                 if g == f or \
-                   (best is not None and len(w) > len(best)):
+                   (best_word is not None and len(w) > len(best_word)):
                     break
 
-            if best is None or \
-               (len(w) < len(best) or (len(w) == len(best) and w < best)):
+            if best_word is None or \
+               (len(w) < len(best_word) or (len(w) == len(best_word) and w < best_word)):
                 starts = [e]
-                best = w
-            elif w == best:
+                best_word = w
+            elif w == best_word:
                 starts.append(e)
+
+        if len(starts) == 1:
+            return starts
+
+        # try to break ties using face permutation orbits
+        # (because the start edge e is RED before BLUE (on the vertex)
+        # the only colour we do not know is fp[e]
+        fp = self._triangulation.face_permutation(copy=False)
+        best_word = None
+        for e in starts:
+            w = cols[fp[e]]
+            if best_word is None or w < best_word:
+                new_starts = [e]
+                best_word = w
+            elif w == best_word:
+                new_starts.append(e)
+
+#        if len(new_starts) < len(starts):
+#            print('1 - new_starts got better: was %s and is now %s' %(len(starts), len(new_starts)))
+        starts = new_starts
+#        if len(starts) == 1:
+#            return starts
+#
+#        # try to break using vef orbits
+#        best_word = None
+#        for e in starts:
+#            f = vp[~fp[e]]
+#            w = [cols[e]]
+#            while f != e:
+#                w.append(cols[f])
+#                f = vp[~fp[f]]
+#
+#            if best_word is None or w < best_word:
+#                new_starts = [e]
+#                best_word = w
+#            elif w == best_word:
+#                new_starts.append(e)
+#
+##        if len(new_starts) < len(starts):
+##            print('2 - new_starts got better: was %s and is now %s' %(len(starts), len(new_starts)))
+#        starts = new_starts
 
         return starts
 
