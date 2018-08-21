@@ -1,3 +1,15 @@
+2018-08-21 [Vincent, Saul]
+
+New features:
+- input from strings
+- automorphisms!
+
+TODO:
+
+- detect component of stratum (hyp/even/odd in abelian case and reg/irr in quad)
+- cylinders and cylinder decompositions
+- use cylinders for layout
+
 2018-08-19 [Vincent, Saul]
 
 The code to generate automata was way too slow because of two reasons:
@@ -94,7 +106,7 @@ Current wish-list for Veerer:
 
 2. Zorich acceleration.
 
-3. Linear submanifolds.
+3. Linear subvarieties.
 
 4. Splitting zeros.
 
