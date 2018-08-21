@@ -654,9 +654,16 @@ class ColouredTriangulation(object):
 
     def automorphisms(self):
         r"""
+        Return the list of automorphisms of this coloured triangulation.
+
+        The output is a list of arrays that are signed permutations given
+        as lists of length 2n.
+
         EXAMPLES::
 
             sage: from veerer import *
+
+        An example with four symmetries in H(1,1)::
 
             sage: p = "(0,~1,2)(~0,1,~3)(4,~5,3)(~4,6,~2)(7,~6,8)(~7,5,~9)(10,~11,9)(~10,11,~8)"
             sage: cols = 'BRBBBRRBBBBR'
@@ -666,7 +673,14 @@ class ColouredTriangulation(object):
             4
             sage: all(T.relabel(a) == T for a in A)
             True
+
+        A very symmetric example in H(0^5)::
+
+            sage: T = ColouredTriangulation.from_string("RBBBBRBBRBBRBBR_tDnjlwgizdfCacmbBAeyxhvukspqor")
+            sage: print(len(T.automorphisms()))
+            10
         """
+
         n = self._triangulation.num_edges()
         fp = self._triangulation.face_permutation(copy=False)
 
