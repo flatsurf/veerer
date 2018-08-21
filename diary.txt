@@ -1,7 +1,16 @@
 2018-08-21 [Vincent, Saul]
 
-Question:
+Random thoughts:
 
+- Can we do flips in a more general context?  Ie, if you have two
+  polytopes P and Q adjacent to each other along e, then look at the
+  edges in P and Q adjacent to e.  If in P we see R^k.e.B^\ell and
+  similarly in Q then we should be able to do the forward flip, by
+  moving both endpoints of e just one edge anti-clockwise.  Hmm.  I
+  guess that the above condition is the same as requiring that P
+  \cup_e Q is convex.
+
+Question:
 - The vertices of the vertical and horizontal polytopes are vertex
   cycles, aka low weight curves... What do the vertices of the
   geometric polytope mean?  How can we find one quickly?
@@ -9,6 +18,8 @@ Question:
   the correct dimension.
 
 New features:
+- better "good_starts" using the face permutation.
+  (Decided against using v.e.f = [2, 1; 1, 1] as it is too slow.)
 - input from strings
 - automorphisms!
 
