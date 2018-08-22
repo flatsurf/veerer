@@ -394,3 +394,22 @@ class Triangulation(object):
         fp = even_perm_from_base64_str(s, n)
         return Triangulation(fp)
 
+    def conjugate(self):
+        r"""
+        Conjugate this triangulation.
+
+        The face perm is replaced by its inverse and conjugated by the
+        ~ operation and the vertex permutation is replaced by its
+        inverse.
+
+        EXAMPLES::
+
+            sage: from veerer import Triangulation
+
+            sage: T = Triangulation("(0,1,2)(~0,~4,~2)(3,4,5)(~3,~1,~5)")
+            sage: T.conjugate()
+            sage: T
+            [(~5, ~4, ~3), (~2, ~1, ~0), (0, 2, 4), (1, 3, 5)]
+        """
+        self._fp = even_perm_conjugate(even_perm_invert(self._fp))
+        self._vp = even_perm_invert(self._vp)
