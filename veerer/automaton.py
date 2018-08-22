@@ -53,6 +53,18 @@ class Automaton(object):
         return iter(self._iso_sigs)
     def __contains__(self, item):
         return item in self._iso_sigs
+
+    def geometric_triangulations(self, method='LP'):
+        r"""
+        Return the list of geometric configurations.
+        """
+        geoms = []
+        for s in self:
+            c = ColouredTriangulation.from_string(s)
+            if c.is_geometric(method=method):
+                geoms.append(s)
+        return geoms
+
     def export(self, filepath):
         with open(filepath, 'w') as open_filepath:
             open_filepath.write('digraph MyGraph {\n')
