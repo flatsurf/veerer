@@ -715,7 +715,6 @@ class ColouredTriangulation(object):
             sage: print(len(T.automorphisms()))
             10
         """
-
         n = self._triangulation.num_edges()
         fp = self._triangulation.face_permutation(copy=False)
 
@@ -748,6 +747,87 @@ class ColouredTriangulation(object):
 
         p0 = even_perm_invert(best_relabellings[0])
         return [even_perm_compose(p, p0) for p in best_relabellings]
+
+    def rotate(self):
+        r"""
+        Apply the pi/2 rotation.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: from surface_dynamics import *
+
+            sage: T0 = ColouredTriangulation.from_stratum(QuadraticStratum(1,1,1,1))
+            sage: T = T0.copy()
+            sage: T.rotate()
+            sage: T.conjugate()
+            sage: S = T0.copy()
+            sage: S.conjugate()
+            sage: S.rotate()
+            sage: S == T
+            True
+        """
+        self._colouring = [RED if x == BLUE else BLUE for x in self._colouring]
+
+    def conjugate(self):
+        r"""
+        Conjugate this triangulation.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: faces = "(0,1,2)(~0,~4,~2)(3,4,5)(~3,~1,~5)"
+            sage: cols = [BLUE,RED,RED,BLUE,RED,RED]
+            sage: T = ColouredTriangulation(faces, cols)
+            sage: T.conjugate()
+            sage: T
+            [(~5, ~4, ~3), (~2, ~1, ~0), (0, 2, 4), (1, 3, 5)], ['Red', 'Blue', 'Blue', 'Red', 'Blue', 'Blue']
+        """
+        self._colouring = [RED if x == BLUE else BLUE for x in self._colouring]
+        self._triangulation.conjugate()
+
+    # TODO: finish this!!
+    def automorphism_quotient(self, aut):
+        r"""
+        Return the canonical triangulation of the quotient.
+
+        (vertex fixed, edge fixed, faces fixed)
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: p = "(0,~1,2)(~0,1,~3)(4,~5,3)(~4,6,~2)(7,~6,8)(~7,5,~9)(10,~11,9)(~10,11,~8)"
+            sage: cols = 'BRBBBRRBBBBR'
+            sage: T = ColouredTriangulation(p, cols)
+        """
+        raise NotImplementedError
+        nb_verts = 0  # vertices stabilized
+        nb_faces = 0  # faces stabilized
+        nb_edges = 0  # edges stabilized
+
+        n = self._n
+
+        # edges
+        nb_edges = sum(aut[e] == ~e or aut[e] == e for e in range(n))
+
+        # vertices
+        verts, edge_to_vert = even_perm_cycles(self._vp)
+        for i,v in enumerate(verts):
+            if edge_to_vert[aut[v[0]]] == i:
+                # deg does not change
+                nb_edges += 1
+            else:
+                # deg is wrapped around
+                pass
+
+        # faces
+        faces, edge_to_face = even_perm_cycles(self._fp)
+        for i,f in enumerate(faces):
+            nb_faces += edge_to_face[aut[f[0]]] == i
+
+        return (nb_verts, nb_edges, nb_faces)
 
     def to_string(self):
         r"""
@@ -867,8 +947,9 @@ class ColouredTriangulation(object):
         r"""
         Return the cylinders of color ``col``.
 
-        Each cylinder is given as a list of edges crossed (in order) by
-        the circumference of the cylinder.
+        Each cylinder is given as a list of edges that correspond
+        to the (ordered) list of edges crossed by the waist curve
+        of the cylinder.
 
         EXAMPLES::
 
@@ -1065,7 +1146,7 @@ class ColouredTriangulation(object):
                 # j is large
                 l,s1,s2 = j,k,i
             else:
-                raise ValueError('can not determine the big edge on triangle (%s, %s, %s' %
+                raise ValueError('can not determine the big edge on triangle (%s, %s, %s)' %
                                  (edge_label(i), edge_label(j), edge_label(k)))
 
             insert(x[norm(l)] == x[norm(s1)] + x[norm(s2)])
