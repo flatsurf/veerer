@@ -1,3 +1,25 @@
+2018-08-22
+
+- Note that our automaton has two symmetries, not four, due to the way
+  we are allowing core triangulations.  That is: Suppose that T is
+  geometric.  Suppose that there are three edges, all automorphically
+  equivalent, and all forward flippable.  So T will have three forward
+  edges to T'.  Now, T' will be core, and will have two forward flips
+  to T''_0 and T''_1 (say) which will each have one forward flip to S,
+  again geometric.... So we don't get all of the automorphisms we
+  "deserve".  The geometric polytope will work, however...
+
+- Question: How can we walk forwards to a cylinder decomposition?  Is
+  there a greedy geometric algorithm?
+
+- Question: Can we put a pole at the center of an edge?  Ie can we
+  fold edges about poles?  If so, what happens to the permutations???
+  It seems that there is a difference between marked poles (needed for
+  Q(-1^4)) and regular poles.  It seems that this is not impossible to
+  implement -- and it does not kill the Royal Automaton... I think.
+  What do the train tracks look like?  I think that they just have
+  stops... so it is fine. 
+
 2018-08-21 [Vincent, Saul]
 
 Random thoughts:
@@ -10,14 +32,30 @@ Random thoughts:
   guess that the above condition is the same as requiring that P
   \cup_e Q is convex.
 
+- Vincent says that there should be a way to prevent the commutivity.
+  That is, there should be an automaton where each pA map is
+  represented by a unique loop... He and CU did this for hyp
+  strata - in fact there every pA is uniquely a product of partial
+  Dehn twists.  This is super cool.  The converse is surely (?) false.
+  [Saul: This result does sound a bit like my result with Henry about pA
+  flows?]
+
 Question:
+
 - The vertices of the vertical and horizontal polytopes are vertex
   cycles, aka low weight curves... What do the vertices of the
   geometric polytope mean?  How can we find one quickly?
+
+[2018-08-22 Vincent says - Such vertices can have lots of area zero
+  triangles, so they are difficult to plot... Saul replies - add a
+  very small amount of the middle of the polytope to "blow in a bit of
+  air" so we can look at it...]
+
 - Idea - use linear programming to decide if the geometric polytope is
   the correct dimension.
 
 New features:
+
 - better "good_starts" using the face permutation.
   (Decided against using v.e.f = [2, 1; 1, 1] as it is too slow.)
 - input from strings
