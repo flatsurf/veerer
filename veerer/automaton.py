@@ -44,7 +44,7 @@ class Automaton(object):
         self._iso_sigs = sorted(graph)
         self._index = dict((sig, index) for index, sig in enumerate(self._iso_sigs))
     def __str__(self):
-        return '\n'.join('%s\t%s' % (g, self._graph[g][0]) for g in self._iso_sigs)
+        return "Core Veering Automaton of '%s' with %s vertices" % (min(self._graph), len(self._graph))
     def __repr__(self):
         return str(self)
     def __len__(self):
@@ -53,6 +53,171 @@ class Automaton(object):
         return iter(self._iso_sigs)
     def __contains__(self, item):
         return item in self._iso_sigs
+
+    def to_graph(self, directed=True, multiedges=True, loops=True):
+        r"""
+        Return the underlying graph.
+
+        INPUT:
+
+        - ``directed`` - boolean (default ``True``) - whether to make it directed
+
+        - ``multiedges`` - boolean (default ``True``)
+
+        - ``loops`` - boolean (default ``True``)
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: from surface_dynamics import *
+
+            sage: T = ColouredTriangulation.from_string("BBBRBRBRR_ebackjdlfqnhiogrmp")
+            sage: A = Automaton.from_triangulation(T)
+            sage: A
+            Core Veering Automaton of 'RBBBBRBRB_aqhbprdgcfeonmjkil' with 86 vertices
+            sage: A.to_graph()
+            Looped multi-digraph on 86 vertices
+
+            sage: A.to_graph(directed=False, multiedges=False, loops=True)
+            Looped graph on 86 vertices
+        """
+        from . import HAS_SAGE
+        if not HAS_SAGE:
+            raise ValueError('Only available in SageMath')
+        elif directed:
+            from sage.graphs.digraph import DiGraph
+            G = DiGraph(loops=loops, multiedges=multiedges)
+        else:
+            from sage.graphs.graph import Graph
+            G = Graph(loops=loops, multiedges=multiedges)
+
+        for g, neighb in self._graph.items():
+            for gg,_,_ in neighb:
+                G.add_edge(g, gg)
+
+        return G
+
+    def rotation_automorphism(self):
+        r"""
+        Return the automorphism of the vertices that corresponds to rotation.
+
+        Note that this automorphism reverses the edge direction.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: from surface_dynamics import *
+
+            sage: T = ColouredTriangulation.from_string("BBBRBRBRR_ebackjdlfqnhiogrmp")
+            sage: A = Automaton.from_triangulation(T)
+            sage: rot = A.rotation_automorphism()
+
+            sage: G = A.to_graph()
+            sage: all(G.has_edge(rot[b], rot[a]) for a,b in G.edges(False))
+            True
+        """
+        aut = {}
+        for a in self._graph:
+            T = ColouredTriangulation.from_string(a)
+            T.rotate()
+            aut[a] = T.iso_sig()
+        return aut
+
+    def conjugation_automorphism(self):
+        """
+        Return the automorphism of the vertices that corresponds to complex conjugation.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: from surface_dynamics import *
+
+            sage: T = ColouredTriangulation.from_string("BBBRBRBRR_ebackjdlfqnhiogrmp")
+            sage: A = Automaton.from_triangulation(T)
+            sage: conj = A.conjugation_automorphism()
+
+            sage: G = A.to_graph()
+            sage: all(G.has_edge(conj[a], conj[b]) for a,b in G.edges(False))
+            True
+
+        Conjugation and rotation commutes::
+
+            sage: rot = A.rotation_automorphism()
+            sage: all(rot[conj[a]] == conj[rot[a]] for a in G)
+            True
+        """
+        aut = {}
+        for a in self._graph:
+            T = ColouredTriangulation.from_string(a)
+            T.conjugate()
+            aut[a] = T.iso_sig()
+        return aut
+
+    def export_dot(self, filename=None):
+        r"""
+        Write dot data into the file ``filename``.
+
+        To compile with graphviz, use
+
+
+            $ PROG -Tpdf -o OUTPUT_FILE INPUT_FILE
+
+        where
+
+        - PROG is one of dot, neato, twopi, circo, fdp, sfdp, patchwork, osage
+        - OUTPUT_FILE the name of the output file
+        - INPUT_FILE the name of the dot file
+
+        INPUT:
+
+        - ``filename`` - an optional filename
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: filename = tmp_filename()
+            sage: T = ColouredTriangulation.from_string('RBRBRBBRR_gjabprdhcfeonmlkiq')
+            sage: A = Automaton.from_triangulation(T)
+            sage: A.export_dot(filename)
+        """
+        if filename is not None:
+            f = open(filename, 'w')
+        else:
+            import sys
+            f = sys.stdout
+
+        seed = min(self._graph)
+        f.write('/**********************************************************************/\n')
+        f.write('/* Automaton of core Veering triangulations                           */\n')
+        f.write('/*                                                                    */\n')
+        f.write('/* To compile the file to pdf run                                     */\n')
+        f.write('/*                                                                    */\n')
+        f.write('/*    $ sfdp -Tpdf -o test.pdf test.dot                               */\n')
+        f.write('/*                                                                    */\n')
+        seed_line = '/* seed: %s' % min(self._graph)
+        seed_line += ' ' * (70 - len(seed_line)) + '*/\n'
+        f.write(seed_line)
+        f.write('/*                                                                    */\n')
+        f.write('/**********************************************************************/\n')
+        f.write('\n')
+
+        f.write('digraph MyGraph {\n')
+        for g in self._iso_sigs:
+            T = ColouredTriangulation.from_iso_sig(g)
+            if T.is_geometric():
+                colour = TYPE_COLOURS[GEOMETRIC]
+            else:
+                colour = TYPE_COLOURS[CORE]
+            aut_size = len(T.automorphisms())
+            f.write('    %s [label="%d", style=filled, color="%s"];\n' % (g, aut_size, colour))
+
+            for gg, old_col, new_col in self._graph[g]:
+                f.write('    %s -> %s [color="%s;%f:%s"];\n' % (g, gg, old_col, 0.5, new_col))
+        f.write('}\n')
+
+        if filename is not None:
+            f.close()
 
     def geometric_triangulations(self, method='LP'):
         r"""
@@ -65,19 +230,7 @@ class Automaton(object):
                 geoms.append(s)
         return geoms
 
-    def export(self, filepath):
-        with open(filepath, 'w') as open_filepath:
-            open_filepath.write('digraph MyGraph {\n')
-            for g in self._iso_sigs:
-                neighbours, node_type = self._graph[g]
-                G = ColouredTriangulation.from_iso_sig(g)
-                aut_size = len(G.self_isometries()) 
-#                open_filepath.write('    %s [label="", style=filled, color="%s"];\n' % (g, TYPE_COLOURS[node_type]))
-                open_filepath.write('    %s [label="%d", style=filled, color="%s"];\n' % (g, aut_size, TYPE_COLOURS[node_type]))
-                for n, c, w in neighbours:
-                    open_filepath.write('    %s -> %s [color="%s", penwidth="%s", arrowsize="%s"];\n' % (g, n, c, w, w))
-            open_filepath.write('}\n')
-    
+
     @classmethod
     def from_triangulation(self, T, verbose=0, mode='core', **kwargs):
         assert T.is_core()
@@ -100,6 +253,7 @@ class Automaton(object):
         branch = []    # forward flips available
 
         ffe = T.forward_flippable_edges()
+        ffe_orb = []
         branch.append([])
         branch[-1].extend((x,BLUE) for x in ffe)
         branch[-1].extend((x,RED) for x in ffe)
@@ -141,7 +295,7 @@ class Automaton(object):
                     # new core
                     flips.append((e,old_col))
                     graph[new_iso_sig] = []
-                    graph[iso_sig].append(new_iso_sig)
+                    graph[iso_sig].append((new_iso_sig,old_col,col))
 
                     iso_sig = new_iso_sig
                     iso_sigs.append(iso_sig)
@@ -155,7 +309,7 @@ class Automaton(object):
                     # (e,col) leads to an already visited vertex
                     if verbose >= 2:
                         print('[automaton] known vertex')
-                    graph[iso_sig].append(new_iso_sig)
+                    graph[iso_sig].append((new_iso_sig,old_col,col))
             elif verbose >= 2:
                 print('[automaton] not core')
 
@@ -173,7 +327,6 @@ class Automaton(object):
                 break
             iso_sig = iso_sigs[-1]
             e,col = branch[-1].pop()
-        
 
         if verbose == 1:
             print('\r[automaton] %8d      %8d      %.3f      ' % (len(graph),len(branch),time()-t0))
