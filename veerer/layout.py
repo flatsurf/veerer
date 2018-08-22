@@ -48,10 +48,10 @@ def vec_slope(v):
 def edge_slope(e, f, pos):
     return vec_slope(pos[f] - pos[e])
 
-def draw_my_segment(s, t, pos, **kwds):
+def draw_my_segment(s, t, pos, vectors, **kwds):
     x,y = pos[t] - pos[s]
     opts = {}
-    if pos[~s] == pos[t]:
+    if pos[~s] == pos[t] and vectors[s] == -vectors[~s]:
         opts['alpha'] = 0.5
         opts['linestyle'] = 'dotted'
     if y.is_zero():
@@ -64,7 +64,7 @@ def draw_my_segment(s, t, pos, **kwds):
         col = 'blue'
     return line2d([pos[s],pos[t]], color=col, **opts)
 
-def draw_my_triangle(e1,e2,e3,pos):
+def draw_my_triangle(e1,e2,e3,pos,vectors):
     G = Graphics()
 
     # computing slopes in order to determine filling color
@@ -85,9 +85,9 @@ def draw_my_triangle(e1,e2,e3,pos):
 
     G += polygon2d([pos[e1],pos[e2],pos[e3],pos[e1]], alpha=0.41, color=color)
 
-    G += draw_my_segment(e1, e2, pos)
-    G += draw_my_segment(e2, e3, pos)
-    G += draw_my_segment(e3, e1, pos)
+    G += draw_my_segment(e1, e2, pos, vectors)
+    G += draw_my_segment(e2, e3, pos, vectors)
+    G += draw_my_segment(e3, e1, pos, vectors)
 
     G += text(edge_label(e1), (8*pos[e1]+5*pos[e2]+pos[e3])/14, color='black')
     G += text(edge_label(e2), (8*pos[e2]+5*pos[e3]+pos[e1])/14, color='black')
@@ -288,13 +288,23 @@ class FlatTriangulation:
     def __repr__(self):
         return 'Flat Triangulation made of %s triangles' % len(self._triangulation)
 
-    def set_pos(self, blue_cylinders=None, red_cylinders=None):
+    def set_pos(self, cylinders=None):
         r"""
         Set position randomly.
 
         INPUT:
 
         - ``cylinders`` - an optional list of cylinders
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T = ColouredTriangulation.from_string('BBRBBBRRBRBRRBBRRB_uBFyjzCdocvwqsemEbrgtxlAJkHDnGihfaIp')
+            sage: F = T.flat_structure_min(allow_degenerations=True)
+            sage: F.set_pos(cylinders=T.cylinders(BLUE) + T.cylinders(RED))
+            sage: F.plot()
+            Graphics object consisting of 84 graphics primitives
         """
         nf = len(self._triangulation)
         face_seen = [False] * nf
@@ -305,62 +315,47 @@ class FlatTriangulation:
         y = 0   # current height
 
         # set the cylinders
-        cylinders = []
-        if blue_cylinders:
-            cylinders.extend((BLUE,cyl) for cyl in blue_cylinders)
-        if red_cylinders:
-            cylinders.extend((RED,cyl) for cyl in red_cylinders)
-        for col,cyl in cylinders:
-            print('new %s cylinder: %s' % (col, cyl))
-            a = cyl[0]
-            face_seen[self._edge_to_face[a]] = True
-            xmin = xmax = ymin = ymax = self._K.zero()
-
-            # compute boundaries and bounding box
-            pos[a] = self._V((0,0))
-
-            for e in cyl:
-                a = ~e
-                b = fp[a]
-                c = fp[b]
+        if cylinders:
+            for cyl in cylinders:
+                a = cyl[0]
                 face_seen[self._edge_to_face[a]] = True
+                xmin = xmax = ymin = ymax = self._K.zero()
 
-                colb = vec_slope(vectors[b])
-                colc = vec_slope(vectors[c])
+                # compute boundaries and bounding box
+                pos[a] = self._V((0,0))
 
-                if colb == col:
-                    aa = b
-                elif colc == col:
-                    aa = c
-                else:
-                    raise RuntimeError('cylinder got confused')
+                for e in cyl:
+                    a = ~e
+                    b = fp[a]
+                    c = fp[b]
+                    face_seen[self._edge_to_face[a]] = True
 
-                if vectors[a][1] < 0 or vectors[aa][1] < 0:
-                    vectors[a] *= -1
-                    vectors[b] *= -1
-                    vectors[c] *= -1
+                    if vectors[a] == vectors[e]:
+                        vectors[a] *= -1
+                        vectors[b] *= -1
+                        vectors[c] *= -1
 
-                pos[a] = pos[~a] + vectors[~a]
-                pos[b] = pos[a] + vectors[a]
-                pos[c] = pos[b] + vectors[b]
-                xmin = min(xmin, pos[a][0], pos[b][0], pos[c][0])
-                xmax = max(xmax, pos[a][0], pos[b][0], pos[c][0])
-                ymin = min(ymin, pos[a][1], pos[b][1], pos[c][1])
-                ymax = max(ymax, pos[a][1], pos[b][1], pos[c][1])
+                    pos[a] = pos[~a] + vectors[~a]
+                    pos[b] = pos[a] + vectors[a]
+                    pos[c] = pos[b] + vectors[b]
+                    xmin = min(xmin, pos[a][0], pos[b][0], pos[c][0])
+                    xmax = max(xmax, pos[a][0], pos[b][0], pos[c][0])
+                    ymin = min(ymin, pos[a][1], pos[b][1], pos[c][1])
+                    ymax = max(ymax, pos[a][1], pos[b][1], pos[c][1])
 
-            # 2. translate positions according to bounding box
-            #    and the current height position
-            t = self._V((-xmin, y-ymin))
-            for e in cyl:
-                a = ~e
-                b = fp[a]
-                c = fp[b]
-                pos[a] += t
-                pos[b] += t
-                pos[c] += t
+                # 2. translate positions according to bounding box
+                #    and the current height position
+                t = self._V((-xmin, y-ymin))
+                for e in cyl:
+                    a = ~e
+                    b = fp[a]
+                    c = fp[b]
+                    pos[a] += t
+                    pos[b] += t
+                    pos[c] += t
 
-            # 3. set new starting height
-            y += ymax - ymin + 1
+                # 3. set new starting height
+                y += ymax - ymin + 1
 
         # random forest
         while any(x is False for x in face_seen):
@@ -369,7 +364,7 @@ class FlatTriangulation:
                 if face_seen[start] is False:
                     break
 
-            print('new root: {}'.format(edge_label(start)))
+#            print('new root: {}'.format(edge_label(start)))
 
             # sets its position
             a, b, c = self._faces[start]
@@ -381,9 +376,9 @@ class FlatTriangulation:
             xmax = max(xmax, pos[a][0], pos[b][0], pos[c][0])
             ymin = min(ymin, pos[a][1], pos[b][1], pos[c][1])
             ymax = max(ymax, pos[a][1], pos[b][1], pos[c][1])
-            print('pos[%s] = %s  pos[%s] = %s  pos[%s] = %s' % (
-                edge_label(a), pos[a], edge_label(b), pos[b],
-                edge_label(c), pos[c]))
+#            print('pos[%s] = %s  pos[%s] = %s  pos[%s] = %s' % (
+#                edge_label(a), pos[a], edge_label(b), pos[b],
+#                edge_label(c), pos[c]))
 
             # spanning tree
             edges = {t:[] for t in range(nf)}
@@ -408,12 +403,12 @@ class FlatTriangulation:
 
                         b = fp[a]
                         c = fp[b]
-                        print('add edge (%s,%s,%s) -- %s --> (%s,%s,%s)' % (
-                             edge_label(t_edges[0]),
-                             edge_label(t_edges[1]),
-                             edge_label(t_edges[2]),
-                             edge_label(e),
-                             edge_label(a), edge_label(b), edge_label(c)))
+#                        print('add edge (%s,%s,%s) -- %s --> (%s,%s,%s)' % (
+#                             edge_label(t_edges[0]),
+#                             edge_label(t_edges[1]),
+#                             edge_label(t_edges[2]),
+#                             edge_label(e),
+#                             edge_label(a), edge_label(b), edge_label(c)))
                         if vectors[e] == vectors[~e]:
                             vectors[a] *= -1
                             vectors[b] *= -1
@@ -425,15 +420,15 @@ class FlatTriangulation:
                         xmax = max(xmax, pos[a][0], pos[b][0], pos[c][0])
                         ymin = min(ymin, pos[a][1], pos[b][1], pos[c][1])
                         ymax = max(ymax, pos[a][1], pos[b][1], pos[c][1])
-                        print('pos[%s] = %s  pos[%s] = %s  pos[%s] = %s' % (
-                            edge_label(a), pos[a], edge_label(b), pos[b],
-                            edge_label(c), pos[c]))
+#                        print('pos[%s] = %s  pos[%s] = %s  pos[%s] = %s' % (
+#                            edge_label(a), pos[a], edge_label(b), pos[b],
+#                            edge_label(c), pos[c]))
 
 
             # translate
             t = self._V((-xmin, y-ymin))
             for f in faces:
-                print('translate %s by %s' % (f, t))
+#                print('translate %s by %s' % (f, t))
                 a,b,c = self._faces[f]
                 pos[a] += t
                 pos[b] += t
@@ -521,9 +516,8 @@ class FlatTriangulation:
 
         G = Graphics()
 
-        pos = self._pos
         for (a,b,c) in self._faces:
-            G += draw_my_triangle(a, b, c, pos)
+            G += draw_my_triangle(a, b, c, self._pos, self._vectors)
 
         if horizontal_train_track:
             G += self._plot_train_track(HORIZONTAL)
