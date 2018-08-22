@@ -283,6 +283,22 @@ def even_perm_identity(n):
     """
     return array('l', range(n) + range(-n,0))
 
+def even_perm_conjugate(p):
+    r"""
+    Return the even permutation obtained by conjugating
+    with the canonical involution i -> ~i
+
+    EXAMPLES::
+
+        sage: from veerer.even_permutation import even_perm_init, even_perm_conjugate
+
+        sage: p = even_perm_init("(0,1,2)(~0,~1,~2)")
+        sage: even_perm_conjugate(p) == p
+        True
+    """
+    n = len(p) / 2
+    return array('l', [~p[~i] for i in range(n)] + [~p[~i] for i in range(-n,0)])
+
 def even_perm_minus(n):
     r"""
     EXAMPLES::
