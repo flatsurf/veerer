@@ -969,7 +969,7 @@ class ColouredTriangulation(object):
         self._triangulation.back_flip(i)
         self._colouring[i] = self._colouring[~i] = col
 
-    def _set_train_track_constraints(self, insert, x, slope, integral, allow_degenerations):
+    def _set_train_track_constraints(self, insert, x, slope, low_bound, allow_degenerations):
         r"""
         Sets the equation and inequations for train tracks.
 
@@ -982,10 +982,10 @@ class ColouredTriangulation(object):
 
         - ``slope`` - the slope of the train-track
 
-        - ``integral`` - boolean - whether to set lower bounds to 0 or 1
+        - ``low_bound`` - boolean - whether to set lower bounds to 0 or 1
 
-        - ``allow_degenerations`` - boolean - when ``integral`` is also set to ``True``
-          then allows certain lengths to be 0
+        - ``allow_degenerations`` - boolean - allow to ignore the lower bound
+          in appropriate situations
 
         EXAMPLES::
 
@@ -995,21 +995,27 @@ class ColouredTriangulation(object):
 
             sage: l = []
             sage: x = [SR.var("x0"), SR.var("x1"), SR.var("x2")]
-            sage: T._set_train_track_constraints(l.append, x, HORIZONTAL, False, False)
+            sage: T._set_train_track_constraints(l.append, x, HORIZONTAL, 0, False)
             sage: l
             [x0 >= 0, x1 >= 0, x2 >= 0, x0 == x1 + x2, x0 == x1 + x2]
 
             sage: l = []
             sage: x = [SR.var("x0"), SR.var("x1"), SR.var("x2")]
-            sage: T._set_train_track_constraints(l.append, x, HORIZONTAL, True, False)
+            sage: T._set_train_track_constraints(l.append, x, HORIZONTAL, 1, False)
             sage: l
             [x0 >= 1, x1 >= 1, x2 >= 1, x0 == x1 + x2, x0 == x1 + x2]
 
             sage: l = []
             sage: x = [SR.var("x0"), SR.var("x1"), SR.var("x2")]
-            sage: T._set_train_track_constraints(l.append, x, HORIZONTAL, True, True)
+            sage: T._set_train_track_constraints(l.append, x, HORIZONTAL, 3, False)
             sage: l
-            [x0 >= 1, x1 >= 0, x2 >= 1, x0 == x1 + x2, x0 == x1 + x2]
+            [x0 >= 3, x1 >= 3, x2 >= 3, x0 == x1 + x2, x0 == x1 + x2]
+
+            sage: l = []
+            sage: x = [SR.var("x0"), SR.var("x1"), SR.var("x2")]
+            sage: T._set_train_track_constraints(l.append, x, HORIZONTAL, 2, True)
+            sage: l
+            [x0 >= 2, x1 >= 0, x2 >= 2, x0 == x1 + x2, x0 == x1 + x2]
 
         This can also be used to check that a given vector satisfies the train-track
         equations::
@@ -1036,13 +1042,13 @@ class ColouredTriangulation(object):
 
         # non-negativity
         for e in range(n):
-            if not integral or \
+            if not low_bound or \
                 (allow_degenerations and \
                  ((slope == HORIZONTAL and self.is_forward_flippable(e)) or \
                  (slope == VERTICAL and self.is_backward_flippable(e)))):
                 insert(x[e] >= 0)
             else:
-                insert(x[e] >= 1)
+                insert(x[e] >= low_bound)
 
         # switches relation
         for (i,j,k) in self._triangulation.faces():
@@ -1064,9 +1070,17 @@ class ColouredTriangulation(object):
 
             insert(x[norm(l)] == x[norm(s1)] + x[norm(s2)])
 
-    def _set_geometric_constraints(self, insert, x, y):
+    def _set_geometric_constraints(self, insert, x, y, hw_bound=0):
         r"""
         Set the geometric constraints.
+
+        INPUT:
+
+        - ``insert`` - function
+
+        - ``x``, ``y`` - variables
+
+        - ``hw_bound`` - a nonegative number
 
         EXAMPLES::
 
@@ -1083,18 +1097,21 @@ class ColouredTriangulation(object):
         """
         for e in self.forward_flippable_edges():
             a,b,c,d = self._triangulation.square_about_edge(e)
-            insert(x[norm(e)] <= y[norm(a)] + y[norm(d)])
+            insert(x[norm(e)] <= y[norm(a)] + y[norm(d)] - hw_bound)
         for e in self.backward_flippable_edges():
             a,b,c,d = self._triangulation.square_about_edge(e)
-            insert(y[norm(e)] <= x[norm(a)] + x[norm(d)])
+            insert(y[norm(e)] <= x[norm(a)] + x[norm(d)] - hw_bound)
 
-    def train_track_polytope(self, slope=VERTICAL):
+    def train_track_polytope(self, slope=VERTICAL, low_bound=0):
         r"""
         Return the polytope determined by the constraints.
 
         INPUT:
 
         - ``slope`` - the slope for the train track
+
+        - ``low_bound`` - integer - optional lower bound for the lengths
+          (default to 0)
 
         EXAMPLES::
 
@@ -1116,7 +1133,7 @@ class ColouredTriangulation(object):
         cs = ppl.Constraint_System()
         n = self._triangulation.num_edges()
         variables = [ppl.Variable(e) for e in range(n)]
-        self._set_train_track_constraints(cs.insert, variables, slope, False, False)
+        self._set_train_track_constraints(cs.insert, variables, slope, low_bound, False)
         return ppl.C_Polyhedron(cs)
 
     def train_track_min_solution(self, slope=VERTICAL, allow_degenerations=False):
@@ -1149,14 +1166,14 @@ class ColouredTriangulation(object):
 
         n = self._triangulation.num_edges()
         M = MixedIntegerLinearProgram(maximization=False)
-        x = M.new_variable(integer=True)
+        x = M.new_variable()
         M.set_objective(M.sum(x[e] for e in range(n))) # try to minimize length
-        self._set_train_track_constraints(M.add_constraint, x, slope, True, allow_degenerations)
+        self._set_train_track_constraints(M.add_constraint, x, slope, 1, allow_degenerations)
         M.solve()
         x = M.get_values(x)
         return [x[e] for e in range(n)]
 
-    def geometric_polytope(self):
+    def geometric_polytope(self, x_low_bound=0, y_low_bound=0, hw_bound=0):
         r"""
         EXAMPLES::
 
@@ -1165,6 +1182,30 @@ class ColouredTriangulation(object):
             sage: T = ColouredTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
             sage: T.geometric_polytope()
             A 4-dimensional polyhedron in QQ^6 defined as the convex hull of 1 point, 7 rays
+
+            sage: s = 'RRRRBBBBBBBB_uvwfgkrpedchjaonmtlixbsq'
+            sage: T = ColouredTriangulation.from_string(s)
+            sage: T.geometric_polytope()
+            A 8-dimensional polyhedron in QQ^24 defined as the convex hull of 1 point, 20 rays
+
+        TESTS::
+
+            sage: from veerer import *
+            sage: from surface_dynamics import *
+
+            sage: T = ColouredTriangulation.from_stratum(AbelianStratum(1,1))
+            sage: for _ in range(100):
+            ....:     T.random_forward_flip()
+            ....:     test1 = T.geometric_polytope().affine_dimension() == 10
+            ....:     test2 = not T.geometric_polytope(1,1,1).is_empty()
+            ....:     assert test1 == test2, T.to_string()
+
+            sage: T = ColouredTriangulation.from_stratum(QuadraticStratum(1,1,1,1))
+            sage: for _ in range(100):
+            ....:     T.random_forward_flip()
+            ....:     test1 = T.geometric_polytope().affine_dimension() == 12
+            ....:     test2 = not T.geometric_polytope(1,1,1).is_empty()
+            ....:     assert test1 == test2, T.to_string()
         """
         try:
             import ppl
@@ -1175,13 +1216,13 @@ class ColouredTriangulation(object):
         n = self._triangulation.num_edges()
 
         # 1. train-track conditions
-        P = self.train_track_polytope(VERTICAL)
-        P.concatenate_assign(self.train_track_polytope(HORIZONTAL))
+        P = self.train_track_polytope(VERTICAL, low_bound=x_low_bound)
+        P.concatenate_assign(self.train_track_polytope(HORIZONTAL, low_bound=y_low_bound))
 
         x = [ppl.Variable(e) for e in range(n)]
         y = [ppl.Variable(n+e) for e in range(n)]
 
-        self._set_geometric_constraints(P.add_constraint, x, y)
+        self._set_geometric_constraints(P.add_constraint, x, y, hw_bound=hw_bound)
 
         return P
 
@@ -1367,10 +1408,74 @@ class ColouredTriangulation(object):
         else:
             raise ValueError("method must be either 'polytope' or 'LP'")
 
-    def is_geometric(self, d=None):
-        raise NotImplementedError
-        if d is None: d = self.stratum_dimension()
-        return all(self.train_track_dimension(slope) == d for slope in SLOPES) and self.geometric_dimension() == 2*d
+    def is_geometric(self, method='polytope'):
+        r"""
+        Test whether this coloured triangulation is geometric.
+
+        INPUT:
+
+        - ``method`` - string - either ``'polytope'`` or ``'LP'`` (linear
+          programming). The linear programming is much faster in large
+          dimension.
+
+        EXAMPLES::
+
+            sage: from surface_dynamics import *
+            sage: from veerer import *
+
+            sage: s = 'RRRRBBBBBBBB_uvwfjilpedcbqkonmtsrhaxg'
+            sage: T = ColouredTriangulation.from_string(s)
+            sage: T.is_geometric('polytope')
+            False
+            sage: T.is_geometric('LP')
+            False
+
+            sage: s = 'RRRRBBBBBBBB_uvwfgkrpedchjaonmtlixbsq'
+            sage: T = ColouredTriangulation.from_string(s)
+            sage: T.is_geometric('polytope')
+            True
+            sage: T.is_geometric('LP')
+            True
+
+        TESTS::
+
+            sage: from veerer import *
+            sage: from surface_dynamics import *
+
+            sage: T = ColouredTriangulation.from_stratum(AbelianStratum(1,1))
+            sage: for _ in range(100):
+            ....:     T.random_forward_flip()
+            ....:     assert T.is_geometric('LP') == T.is_geometric('polytope'), T.to_string()
+
+            sage: T = ColouredTriangulation.from_stratum(QuadraticStratum(1,1,1,1))
+            sage: for _ in range(100):
+            ....:     T.random_forward_flip()
+            ....:     assert T.is_geometric('LP') == T.is_geometric('polytope'), T.to_string()
+        """
+        if method == 'polytope':
+            d = self.stratum().dimension()
+            return not self.geometric_polytope(1,1,1).is_empty()
+        elif method == 'LP':
+            from . import HAS_SAGE
+            if not HAS_SAGE:
+                raise ValueError('the option LP is only available in SageMath')
+            from sage.numerical.mip import MixedIntegerLinearProgram, MIPSolverException
+
+            M = MixedIntegerLinearProgram()
+            x = M.new_variable(integer=False, nonnegative=True)
+            y = M.new_variable(integer=False, nonnegative=True)
+
+            self._set_train_track_constraints(M.add_constraint, x, VERTICAL, True, False)
+            self._set_train_track_constraints(M.add_constraint, y, HORIZONTAL, True, False)
+            self._set_geometric_constraints(M.add_constraint, x, y, True)
+
+            try:
+                M.solve()
+                return True
+            except MIPSolverException:
+                return False
+        else:
+            raise ValueError("method must be 'polytope' or 'LP'")
 
     def edge_has_curve(self, e, verbose=False):
         r"""
