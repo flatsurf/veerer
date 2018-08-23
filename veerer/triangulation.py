@@ -122,7 +122,7 @@ class Triangulation(object):
         # The face, edge, and vertex permutations fp, ep, and vp must
         # satisfy the relations fp^3 = ep^2 = fp.ep.vp = Id.  Note
         # that this is a representation of PSL(2, \ZZ) \isom S^2(2, 3,
-        # \infty) into the symmetric group (on the half edges).
+        # \infty) into the symmetric group on the half edges.
 
         for i in range(n):
             if self._fp[self._fp[self._fp[i]]] != i:
@@ -141,7 +141,28 @@ class Triangulation(object):
         if type(self) != type(other):
             raise TypeError
         return self._n == other._n and self._fp != other._fp and self._ep != other._ep
-    
+
+    def copy(self):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T = Triangulation([[0,1,2],[-1,-2,-3]])
+            sage: U = T.copy()
+            sage: T == U
+            True
+            sage: T.flip(0)
+            sage: T == U
+            False
+        """
+        T = Triangulation.__new__(Triangulation)
+        T._n = self._n
+        T._fp = self._fp[:]
+        T._ep = self._ep[:]
+        T._vp = self._vp[:]
+        return T
+
     def face_permutation(self, copy=True):
         if copy:
             return self._fp[:]
@@ -173,46 +194,6 @@ class Triangulation(object):
 
     def num_edges(self):
         return (self._n + self.num_folded_edges()) / 2
-        
-    def num_faces(self):
-        return self._n / 3
-
-    def __len__(self):
-        return self._n / 3
-
-
-
-    def faces(self):
-        r"""
-        Return the list of faces as triples of (labels of) half-edges
-
-        EXAMPLES::
-
-            sage: from veerer import *
-            sage: t = Triangulation([1, 2, 0, -1, -3, -2]) # Fix
-            sage: t.faces()
-            [(-3, -1, -2), (0, 1, 2)]
-
-        """
-        return list(self)
-
-    def __iter__(self):
-        n = self._n
-        seen = [False] * n
-        for e in range(n):
-            if seen[e]:
-                continue
-            r = self._fp[e]
-            s = self._fp[r]
-            seen[e] = seen[r] = seen[s] = True
-            yield (e, r, s)
-            
-    def vertices(self):
-        r"""
-        Return the vertices ordered by their labels.
-        """
-        l = perm_cycles(self._vp)[0]
-        return l
 
     def _edge_rep(self, e):
         f = self._ep[e]
@@ -222,36 +203,43 @@ class Triangulation(object):
     def _norm(self, e):
         f = self._ep[e]
         return f if f < e else e
+    
+    def num_faces(self):
+        return self._n / 3
 
-    def __repr__(self):
-        l = self.faces()        
-        return '[' + ', '.join('(' + ', '.join(edge_label(e) for e in f) + ')' for f in l) + ']'
-
-    def copy(self):
+    def faces(self):
         r"""
+        Return the list of faces as triples of half-edges
+
         EXAMPLES::
 
             sage: from veerer import *
+            sage: t = Triangulation([1, 2, 0, -1, -3, -2]) # Fix
+            sage: t.faces()
+            [(-3, -1, -2), (0, 1, 2)]
 
-            sage: T = Triangulation([[0,1,2],[-1,-2,-3]])
-            sage: U = T.copy()
-            sage: T == U
-            True
-            sage: T.flip(0)
-            sage: T == U
-            False
         """
-        T = Triangulation.__new__(Triangulation)
-        T._n = self._n
-        T._vp = self._vp[:]
-        T._fp = self._fp[:]
-        return T
+        return perm_cycles(self._fp)[0]
+
+    def edges(self):
+        r"""
+        Return the list of faces as tuples of half-edges
+        """
+        l = perm_cycles(self._ep)[0]
+        return l
+
+    def vertices(self):
+        r"""
+        Return the list of faces as tuples of half-edges
+        """
+        l = perm_cycles(self._vp)[0]
+        return l
 
     def num_vertices(self):
         return len(self.vertices())
 
     def euler_characteristic(self):
-        return self.num_faces() - self.num_edges()
+        return self.num_faces() - self.num_edges() + (self.num_vertices() + self.num_folded_edges())
 
     def genus(self):
         r"""
@@ -269,11 +257,19 @@ class Triangulation(object):
             sage: T.genus()
             1
         """
-        return 1 - (self.num_faces() - self.num_edges() + self.num_vertices()) / 2
+        # 2 - 2g = \chi so 
+        return (2 - self.euler_characteristic()) / 2
+
+    def __repr__(self):
+        faces = self.faces()        
+        return '[' + ', '.join('(' + ', '.join(edge_label(e) for e in f) + ')' for f in l) + ']'
 
     def is_flippable(self, e):
         e = int(e)
-        return self._fp[e] != ~e and self._fp[~e] != e
+        E = self._ep[e]
+        a = self._fp[e]
+        b = self._fp[a]
+        return a != E and b != E
 
     def square_about_edge(self, e):
         # x<----------x
@@ -291,10 +287,11 @@ class Triangulation(object):
         # x---------->x
 
         e = int(e)
+        E = self._ep[e]
 
         a = self._fp[e]
         b = self._fp[a]
-        c = self._fp[~e]
+        c = self._fp[E]
         d = self._fp[c]
 
         return a,b,c,d
@@ -318,17 +315,23 @@ class Triangulation(object):
         # w---------->x     w---------->x
 
         e = int(e)
+        E = self._ep[e]
 
         a = self._fp[e]
         b = self._fp[a]
-        if a == ~e or b == ~e:
+        if a == E or b == E:
             raise ValueError('edge %s is not flippable' % edge_label(e))
-        c = self._fp[~e]
+        c = self._fp[E]
         d = self._fp[c]
 
+        A = self._ep[a]
+        B = self._ep[b]
+        C = self._ep[c]
+        D = self._ep[d]
+        
         # Disabled for now
         # F = self._fl[e]
-        # G = self._fl[~e]
+        # G = self._fl[E]
 
         # v = self._vl[b]
         # x = self._vl[d]
@@ -337,8 +340,8 @@ class Triangulation(object):
         self._fp[e] = b
         self._fp[b] = c
         self._fp[c] = e
-        self._fp[a] = ~e
-        self._fp[~e] = d
+        self._fp[a] = E
+        self._fp[E] = d
         self._fp[d] = a
 
         # Face labels
@@ -346,12 +349,12 @@ class Triangulation(object):
         # self._fl[c] = F
 
         # fix vertex perm
-        self._vp[a] = ~d
-        self._vp[b] = ~e
-        self._vp[~e] = ~a
-        self._vp[c] = ~b
+        self._vp[a] = D
+        self._vp[b] = E
+        self._vp[E] = A
+        self._vp[c] = B
         self._vp[d] = e
-        self._vp[e] = ~c
+        self._vp[e] = C
 
         # Vertex labels
         # self._vl[e] = x
@@ -392,17 +395,23 @@ class Triangulation(object):
         # w---------->x     w---------->x
 
         e = int(e)
+        E = self._ep[e]
 
         a = self._fp[e]
         b = self._fp[a]
-        if a == ~e or b == ~e:
+        if a == E or b == E:
             raise ValueError('edge %s is not flippable' % edge_label(e))
-        c = self._fp[~e]
+        c = self._fp[E]
         d = self._fp[c]
 
+        A = self._ep[a]
+        B = self._ep[b]
+        C = self._ep[c]
+        D = self._ep[d]
+        
         # Disabled for now
         # F = self._fl[e]
-        # G = self._fl[~e]
+        # G = self._fl[E]
 
         # v = self._vl[b]
         # x = self._vl[d]
@@ -412,8 +421,8 @@ class Triangulation(object):
         self._fp[d] = a
         self._fp[a] = e
         self._fp[b] = c
-        self._fp[c] = ~e
-        self._fp[~e] = b
+        self._fp[c] = E
+        self._fp[E] = b
 
         # Face labels
         # Disabled for now
@@ -421,17 +430,17 @@ class Triangulation(object):
         # self._fl[c] = F
 
         # fix vertex perm
-        self._vp[a] = ~d
+        self._vp[a] = D
         self._vp[b] = e
-        self._vp[e] = ~a
-        self._vp[c] = ~b
-        self._vp[d] = ~e
-        self._vp[~e] = ~c
+        self._vp[e] = A
+        self._vp[c] = B
+        self._vp[d] = E
+        self._vp[E] = C
 
         # Vertex labels
         # Disabled for now
         # self._vl[e] = x
-        # self._vl[~e] = v
+        # self._vl[E] = v
 
     def to_string(self):
         r"""
