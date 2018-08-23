@@ -6,22 +6,32 @@ from array import array
 
 from .even_permutation import *
 
-def edge_label(e):
-    if e < 0: return '~%d' % (~e)
-    else: return str(e)
+# These are broken forever - we have to look at ep to do this, so give
+# up.  I haven't deleted them yet, but I will after I copy them to
+# live inside of Triangulation (where they have access to ep).
 
-def norm(e):
-    return e if e >= 0 else ~e
+#def edge_label(e):
+#    if e < 0: return '~%d' % (~e)
+#    else: return str(e)
+
+#def norm(e):
+#    return e if e >= 0 else ~e
 
 class Triangulation(object):
     r"""
-    A triangulation
+    A triangulation 
 
-    attributes
+    with attributes:
 
-    * _n  number of edges (an int)
-    * _vp  vertex permutations (an array)
+    * _n  number of half-edges (an int)
+    * _nf  number of folded edges (an int) # Perhaps we don't need this. 
+    * _vp  vertex permutation (an array)
+    * _ep  edge permutation (an array)
     * _fp  face permutation (an array)
+
+    Each of vp, ep, fp is a permutation of half-edges, given as a
+    function.  We allow folded edges; these are fixed by ep.  Thus the
+    number of half-edges may be odd.
 
     EXAMPLES::
 
@@ -42,33 +52,41 @@ class Triangulation(object):
         [(~2, ~0, ~1), (0, 1, 2)]
         sage: T.flip(0); T
         [(~2, 1, ~0), (~1, 0, 2)]
+
     """
-    __slots__ = ['_n', '_vp', '_fp']
+    __slots__ = ['_n', '_nf, ''_vp', '_ep', '_fp']
 
     def __init__(self, triangles, check=True):
         if isinstance(triangles, Triangulation):
             self._fp = triangles.face_permutation(copy=True)
+            self._ep = triangles.edge_permutation(copy=True)
         else:
-            self._fp = even_perm_init(triangles)
+            self._fp, self._ep = perm_init(triangles)
 
         fp = self._fp
+        ep = self._ep
+        n = self._n = len(fp)
+        nf = self._nf = len([i for i in range(n) if ep[i]==i])
+        
+        # TODO: face labels are disabled for now. We should actually
+        # make it a *partition* of the faces (two faces are allowed to
+        # have the same label) The trivial partition {0,1,2,...,F-1}
+        # would correspond to no labels and the atomic
+        # {{0},{1},...,{F-1}} would correspond to everybody being
+        # labelled
+        # fl = self._fl = [None] * F # face labels
 
-        n = self._n = len(fp) / 2
+        # TODO: edge labels are disabled for now. 
+        # el = self._fl = [None] * E # edge labels
 
-        base = [0] * (2 * n)
-        # TODO: face labels are disabled for now. We should
-        # actually make it a *partition* of the vertices
-        # (two vertices are allowed to have the same labels)
-        # The trivial partition {0,1,2,...,n-1} would correspond
-        # to no label and the atomic {{0},{1},...,{n-1}} would
-        # correspond to everybody labeled
-        # fl = self._fl = [None] * (2 * n)  # face labels
-        vp = self._vp = array('l', base)  # vertex permutation
+        v_base = [None] * n # Replaced 0 by None, as 0 is a possible edge label. 
+        vp = self._vp = array('l', v_base)  
 
-        for i in range(-n, n):
-            vp[fp[i]] = ~i
+        for i in range(n):
+            vp[fp[ep[i]]] = i
+
         # TODO: vertex labels are disabled for now
-        # self._vl = even_perm_cycles(vp)[1]
+        # vl = self._vl = perm_cycles(vp)[1]....
 
         if check:
             self._check()
@@ -76,45 +94,56 @@ class Triangulation(object):
     def _check(self):
         n = self._n
 
-        if not isinstance(self._fp, array) or len(self._fp) != 2*n:
-            raise RuntimeError('wrong face perm')
-        if not isinstance(self._vp, array) or len(self._vp) != 2*n:
-            raise RuntimeError('wrong vertex perm')
-        even_perm_check(self._fp)
-        even_perm_check(self._vp)
+        if not isinstance(self._fp, array) or len(self._fp) != n:
+            raise RuntimeError('broken face perm')
+        if not isinstance(self._ep, array) or len(self._ep) != n:
+            raise RuntimeError('broken edge perm')
+        if not isinstance(self._vp, array) or len(self._vp) != n:
+            raise RuntimeError('broken vertex perm')
+        perm_check(self._fp)
+        perm_check(self._ep)
+        perm_check(self._vp)
 
-        # The vertex, edge, and face permutations vp, ep (= ~), and fp
-        # must satisfy the relations ep^2 = fp^3 = ep.vp.fp = Id.
-        # Note that this is a representation of PSL(2, \ZZ) \isom
-        # S^2(2, 3, \infty) into the symmetric group.
+        # The face, edge, and vertex permutations fp, ep, and vp must
+        # satisfy the relations fp^3 = ep^2 = fp.ep.vp = Id.  Note
+        # that this is a representation of PSL(2, \ZZ) \isom S^2(2, 3,
+        # \infty) into the symmetric group (on the half edges).
 
-        for i in range(-n, n):
-            if ~self._vp[self._fp[i]] != i:
-                raise RuntimeError('vfe condition not satisfied')
+        for i in range(n):
             if self._fp[self._fp[self._fp[i]]] != i:
-                raise ValueError('not a triangulation')
+                raise RuntimeError('broken face permutation') # used to be ValueError
+            if self._ep[self._ep[i]] != i:
+                raise RuntimeError('broken edge permutation') 
+            if self._fp[self._ep[self._vp[i]]] != i:
+                raise RuntimeError('fev condition not satisfied')
 
     def __eq__(self, other):
         if type(self) != type(other):
             raise TypeError
-        return self._n == other._n and self._fp == other._fp
+        return self._n == other._n and self._fp == other._fp and self._ep == other._ep
 
     def __ne__(self, other):
         if type(self) != type(other):
             raise TypeError
-        return self._n != other._n or self._fp != other._fp
+        return self._n == other._n and self._fp != other._fp and self._ep != other._ep
     
-    def vertex_permutation(self, copy=True):
-        if copy:
-            return self._vp[:]
-        else:
-            return self._vp
-
     def face_permutation(self, copy=True):
         if copy:
             return self._fp[:]
         else:
             return self._fp
+
+    def edge_permutation(self, copy=True):
+        if copy:
+            return self._ep[:]
+        else:
+            return self._ep
+
+    def vertex_permutation(self, copy=True):
+        if copy:
+            return self._vp[:]
+        else:
+            return self._vp
 
     def faces(self):
         r"""
@@ -131,8 +160,8 @@ class Triangulation(object):
 
     def __iter__(self):
         n = self._n
-        seen = [False] * (2 * n)
-        for e in range(-n, n):
+        seen = [False] * n
+        for e in range(n):
             if seen[e]:
                 continue
             r = self._fp[e]
@@ -141,13 +170,13 @@ class Triangulation(object):
             yield (e, r, s)
 
     def __len__(self):
-        return (2 * self._n) / 3
+        return (self._n + self._nf) / 3
 
     def vertices(self):
         r"""
         Return the vertices ordered by their labels.
         """
-        l = even_perm_cycles(self._vp)[0]
+        l = perm_cycles(self._vp)[0]
         return l
 
     def __repr__(self):
