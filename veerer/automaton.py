@@ -246,7 +246,7 @@ class Automaton(object):
         if filename is not None:
             f.close()
 
-    def geometric_triangulations(self, method='LP'):
+    def geometric_triangulations(self, method=None):
         r"""
         Return the list of geometric configurations.
         """
@@ -257,6 +257,16 @@ class Automaton(object):
                 geoms.append(s)
         return geoms
 
+    def cylindrical_triangulations(self):
+        r"""
+        Return the list of cylindrical configurations.
+        """
+        cylindricals = []
+        for s in self:
+            c = ColouredTriangulation.from_string(s)
+            if c.is_cylindrical():
+                cylindricals.append(s)
+        return cylindricals
 
     @classmethod
     def from_triangulation(self, T, verbose=0, mode='core', **kwargs):
