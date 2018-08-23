@@ -1,7 +1,7 @@
 
 from __future__ import print_function, absolute_import
 
-import sys
+import os, sys, shutil
 from time import time
 
 from .coloured_triangulation import ColouredTriangulation, ngon
@@ -153,7 +153,7 @@ class Automaton(object):
             aut[a] = T.iso_sig()
         return aut
 
-    def export_dot(self, filename=None):
+    def export_dot(self, filename=None, triangulations=False):
         r"""
         Write dot data into the file ``filename``.
 
@@ -172,20 +172,33 @@ class Automaton(object):
 
         - ``filename`` - an optional filename
 
+        - ``triangulations`` - boolean - if set to ``True`` then an svg image is
+          generated for each triangulation with proper link. If the dot file is
+          compiled in svg format then clicking on a vertex will open the picture
+          of the triangulation.
+
         EXAMPLES::
 
             sage: from veerer import *
 
-            sage: filename = tmp_filename()
+            sage: filename = tmp_filename() + '.dot'
             sage: T = ColouredTriangulation.from_string('RBRBRBBRR_gjabprdhcfeonmlkiq')
             sage: A = Automaton.from_triangulation(T)
             sage: A.export_dot(filename)
         """
         if filename is not None:
+            if not filename.endswith('.dot'):
+                raise ValueError('the filename should ends with .dot')
             f = open(filename, 'w')
+            path = filename[:-4]
+            rel_path = os.path.split(path)[-1]
+        elif triangulations:
+            raise ValueError
         else:
-            import sys
             f = sys.stdout
+
+        if triangulations:
+            os.mkdir(path)
 
         seed = min(self._graph)
         f.write('/**********************************************************************/\n')
@@ -193,7 +206,7 @@ class Automaton(object):
         f.write('/*                                                                    */\n')
         f.write('/* To compile the file to pdf run                                     */\n')
         f.write('/*                                                                    */\n')
-        f.write('/*    $ sfdp -Tpdf -o test.pdf test.dot                               */\n')
+        f.write('/*    $ sfdp -Tpdf -o file.pdf file.dot                               */\n')
         f.write('/*                                                                    */\n')
         seed_line = '/* seed: %s' % min(self._graph)
         seed_line += ' ' * (70 - len(seed_line)) + '*/\n'
@@ -203,14 +216,28 @@ class Automaton(object):
         f.write('\n')
 
         f.write('digraph MyGraph {\n')
+        f.write(' node [shape=circle style=filled margin=0 width=0 height=0]\n')
         for g in self._iso_sigs:
             T = ColouredTriangulation.from_iso_sig(g)
+            if triangulations:
+                t_filename = os.path.join(path, g + '.svg')
+                t_rel_filename = os.path.join(rel_path, g + '.svg')
+                F = T.flat_structure_min()
+                F.set_pos(cylinders=T.cylinders(BLUE) + T.cylinders(RED))
+                F.plot().save(t_filename)
+
+            typ = 0
             if T.is_geometric():
-                colour = TYPE_COLOURS[GEOMETRIC]
-            else:
-                colour = TYPE_COLOURS[CORE]
+                typ |= GEOMETRIC
+            if T.is_cylindrical():
+                typ |= CYLINDRICAL
+            colour = TYPE_COLOURS[typ]
+
             aut_size = len(T.automorphisms())
-            f.write('    %s [label="%d", style=filled, color="%s"];\n' % (g, aut_size, colour))
+            if triangulations:
+                f.write("""    %s [label="%d" style=filled color="%s" tooltip="%s" href="%s"];\n""" % (g, aut_size, colour, g, t_rel_filename))
+            else:
+                 f.write('    %s [label="%d" color="%s"];\n' % (g, aut_size, colour))
 
             for gg, old_col, new_col in self._graph[g]:
                 f.write('    %s -> %s [color="%s;%f:%s"];\n' % (g, gg, old_col, 0.5, new_col))
