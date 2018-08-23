@@ -332,7 +332,7 @@ class ColouredTriangulation(object):
 
             angles.append(a/2)
 
-        return angles + [1]*self.num_folded_edges()
+        return angles + [1]*self._triangulation.num_folded_edges()
 
     def is_abelian(self):
         r"""
@@ -415,9 +415,10 @@ class ColouredTriangulation(object):
             return AbelianStratum([(a-2)/2 for a in A])
 
     def stratum_dimension(self):
+        # each folded edge gives a pole
         dim1 = 2*self._triangulation.genus() - 2 \
                + self._triangulation.num_vertices() \
-               + self._triangulation.num_folded_edges() \ # poles!
+               + self._triangulation.num_folded_edges() \
                + (1 if self.is_abelian() else 0)
         dim2 = self.stratum().dimension()
         assert dim1 == dim2
