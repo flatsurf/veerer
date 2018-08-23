@@ -1515,21 +1515,19 @@ class ColouredTriangulation(object):
             return self.train_track_polytope(HORIZONTAL).affine_dimension() == d and \
                    self.train_track_polytope(VERTICAL).affine_dimension() == d
         elif method == 'LP':
-            from . import HAS_SAGE
-            if not HAS_SAGE:
-                raise ValueError('the option LP is only available in SageMath')
-            from sage.numerical.mip import MixedIntegerLinearProgram, MIPSolverException
+            try:
+                import ppl
+            except ImportError:
+                raise ImportError('pplpy is not installed on your computer. Follow '
+                                  'the instructions at https://gitlab.com/videlec/pplpy')
 
             n = self._triangulation.num_edges()
+            x = [ppl.Variable(i) for i in range(n)]
             for slope in (HORIZONTAL, VERTICAL):
-                M = MixedIntegerLinearProgram(maximization=False)
-                x = M.new_variable()
-                M.set_objective(M.sum(x[e] for e in range(n))) # try to minimize length
+                M = ppl.MIP_Problem(n)
                 self._set_train_track_constraints(M.add_constraint, x, slope, True, False)
 
-                try:
-                    M.solve()
-                except MIPSolverException:
+                if M.solve()['status'] == 'unfeasible':
                     return False
 
             return True
@@ -1537,15 +1535,14 @@ class ColouredTriangulation(object):
         else:
             raise ValueError("method must be either 'polytope' or 'LP'")
 
-    def is_geometric(self, method='polytope'):
+    def is_geometric(self, method=None):
         r"""
         Test whether this coloured triangulation is geometric.
 
         INPUT:
 
         - ``method`` - string - either ``'polytope'`` or ``'LP'`` (linear
-          programming). The linear programming is much faster in large
-          dimension.
+          programming).
 
         EXAMPLES::
 
@@ -1574,35 +1571,43 @@ class ColouredTriangulation(object):
             sage: T = ColouredTriangulation.from_stratum(AbelianStratum(1,1))
             sage: for _ in range(100):
             ....:     T.random_forward_flip()
-            ....:     assert T.is_geometric('LP') == T.is_geometric('polytope'), T.to_string()
+            ....:     test1 = T.is_geometric('LP')
+            ....:     test2 = T.is_geometric('polytope')
+            ....:     test3 = T.is_geometric('polytope2')
+            ....:     assert test1 == test2 == test3, T.to_string()
 
             sage: T = ColouredTriangulation.from_stratum(QuadraticStratum(1,1,1,1))
             sage: for _ in range(100):
             ....:     T.random_forward_flip()
-            ....:     assert T.is_geometric('LP') == T.is_geometric('polytope'), T.to_string()
+            ....:     test1 = T.is_geometric('LP')
+            ....:     test2 = T.is_geometric('polytope')
+            ....:     test3 = T.is_geometric('polytope2')
+            ....:     assert test1 == test2 == test3, T.to_string()
         """
-        if method == 'polytope':
+        if method is None or method == 'polytope':
             d = self.stratum().dimension()
+            return self.geometric_polytope().affine_dimension() == 2*d
+        elif method == 'polytope2':
             return not self.geometric_polytope(1,1,1).is_empty()
         elif method == 'LP':
-            from . import HAS_SAGE
-            if not HAS_SAGE:
-                raise ValueError('the option LP is only available in SageMath')
-            from sage.numerical.mip import MixedIntegerLinearProgram, MIPSolverException
+            raise RuntimeError
+            try:
+                import ppl
+            except ImportError:
+                raise ImportError('pplpy is not installed on your computer. Follow '
+                                  'the instructions at https://gitlab.com/videlec/pplpy')
 
-            M = MixedIntegerLinearProgram()
-            x = M.new_variable(integer=False, nonnegative=True)
-            y = M.new_variable(integer=False, nonnegative=True)
+            n = self._triangulation.num_edges()
+            M = ppl.MIP_Problem(2*n)
+            x = [ppl.Variable(i) for i in range(n)]
+            y = [ppl.Variable(n+i) for i in range(n)]
 
             self._set_train_track_constraints(M.add_constraint, x, VERTICAL, True, False)
             self._set_train_track_constraints(M.add_constraint, y, HORIZONTAL, True, False)
             self._set_geometric_constraints(M.add_constraint, x, y, True)
 
-            try:
-                M.solve()
-                return True
-            except MIPSolverException:
-                return False
+            return M.solve()['status'] != 'unfeasible'
+
         else:
             raise ValueError("method must be 'polytope' or 'LP'")
 
