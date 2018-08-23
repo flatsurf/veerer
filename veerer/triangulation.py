@@ -7,9 +7,11 @@ from __future__ import absolute_import, print_function
 from array import array
 from .permutation import *
 
+# TODO: to be removed
 def edge_label(e):
     raise ValueError
 
+# TODO: to be removed
 def norm(e):
     raise ValueError
 
@@ -210,14 +212,40 @@ class Triangulation(object):
                 raise RuntimeError('fev relation not satisfied')
 
     def __eq__(self, other):
+        r"""
+        TESTS::
+
+            sage: from veerer import *
+
+            sage: T1 = Triangulation("(0,1,2)(~0,~1,~2)")
+            sage: T2 = Triangulation("(0,1,2)(~0,~1,~2)")
+            sage: T3 = Triangulation("(0,1,2)(~0,~2,~1)")
+            sage: T1 == T2
+            True
+            sage: T1 == T3
+            False
+        """
         if type(self) != type(other):
             raise TypeError
         return self._n == other._n and self._fp == other._fp and self._ep == other._ep
 
     def __ne__(self, other):
+        r"""
+        TESTS::
+
+            sage: from veerer import *
+
+            sage: T1 = Triangulation("(0,1,2)(~0,~1,~2)")
+            sage: T2 = Triangulation("(0,1,2)(~0,~1,~2)")
+            sage: T3 = Triangulation("(0,1,2)(~0,~2,~1)")
+            sage: T1 != T2
+            False
+            sage: T1 != T3
+            True
+        """
         if type(self) != type(other):
             raise TypeError
-        return self._n == other._n and self._fp != other._fp and self._ep != other._ep
+        return self._n != other._n or self._fp != other._fp or self._ep != other._ep
 
     def copy(self):
         r"""
@@ -542,9 +570,25 @@ class Triangulation(object):
             sage: T = Triangulation("(0,1,2)(~0,~4,~2)(3,4,5)(~3,~1,~5)")
             sage: T.conjugate()
             sage: T
-            [(~5, ~4, ~3), (~2, ~1, ~0), (0, 2, 4), (1, 3, 5)]
-
+            [(0, 2, 4), (1, 3, 5), (~5, ~4, ~3), (~1, ~0, ~2)]
         """
-        raise NotImplementedError
-        self._fp = even_perm_conjugate(even_perm_invert(self._fp))
-        self._vp = even_perm_invert(self._vp)
+        # for reference
+        #
+        # x<----------x     x
+        # |     a    ^^     ^\
+        # |         /       | \
+        # |        /        |  \
+        # |       /         |   \
+        # |b    c/      --> |    \
+        # |     /           |     \
+        # |    /            |B    C\
+        # |   /             |       \
+        # |  /              |        \
+        # | /               |         \
+        # v/                |     A    v
+        # x                 x<----------x
+        #
+        # (a, b, c)     -->  (C, B, A)
+
+        self._fp = perm_conjugate(perm_invert(self._fp), self._ep)
+        self._vp = perm_invert(self._vp)
