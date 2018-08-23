@@ -19,19 +19,40 @@ from .even_permutation import *
 
 class Triangulation(object):
     r"""
-    A triangulation 
+    A triangulation of an oriented surface
 
     with attributes:
 
     * _n  number of half-edges (an int)
-    * _nf  number of folded edges (an int) # Perhaps we don't need this. 
     * _vp  vertex permutation (an array)
     * _ep  edge permutation (an array)
     * _fp  face permutation (an array)
 
-    Each of vp, ep, fp is a permutation of half-edges, given as a
-    function.  We allow folded edges; these are fixed by ep.  Thus the
-    number of half-edges may be odd.
+    Each of vp, ep, fp is a permutation of oriented half-edges (aka
+    "darts"), given as a function.  Our conventions for the
+    permutations are set out in the following figure:
+
+          ~b           
+        ----->         
+    w-----------*-----------v
+     \             <-----  /  
+      \ \             b   / /
+       \ \ c             / /~a
+        \ \     F       / /
+         \ v           / v 
+          *         ^ *  
+         ^ \       / /
+          \ \   a / /
+         ~c\ \   / /
+            \ \   /
+               \ /
+                u
+
+    Here the face permutation sends a to b, b to c, and c to a.  The
+    vertex permutation send a to ~c, b to ~a, and c to ~b.  The edge
+    permutation interchanges e and ~e for every edge; the edge e is
+    folded if and only if e = ~e.  Thus folded edges are fixed by the
+    edge permutation.
 
     EXAMPLES::
 
@@ -54,7 +75,7 @@ class Triangulation(object):
         [(~2, 1, ~0), (~1, 0, 2)]
 
     """
-    __slots__ = ['_n', '_nf, ''_vp', '_ep', '_fp']
+    __slots__ = ['_n', '_vp', '_ep', '_fp']
 
     def __init__(self, triangles, check=True):
         if isinstance(triangles, Triangulation):
@@ -66,7 +87,6 @@ class Triangulation(object):
         fp = self._fp
         ep = self._ep
         n = self._n = len(fp)
-        nf = self._nf = len([i for i in range(n) if ep[i]==i])
         
         # TODO: face labels are disabled for now. We should actually
         # make it a *partition* of the faces (two faces are allowed to
@@ -145,16 +165,36 @@ class Triangulation(object):
         else:
             return self._vp
 
+    def num_half_edges(self):
+        return self._n
+
+    def folded_edges(self):
+        n = self._n
+        ep = self._ep
+        return [i for i in range(n) if ep[i]==i]
+        
+    def num_folded_edges(self):
+        return len(self.folded_edges())
+
+    def num_edges(self):
+        return (self._n + self.num_folded_edges()) / 2
+        
+    def num_faces(self):
+        return self._n / 3
+    
+
+
     def faces(self):
         r"""
-        Return the list faces as triple of signed integers.
+        Return the list of faces as triples of (labels of) half-edges
 
         EXAMPLES::
 
             sage: from veerer import *
-            sage: t = Triangulation([1, 2, 0, -1, -3, -2])
+            sage: t = Triangulation([1, 2, 0, -1, -3, -2]) # Fix
             sage: t.faces()
             [(-3, -1, -2), (0, 1, 2)]
+
         """
         return list(self)
 
@@ -168,9 +208,9 @@ class Triangulation(object):
             s = self._fp[r]
             seen[e] = seen[r] = seen[s] = True
             yield (e, r, s)
-
+            
     def __len__(self):
-        return (self._n + self._nf) / 3
+        return (self._n + self.num_folded_edges()) / 3
 
     def vertices(self):
         r"""
@@ -179,8 +219,17 @@ class Triangulation(object):
         l = perm_cycles(self._vp)[0]
         return l
 
+    def _edge_rep(self, e):
+        f = self._ep[e]
+        if f < e: return '~%d' % f
+        else: return str(e)
+
+    def _norm(self, e):
+        f = self._ep[e]
+        return f if f < e else e
+
     def __repr__(self):
-        l = self.faces()
+        l = self.faces()        
         return '[' + ', '.join('(' + ', '.join(edge_label(e) for e in f) + ')' for f in l) + ']'
 
     def copy(self):
@@ -205,12 +254,6 @@ class Triangulation(object):
 
     def num_vertices(self):
         return len(self.vertices())
-
-    def num_edges(self):
-        return self._n
-
-    def num_faces(self):
-        return len(self.faces())
 
     def euler_characteristic(self):
         return self.num_faces() - self.num_edges()
