@@ -6,15 +6,14 @@ from array import array
 
 from .even_permutation import *
 
-# These are broken forever - we have to look at ep to do this, so give
-# up.  I haven't deleted them yet, but I will after I copy them to
-# live inside of Triangulation (where they have access to ep).
+# To be deleted.
 
 def edge_label(e):
     raise ValueError
 
 def norm(e):
     raise ValueError
+
 class Triangulation(object):
     r"""
     A triangulation of an oriented surface
@@ -358,7 +357,7 @@ class Triangulation(object):
 
         # Vertex labels
         # self._vl[e] = x
-        # self._vl[~e] = v
+        # self._vl[E] = v
 
     def back_flip(self, e):
         r"""
@@ -474,9 +473,9 @@ class Triangulation(object):
         r"""
         Conjugate this triangulation.
 
-        The face perm is replaced by its inverse and conjugated by the
-        ~ operation and the vertex permutation is replaced by its
-        inverse.
+        The face permutation is replaced by its inverse, conjugated by
+        the edge permutation. The vertex permutation is replaced by
+        its inverse.
 
         EXAMPLES::
 
@@ -486,6 +485,7 @@ class Triangulation(object):
             sage: T.conjugate()
             sage: T
             [(~5, ~4, ~3), (~2, ~1, ~0), (0, 2, 4), (1, 3, 5)]
+
         """
         self._fp = even_perm_conjugate(even_perm_invert(self._fp))
         self._vp = even_perm_invert(self._vp)
