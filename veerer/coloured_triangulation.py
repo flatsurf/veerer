@@ -10,7 +10,7 @@ from itertools import product
 from .constants import *
 from .even_permutation import *
 from .misc import det2
-from .triangulation import Triangulation, edge_label, norm
+from .triangulation import Triangulation
 
 def dot(A, B):
     return sum(a*b for a, b in zip(A, B))
@@ -18,11 +18,10 @@ def dot(A, B):
 def best_rotation(X):
     return min(X[i:] + X[:i] for i in range(len(X)))
 
-def edge_label(i):
-    if i < 0:
-        return "~%d" % (~i)
-    else:
-        return str(i)
+# To be deleted.
+
+def edge_label(e):
+    raise ValueError
 
 class ColouredTriangulation(object):
     r"""
@@ -62,24 +61,30 @@ class ColouredTriangulation(object):
 
         if isinstance(colouring, str):
             colouring = [RED if c == 'R' else BLUE for c in colouring]
-
-        self._colouring = colouring + colouring[::-1] # A list : edge_indices --> {Red, Blue}
+        
+        n = self._triangulation.num_half_edges()
+        # A list : edge_indices --> {Red, Blue}
+        self._colouring = [colouring[self._triangulation._norm(i)] for i in range(n)]
 
         if check:
-            n = self._triangulation.num_edges()
             assert(all(colour in COLOURS for colour in self._colouring))
-            assert(len(self._colouring) == 2 * n)
             for col in self._colouring:
                 assert col == BLUE or col == RED
 
             cols = set([RED, BLUE])
             # no monochromatic face
-            for F in self._triangulation.faces():
-                assert set(self._colouring[e] for e in F) == cols
+            for f in self._triangulation.faces():
+                assert set(self._colouring[e] for e in f) == cols
 
             # no monochromatic vertex
-            for V in self._triangulation.vertices():
-                assert set(self._colouring[e] for e in V) == cols
+            for v in self._triangulation.vertices():
+                assert set(self._colouring[e] for e in v) == cols
+
+    def _edge_rep(self, e):
+        return self._triangulation._edge_rep(e)
+
+    def _norm(self, e):
+        return self._triangulation._norm(e)
 
     @classmethod
     def from_pseudo_anosov(cls, h):
@@ -99,13 +104,13 @@ class ColouredTriangulation(object):
             [(~5, ~3, ~1), (~4, 1, ~0), (~2, 0, 3), (2, 5, 4)],
             ['Blue', 'Blue', 'Blue', 'Red', 'Red', 'Blue']
         """
-        f = h.flat_structure()
-        n = f.triangulation.zeta
+        FS = h.flat_structure()
+        n = FS.triangulation.zeta
 
         X = {i.label: e.x for i,e in f.edge_vectors.iteritems()}
         Y = {i.label: e.y for i,e in f.edge_vectors.iteritems()}
 
-        triangles = [[x.label for x in t] for t in f.triangulation]
+        triangles = [[x.label for x in t] for t in FS.triangulation]
         colours = [RED if X[e]*Y[e] > 0 else BLUE for e in range(n)]
         return ColouredTriangulation(triangles, colours)
 
@@ -268,7 +273,7 @@ class ColouredTriangulation(object):
         return T
 
     def __str__(self):
-        n = self._triangulation.num_edges()
+        n = self._triangulation.num_edges() 
         return str(self._triangulation) + ', ' + str(self._colouring[:n])
 
     def __repr__(self):
@@ -280,10 +285,12 @@ class ColouredTriangulation(object):
 
     def angles(self):
         r"""
-        Return the list of angles.
+        Return the list of angles (divided by \pi). 
 
         Note that the vertices of the triangulation are labeled. The
-        angles are given in the same order.
+        angles are given in the same order.  
+
+        # ??? Confused - there is no labelling yet. 
 
         EXAMPLES::
 
@@ -305,11 +312,11 @@ class ColouredTriangulation(object):
             sage: T.angles()
             [3, 1, 1, 1, 1, 1]
         """
-        n = self._triangulation.num_edges()
+        n = self._triangulation.num_half_edges()
         angles = []
-        seen = [False] * (2 * n)
+        seen = [False] * n
         vp = self._triangulation.vertex_permutation()
-        for e in range(-n, n):
+        for e in range(n):
             if seen[e]: continue
 
             a = 0
@@ -325,7 +332,7 @@ class ColouredTriangulation(object):
 
             angles.append(a/2)
 
-        return angles
+        return angles + [1]*self.num_folded_edges()
 
     def is_abelian(self):
         r"""
@@ -350,14 +357,18 @@ class ColouredTriangulation(object):
             sage: T.is_abelian()
             False
         """
+        if self._triangulation.num_folded_edges() > 0:
+            return False
+        
+        ep = self._triangulation.edge_permutation()
         vp = self._triangulation.vertex_permutation()
 
         # Perform BFS to check that we can coherently orient the
         # imaginary part of each edge
-        oris = [None] * (2 * self._triangulation.num_edges())
+        oris = [None] * self._triangulation.num_half_edges()
         oris[0] = True   # = going up
-        oris[~0] = False # = going down
-        q = [0, ~0]
+        oris[ep[0]] = False # = going down
+        q = [0, ep[0]]
         while q:
             e0 = q.pop()
             o = oris[e0]
@@ -368,10 +379,10 @@ class ColouredTriangulation(object):
                 if self._colouring[e] == BLUE and self._colouring[f] == RED:
                     o = not o
                 oris[f] = o
-                if oris[~f] is None:
-                    q.append(~f)
-                    oris[~f]= not o
-                elif oris[~f] == oris[f]:
+                if oris[ep[f]] is None:
+                    q.append(ep[f])
+                    oris[ep[f]]= not o
+                elif oris[ep[f]] == oris[f]:
                     return False
                 e,f = f, vp[f]
 
@@ -404,7 +415,10 @@ class ColouredTriangulation(object):
             return AbelianStratum([(a-2)/2 for a in A])
 
     def stratum_dimension(self):
-        dim1 = 2*self._triangulation.genus() - 2 + self._triangulation.num_vertices() + (1 if self.is_abelian() else 0)
+        dim1 = 2*self._triangulation.genus() - 2 \
+               + self._triangulation.num_vertices() \
+               + self._triangulation.num_folded_edges() \ # poles!
+               + (1 if self.is_abelian() else 0)
         dim2 = self.stratum().dimension()
         assert dim1 == dim2
         return dim1
@@ -524,12 +538,13 @@ class ColouredTriangulation(object):
         starts = []
         best_word = None
 
-        n = self._triangulation.num_edges()
+        n = self._triangulation.num_half_edges()
         vp = self._triangulation.vertex_permutation(copy=False)
         cols = self._colouring
 
         # first run: compare edges using colors and vertex permutation orbits
-        for e in range(-n, n):
+        # FIX: Take advantage of folded edges, if they are present?
+        for e in range(n):
             if cols[e] != RED:
                 continue
             f = vp[e]
@@ -588,13 +603,14 @@ class ColouredTriangulation(object):
 #            return starts
 #
 #        # try to break using vef orbits
+#        ep = self._triangulation.edge_permutation(copy=False)
 #        best_word = None
 #        for e in starts:
-#            f = vp[~fp[e]]
+#            f = vp[ep[fp[e]]]
 #            w = [cols[e]]
 #            while f != e:
 #                w.append(cols[f])
-#                f = vp[~fp[f]]
+#                f = vp[ep[fp[f]]]
 #
 #            if best_word is None or w < best_word:
 #                new_starts = [e]
@@ -620,13 +636,14 @@ class ColouredTriangulation(object):
             sage: T.relabel([2, -2, -1, 0, 1, -3])
             [(~2, 0, ~1), (~0, 1, 2)], ['Blue', 'Blue', 'Red']
         """
-        n = self._triangulation.num_edges()
-        if len(p) != 2*n:
+        n = self._triangulation.num_half_edges()
+        ep = self._triangulation.edge_permutation()
+        if len(p) != n:
             raise ValueError('invalid relabeling permutation')
         colours = [None] * n
-        for i in range(-n,n):
+        for i in range(n):
             j = int(p[i])
-            if ~j != int(p[~i]):
+            if ep[j] != int(p[ep[i]]):
                 raise ValueError('invalid relabeling permutation')
             if j >= 0:
                 colours[j] = self._colouring[i]
@@ -636,33 +653,40 @@ class ColouredTriangulation(object):
         return ColouredTriangulation(triangles, colours)
 
     def _relabelling_from(self, start_edge):
-        n = self._triangulation.num_edges()
+        n = self._triangulation.num_half_edges()
+        ep = self._triangulation.edge_permutation()
         vp = self._triangulation.vertex_permutation()
-
-        relabelling = [None] * (2*n)
+        
+        k = 0 # current available label at the front. 
+        m = n - 1 # current available label at the back. 
+        relabelling = [None] * n
         relabelling[start_edge] = 0
-        relabelling[~start_edge] = ~0
-
-        k = 1  # current new label
+        k = k + 1
+        if ep[start_edge] != start_edge:
+            relabelling[ep[start_edge]] = m
+            m = m - 1
 
         to_process = []
         to_process.append(start_edge)
-        to_process.append(~start_edge)
+        if ep[start_edge] != start_edge:
+            to_process.append(ep[start_edge])
         while to_process:
             e0 = to_process.pop()
             e = vp[e0]
             while e != e0:
                 if relabelling[e] is None:
                     relabelling[e] = k
-                    relabelling[~e] = ~k
-                    k += 1
-                    to_process.append(~e)
+                    k = k + 1
+                    if ep[e] != e:
+                        relabelling[ep[e]] = m
+                        m = m - 1
+                    to_process.append(ep[e])
                 e = vp[e]
 
         return relabelling
 
     def best_relabelling(self):
-        n = self._triangulation.num_edges()
+        n = self._triangulation.num_half_edges()
         fp = self._triangulation.face_permutation(copy=False)
         best = None
 
@@ -670,15 +694,16 @@ class ColouredTriangulation(object):
             relabelling = self._relabelling_from(start_edge)
 
             # relabelled face permutation
-            fp_new = [None] * (2*n)
-            for e in range(-n, n):
+            fp_new = [None] * n
+            for e in range(n):
                 #fp_new[e] = relabelling[fp[inv_relabelling[e]]]
                 fp_new[relabelling[e]] = relabelling[fp[e]]
 
             # relabelled colouring
             colouring_new = [None] * n
             for e in range(n):
-                colouring_new[norm(relabelling[e])] = self._colouring[e]
+#                colouring_new[self._norm(relabelling[e])] = self._colouring[e]
+                colouring_new[relabelling[e]] = self._colouring[e]
 
             T = (colouring_new, fp_new)
             if best is None or T < best:
@@ -715,25 +740,26 @@ class ColouredTriangulation(object):
             sage: print(len(T.automorphisms()))
             10
         """
-        n = self._triangulation.num_edges()
+        n = self._triangulation.num_half_edges()
         fp = self._triangulation.face_permutation(copy=False)
 
         best = None
         best_relabellings = []
 
-        fp_new = [None] * (2*n)
+        fp_new = [None] * n
         colouring_new = [None] * n
         for start_edge in self.good_starts():
             relabelling = self._relabelling_from(start_edge)
 
             # relabelled face permutation
-            for e in range(-n, n):
+            for e in range(n):
                 #fp_new[e] = relabelling[fp[inv_relabelling[e]]]
                 fp_new[relabelling[e]] = relabelling[fp[e]]
 
             # relabelled colouring
             for e in range(n):
-                colouring_new[norm(relabelling[e])] = self._colouring[e]
+                # removed norm... 
+                colouring_new[relabelling[e]] = self._colouring[e]
 
             T = (colouring_new, fp_new)
             if best is None or T == best:
@@ -807,10 +833,11 @@ class ColouredTriangulation(object):
         nb_faces = 0  # faces stabilized
         nb_edges = 0  # edges stabilized
 
-        n = self._n
+        n = self._n # ???
+        ep = self._triangulation.edge_permutation()
 
         # edges
-        nb_edges = sum(aut[e] == ~e or aut[e] == e for e in range(n))
+        nb_edges = sum(aut[e] == ep[e] or aut[e] == e for e in range(n))
 
         # vertices
         verts, edge_to_vert = even_perm_cycles(self._vp)
@@ -900,8 +927,6 @@ class ColouredTriangulation(object):
         r"""
         Return a canonically labeled isomorphic coloured triangulation.
         """
-        n = self._triangulation.num_edges()
-        s = self.iso_sig()
         return ColouredTriangulation.from_iso_sig(self.iso_sig())
 
     def is_isomorphic_to(self, other):
@@ -918,7 +943,7 @@ class ColouredTriangulation(object):
 #    def self_isometries(self):
 #        return self.isometries_to(self)
 
-    def flip(self, i, col):
+    def flip(self, e, col):
         r"""
         Flip an edge inplace.
 
@@ -937,11 +962,12 @@ class ColouredTriangulation(object):
             sage: T.flip(2, BLUE); T
             [(~2, 0, ~1), (~0, 1, 2)], ['Red', 'Blue', 'Blue']
         """
-        i = int(i)
-        assert(self.is_flippable(i))
+        e = int(e)
+        assert(self.is_flippable(e))
+        E = self._triangulation.edge_permutation()[e]
 
-        self._triangulation.flip(i)
-        self._colouring[i] = self._colouring[~i] = col
+        self._triangulation.flip(e)
+        self._colouring[e] = self._colouring[E] = col
 
     def cylinders(self, col):
         r"""
@@ -987,13 +1013,14 @@ class ColouredTriangulation(object):
             sage: T.cylinders(RED)
             []
         """
-        n = self._triangulation.num_edges()
+        n = self._triangulation.num_half_edges()
         fp = self._triangulation.face_permutation(copy=False)
+        ep = self._triangulation.edge_permutation(copy=False)
         cols = self._colouring
 
         cylinders = []
 
-        seen = [False] * (2*n)
+        seen = [False] * n
         for a in range(n):
             if seen[a]:
                 continue
@@ -1003,7 +1030,7 @@ class ColouredTriangulation(object):
             c = fp[b]
             if seen[a] or seen[b] or seen[c] or \
                (cols[a] == col) + (cols[b] == col) + (cols[c] == col) != 2:
-                seen[a] = seen[~a] = seen[b] = seen[~b] = seen[c] = seen[~c] = True
+                seen[a] = seen[ep[a]] = seen[b] = seen[ep[b]] = seen[c] = seen[ep[c]] = True
                 continue
 
             # find an edge to cross
@@ -1016,11 +1043,11 @@ class ColouredTriangulation(object):
             cc = []  # cycle to be stored
             cyl = True
             while not seen[door]:
-                seen[door] = seen[~door] = True
+                seen[door] = seen[ep[door]] = True
                 cc.append(door)
 
                 # pass through the door
-                a = ~door
+                a = ep[door]
                 b = fp[a]
                 c = fp[b]
                 if cols[b] == col:
@@ -1053,11 +1080,11 @@ class ColouredTriangulation(object):
         if col is None:
             return self.is_cylindrical(BLUE) or self.is_cylindrical(RED)
 
-        n = self._triangulation.num_edges()
+        n = self._triangulation.num_half_edges()
         fp = self._triangulation.face_permutation(copy=False)
         cols = self._colouring
-        seen = [False] * (2 * n)
-        for a in range(-n, n):
+        seen = [False] * n
+        for a in range(n):
             if seen[a]:
                 continue
             b = fp[a]
@@ -1066,7 +1093,7 @@ class ColouredTriangulation(object):
                 return False
         return True
 
-    def back_flip(self, i, col):
+    def back_flip(self, e, col):
         r"""
         Flip backward an edge in place
 
@@ -1086,11 +1113,12 @@ class ColouredTriangulation(object):
             sage: T == T0
             True
         """
-        i = int(i)
-        assert(self.is_flippable(i))
-
+        e = int(e)
+        assert(self.is_flippable(e))
+        E = self._triangulation.edge_permutation()[e]
+        
         self._triangulation.back_flip(i)
-        self._colouring[i] = self._colouring[~i] = col
+        self._colouring[e] = self._colouring[E] = col
 
     def _set_train_track_constraints(self, insert, x, slope, low_bound, allow_degenerations):
         r"""
@@ -1189,9 +1217,9 @@ class ColouredTriangulation(object):
                 l,s1,s2 = j,k,i
             else:
                 raise ValueError('can not determine the big edge on triangle (%s, %s, %s)' %
-                                 (edge_label(i), edge_label(j), edge_label(k)))
+                                 (self_.edge_rep(i), self._edge_rep(j), self._edge_rep(k)))
 
-            insert(x[norm(l)] == x[norm(s1)] + x[norm(s2)])
+            insert(x[self._norm(l)] == x[self._norm(s1)] + x[self._norm(s2)])
 
     def _set_geometric_constraints(self, insert, x, y, hw_bound=0):
         r"""
@@ -1219,11 +1247,11 @@ class ColouredTriangulation(object):
             [x1 <= y0 + y2, y0 <= x1 + x2]
         """
         for e in self.forward_flippable_edges():
-            a,b,c,d = self._triangulation.square_about_edge(e)
-            insert(x[norm(e)] <= y[norm(a)] + y[norm(d)] - hw_bound)
+            a, b, c, d = self._triangulation.square_about_edge(e)
+            insert(x[self._norm(e)] <= y[self._norm(a)] + y[self._norm(d)] - hw_bound)
         for e in self.backward_flippable_edges():
-            a,b,c,d = self._triangulation.square_about_edge(e)
-            insert(y[norm(e)] <= x[norm(a)] + x[norm(d)] - hw_bound)
+            a, b, c, d = self._triangulation.square_about_edge(e)
+            insert(y[self._norm(e)] <= x[self._norm(a)] + x[self._norm(d)] - hw_bound)
 
     def train_track_polytope(self, slope=VERTICAL, low_bound=0):
         r"""
@@ -1378,7 +1406,8 @@ class ColouredTriangulation(object):
                 vectors[k] = -vectors[k]
             if vectors[i] + vectors[j] + vectors[k]:
                 raise RuntimeError('bad vectors for %s:\n vec[%s] = %s\n vec[%s] = %s\n vec[%s] = %s' \
-                                   % (self.to_string(), edge_label(i), vectors[i], edge_label(j), vectors[j], edge_label(k), vectors[k]))
+                                   % (self.to_string(), self._edge_rep(i), vectors[i], self._edge_rep(j), \
+                                      vectors[j], self._edge_rep(k), vectors[k]))
 
             if det2(vectors[k], vectors[i]) < 0:
                 raise RuntimeError
@@ -1662,11 +1691,13 @@ class ColouredTriangulation(object):
         # TODO: we want the._colouring to also take care of negative edges
         # (bad alternative: take "norm" function from flipper)
         colouring = self._colouring
-
+        edge_rep = self._edge_rep
+        ep = self._triangulation.edge_permutation()
+        
         if verbose:
-            print('[edge_has_curve] checking edge %s with color %s' % (edge_label(e), colouring[e]))
+            print('[edge_has_curve] checking edge %s with color %s' % (edge_rep(e), colouring[e]))
 
-        a,b,c,d = self._triangulation.square_about_edge(e)
+        a, b, c, d = self._triangulation.square_about_edge(e)
         if colouring[a] == BLUE:
             POS, NEG = BLUE, RED
             if verbose:
@@ -1683,55 +1714,54 @@ class ColouredTriangulation(object):
 
         if colouring[e] == NEG:
             start = b
-            end = ~d
+            end = ep[d]
             if verbose:
                 print('[edge_has_curve] try to find path from b=%s to ~d=%s' %
-                         (edge_label(start), edge_label(end)))
+                         (edge_rep(start), edge_rep(end)))
         else:
             start = a
-            end = ~c
+            end = ep[c]
             if verbose:
                 print('[edge_has_curve] try to find path from a=%s to ~c=%s' %
-                         (edge_label(start), edge_label(end)))
+                         (edge_rep(start), edge_rep(end)))
 
         if start == end:
             return True
 
-        n = self._triangulation.num_edges()
+        n = self._triangulation.num_half_edges()
         fp = self._triangulation.face_permutation()
-        seen = [False] * (2 * n)
+        seen = [False] * n
         seen[start] = True
         q = deque()
         q.append(start)
         while q:
             f = q.popleft()
             if verbose:
-                print('[edge_has_curve] crossing %s' % edge_label(f))
+                print('[edge_has_curve] crossing %s' % edge_rep(f))
 
-            # NOTE: would be much nicer to have a face permutation!
             # here we set r and s so that the triangle is (r, s, ~f)
-            r = fp[~f]
+            r = fp[ep[f]]
             s = fp[r]
             if verbose:
-                print('[edge_has_curve] switch with r=%s s=%s' % (edge_label(r), edge_label(s)))
-            if not seen[r] and not (colouring[r] == POS and colouring[~f] == NEG):
+                print('[edge_has_curve] switch with r=%s s=%s' % (edge_rep(r), edge_rep(s)))
+            if not seen[r] and not (colouring[r] == POS and colouring[ep[f]] == NEG):
                 if r == end:
                     if verbose:
-                        print('[edge_has_curve] done at %s' % edge_label(r))
+                        print('[edge_has_curve] done at %s' % edge_rep(r))
                     return True
                 seen[r] = True
                 q.append(r)
                 if verbose:
-                    print('[edge_has_curve] adding %s on top of the queue' % edge_label(r))
-            if not seen[s] and not (colouring[s] == NEG and colouring[~f] == POS):
+                    print('[edge_has_curve] adding %s on top of the queue' % edge_rep(r))
+            if not seen[s] and not (colouring[s] == NEG and colouring[ep[f]] == POS):
                 if s == end:
                     if verbose:
-                        print('[edge_has_curve] done at %s' % edge_label(s))
+                        print('[edge_has_curve] done at %s' % edge_rep(s))
                     return True
                 seen[s] = True
                 q.append(s)
                 if verbose:
-                    print('[edge_has_curve] adding %s on top of the queue' % edge_label(s))
+                    print('[edge_has_curve] adding %s on top of the queue' % edge_rep(s))
 
         return False
 
