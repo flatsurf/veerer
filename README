@@ -31,9 +31,17 @@ If you are in SageMath you can obtain flat structures and plots
 Testing
 -------
 
-To run the SageMath doctests, install the module (with pip) and run
+To run the SageMath doctests, install the module with pip, typically
+
+    $ sage -pip install . --user --force-reinstall
+
+and then run
 
     $ sage -t --force-lib veerer/
+
+Or
+
+    $ sage -t --force-lib veerer/my_file.py
 
 Authors
 -------
