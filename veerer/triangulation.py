@@ -33,7 +33,7 @@ def face_edge_perms_init(data):
         l = [[int(i) for i in c] for c in data]
 
     # max label
-    k = max(max(c) for c in l) + 1
+    k = max(max(max(i,~i) for i in c) for c in l) + 1
 
     # how many ~ edges
     n_twins = sum(sum(i < 0 for i in c) for c in l)
@@ -126,6 +126,12 @@ class Triangulation(object):
         sage: T.flip(0); T
         [(0, 2, ~1), (1, ~0, ~2)]
 
+    The surface must be connected::
+
+        sage: Triangulation("(0,1,2)(3,4,5)")
+        Traceback (most recent call last):
+        ...
+        ValueError: (fp, ep, vp) do not generate a transitive group
     """
     __slots__ = ['_n', '_fp', '_ep', '_vp']
 
@@ -159,21 +165,48 @@ class Triangulation(object):
         # vl = self._vl = perm_cycles(vp)[1]....
 
         if check:
-            self._check()
+            self._check(ValueError)
 
     @staticmethod
-    def from_face_edge_perms(fp, ep):
+    def from_face_edge_perms(fp, ep, vp=None, check=True):
+        r"""
+        INPUT:
+
+        - ``fp``, ``ep``, ``vp`` -- the face, edge and vertex permutation
+
+        - ``check`` - boolean (default: ``True``) - if set to ``False`` no
+          check are performed
+
+        EXAMPLES::
+
+            sage: from veerer import Triangulation
+            sage: from array import array
+
+            sage: fp = array('l', [1, 2, 0, 4, 8, 6, 7, 5, 3])
+            sage: ep = array('l', [8, 7, 2, 3, 4, 5, 6, 1, 0])
+            sage: vp = array('l', [2, 8, 7, 0, 3, 1, 5, 6, 4])
+            sage: Triangulation.from_face_edge_perms(fp, ep, vp)
+            [(0, 1, 2), (3, 4, ~0), (5, 6, ~1)]
+        """
         T = Triangulation.__new__(Triangulation)
         n = T._n = len(fp)
-        fp = T._fp = fp
-        ep = T._ep = ep
-        vp = T._vp = array('l', [-1] * n)
-        for i in range(n):
-            vp[fp[ep[i]]] = i
+        T._fp = fp
+        T._ep = ep
+        if vp is None:
+            fp = T._fp
+            ep = T._ep
+            vp = array('l', [-1] * n)
+            for i in range(n):
+                vp[fp[ep[i]]] = i
+        T._vp = vp
+
+        if check:
+            T._check(ValueError)
+
         return T
 
     @staticmethod
-    def from_string(s):
+    def from_string(s, check=True):
         r"""
         EXAMPLES::
 
@@ -186,17 +219,56 @@ class Triangulation(object):
         k = (len(s) - 1) / 2
         fp = perm_from_base64_str(s[:k])
         ep = perm_from_base64_str(s[k+1:])
-        return Triangulation.from_face_edge_perms(fp, ep)
+        return Triangulation.from_face_edge_perms(fp, ep, check=check)
 
-    def _check(self):
+    def _check(self, error=RuntimeError):
+        r"""
+        TESTS::
+
+            sage: from veerer import Triangulation
+
+            sage: Triangulation("(0,1,3)")
+            Traceback (most recent call last):
+            ...
+            ValueError: broken face permutation
+
+            sage: Triangulation("(0,1,~2)")
+            Traceback (most recent call last):
+            ...
+            ValueError: broken face permutation
+
+            sage: Triangulation("(0)")
+            Traceback (most recent call last):
+            ...
+            ValueError: broken face permutation
+
+            sage: from array import array
+            sage: fp = array('l', [1,2,0])
+            sage: ep = array('l', [0,1,2])
+            sage: vp = array('l', [1,2,0])
+            sage: Triangulation.from_face_edge_perms(fp, ep, vp)
+            Traceback (most recent call last):
+            ...
+            ValueError: fev relation not satisfied
+
+            sage: fp = array('l', [1,2,0])
+            sage: ep = array('l', [1,2,0])
+            sage: vp = array('l', [1,2,0])
+            sage: Triangulation.from_face_edge_perms(fp, ep, vp)
+            Traceback (most recent call last):
+            ...
+            ValueError: broken edge permutation
+        """
         n = self._n
 
         if not perm_check(self._fp, n):
-            raise RuntimeError('fp is not a permtation')
+            raise error('fp is not a permtation')
         if not perm_check(self._ep, n):
-            raise RuntimeError('ep is not permutation')
+            raise error('ep is not permutation')
         if not perm_check(self._vp, n):
-            raise RuntimeError('vp is not a permutation')
+            raise error('vp is not a permutation')
+        if not perms_are_transitive([self._fp, self._ep, self._vp]):
+            raise error('(fp, ep, vp) do not generate a transitive group')
 
         # The face, edge, and vertex permutations fp, ep, and vp must
         # satisfy the relations fp^3 = ep^2 = fp.ep.vp = Id.  Note
@@ -204,12 +276,12 @@ class Triangulation(object):
         # \infty) into the symmetric group on the half edges.
 
         for i in range(n):
-            if self._fp[self._fp[self._fp[i]]] != i:
-                raise RuntimeError('broken face permutation')
+            if self._fp[i] == i or self._fp[self._fp[self._fp[i]]] != i:
+                raise error('broken face permutation')
             if self._ep[self._ep[i]] != i:
-                raise RuntimeError('broken edge permutation') 
+                raise error('broken edge permutation') 
             if self._fp[self._ep[self._vp[i]]] != i:
-                raise RuntimeError('fev relation not satisfied')
+                raise error('fev relation not satisfied')
 
     def __eq__(self, other):
         r"""
@@ -220,9 +292,12 @@ class Triangulation(object):
             sage: T1 = Triangulation("(0,1,2)(~0,~1,~2)")
             sage: T2 = Triangulation("(0,1,2)(~0,~1,~2)")
             sage: T3 = Triangulation("(0,1,2)(~0,~2,~1)")
+            sage: T4 = Triangulation("(0,1,2)")
             sage: T1 == T2
             True
             sage: T1 == T3
+            False
+            sage: T1 == T4
             False
         """
         if type(self) != type(other):
@@ -238,9 +313,12 @@ class Triangulation(object):
             sage: T1 = Triangulation("(0,1,2)(~0,~1,~2)")
             sage: T2 = Triangulation("(0,1,2)(~0,~1,~2)")
             sage: T3 = Triangulation("(0,1,2)(~0,~2,~1)")
+            sage: T4 = Triangulation("(0,1,2)")
             sage: T1 != T2
             False
             sage: T1 != T3
+            True
+            sage: T1 != T4
             True
         """
         if type(self) != type(other):
@@ -295,7 +373,9 @@ class Triangulation(object):
         return [i for i in range(n) if ep[i]==i]
         
     def num_folded_edges(self):
-        return len(self.folded_edges())
+        n = self._n
+        ep = self._ep
+        return sum(ep[i] == i for i in range(n))
 
     def num_edges(self):
         return (self._n + self.num_folded_edges()) / 2
@@ -319,18 +399,38 @@ class Triangulation(object):
         EXAMPLES::
 
             sage: from veerer import *
+
+            sage: T = Triangulation("(0,1,2)(3,4,5)(~0,~3,6)")
+            sage: T.faces()
+            [[0, 1, 2], [3, 4, 5], [6, 8, 7]]
         """
         return perm_cycles(self._fp)
 
     def edges(self):
         r"""
         Return the list of faces as tuples of half-edges
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T = Triangulation("(0,1,2)(3,4,5)(~0,~3,6)")
+            sage: T.edges()
+            [[0, 8], [1], [2], [3, 7], [4], [5], [6]]
         """
         return perm_cycles(self._ep)
 
     def vertices(self):
         r"""
         Return the list of faces as tuples of half-edges
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T = Triangulation("(0,1,2)(3,4,5)(~0,~3,6)")
+            sage: T.vertices()
+            [[0, 2, 1, 8, 6, 3, 5, 4, 7]]
         """
         return perm_cycles(self._vp)
 
@@ -398,6 +498,23 @@ class Triangulation(object):
     def flip(self, e):
         r"""
         Flip the edge ``e``.
+
+        EXAMPLES::
+
+            sage: from veerer import Triangulation
+
+        Flipping a folded edge is an involution::
+
+            sage: T = Triangulation("(0,1,2)")
+            sage: T
+            [(0, 1, 2)]
+            sage: T.flip(0); T
+            [(0, 2, 1)]
+            sage: T.flip(0); T
+            [(0, 1, 2)]
+
+            sage: T == Triangulation("(0,1,2)")
+            True
         """
         # v<----------u     v<----------u
         # |     a    ^^     |^    a     ^
@@ -549,7 +666,7 @@ class Triangulation(object):
 
             sage: from veerer import *
 
-            sage: T = Triangulation([(0,1,2),(-1,-2,-3)])
+            sage: T = Triangulation("(0,1,2)(~0,~1,~2)")
             sage: T.to_string()
             '6_120534_6_543210'
         """
