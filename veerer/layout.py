@@ -305,6 +305,10 @@ class FlatTriangulation:
             sage: F.set_pos(cylinders=T.cylinders(BLUE) + T.cylinders(RED))
             sage: F.plot()
             Graphics object consisting of 84 graphics primitives
+
+            sage: T = ColouredTriangulation.from_string('RBBBRBBBBRRR_vwkesxgabijfdcuthrqpmnlo')
+            sage: F = T.flat_structure_min()
+            sage: F.set_pos(cylinders=T.cylinders(BLUE) + T.cylinders(RED))
         """
         nf = len(self._triangulation)
         face_seen = [False] * nf
@@ -317,11 +321,8 @@ class FlatTriangulation:
         # set the cylinders
         if cylinders:
             for cyl in cylinders:
-                a = cyl[0]
-                face_seen[self._edge_to_face[a]] = True
                 xmin = xmax = ymin = ymax = self._K.zero()
-
-                # compute boundaries and bounding box
+                a = cyl[0]
                 pos[a] = self._V((0,0))
 
                 for e in cyl:
@@ -329,6 +330,8 @@ class FlatTriangulation:
                     b = fp[a]
                     c = fp[b]
                     face_seen[self._edge_to_face[a]] = True
+#                    print(' -- %s --> (%s, %s, %s)' % (edge_label(e), edge_label(a),
+#                         edge_label(b), edge_label(c)))
 
                     if vectors[a] == vectors[e]:
                         vectors[a] *= -1
@@ -356,6 +359,13 @@ class FlatTriangulation:
 
                 # 3. set new starting height
                 y += ymax - ymin + 1
+
+        n = self._triangulation.num_edges()
+        for e in range(-n, n):
+            f = self._edge_to_face[e]
+            if (self._pos[e] is None) != (face_seen[self._edge_to_face[e]] is False):
+                a,b,c = self._faces[f]
+                raise RuntimeError('cylinder badly set: pos[%s] = %s while its face (%s,%s,%s) is %s' % (edge_label(e), self._pos[e], edge_label(a), edge_label(b), edge_label(c), 'seen' if face_seen[self._edge_to_face[e]] else 'unseen'))
 
         # random forest
         while any(x is False for x in face_seen):
@@ -436,6 +446,11 @@ class FlatTriangulation:
 
             # set new height
             y += ymax - ymin + 1
+
+        n = self._triangulation.num_edges()
+        for e in range(-n, n):
+            if self._pos[e] is None:
+                raise RuntimeError('pos[%s] not set properly' % edge_label(e))
 
     def _plot_train_track(self, slope):
         pos = self._pos
