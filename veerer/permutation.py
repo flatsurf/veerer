@@ -2,10 +2,10 @@ r"""
 Partial permutation on `\{0, 1, ..., n-1\}`.
 """
 from __future__ import absolute_import, print_function
+from six.moves import range, map, zip
 
 from array import array
 from math import log
-from six.moves import range
 
 try:
     import sage.all
@@ -86,31 +86,6 @@ def perm_check(l, n=None):
             return False
         seen[l[i]] = True
     return True
-
-def permutation_to_perm(p):
-    r"""
-    Return a list on `[0, n-1]` from a permutation on `[1, n]`
-
-    EXAMPLES::
-
-        sage: from veerer.permutation import permutation_to_perm
-        sage: permutation_to_perm(PermutationGroupElement([3,1,2]))
-        [2, 0, 1]
-    """
-    return map(lambda x: x-1, p.domain())
-
-def perm_to_permutation(l):
-    r"""
-    Returns a permutation on `[1, n]` from a list on `[0, n-1]`
-
-    EXAMPLES::
-
-        sage: from veerer.permutation import perm_to_permutation
-        sage: perm_to_permutation([2,1,0])
-        (1,3)
-    """
-    from sage.groups.perm_gps.permgroup_element import PermutationGroupElement
-    return PermutationGroupElement(map(lambda x: x+1, l))
 
 def perm_id(n):
     r"""
@@ -539,6 +514,12 @@ def perm_compose(p1, p2):
             r[i] = p2[p1[i]]
     return r
 
+def perm_conjugate(p1, p2):
+    n = len(p1)
+    res = array('l', [-1] * n)
+    for i in range(n):
+        res[p2[i]] = p2[p1[i]]
+    return res
 
 def perm_compose_i(p1, p2):
     r"""

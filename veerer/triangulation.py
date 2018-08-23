@@ -1,8 +1,8 @@
 r"""
 Triangulation of surfaces.
 """
-
 from __future__ import absolute_import, print_function
+from six.moves import range, map, zip
 
 from array import array
 from .permutation import *
@@ -464,6 +464,23 @@ class Triangulation(object):
         return '[' + ', '.join('(' + ', '.join(self._edge_rep(e) for e in f) + ')' for f in faces) + ']'
 
     def is_flippable(self, e):
+        r"""
+        Check whether the half-edge e is flippable.
+
+        EXAMPLES::
+
+            sage: from veerer import Triangulation
+
+            sage: T = Triangulation("(0,1,2)(~0,~2,4)(~1,3,~3)")
+            sage: T.is_flippable(0)
+            True
+            sage: T.is_flippable(1)
+            True
+            sage: T.is_flippable(3)
+            False
+            sage: T.is_flippable(4)
+            True
+        """
         e = int(e)
         E = self._ep[e]
         a = self._fp[e]
@@ -471,6 +488,21 @@ class Triangulation(object):
         return a != E and b != E
 
     def square_about_edge(self, e):
+        r"""
+        Return the four edges that makes ``e`` the diagonal of a quadrilateral.
+
+        EXAMPLES::
+
+            sage: from veerer import Triangulation
+
+            sage: T = Triangulation("(0,1,2)(~0,~1,~2)")
+            sage: T.square_about_edge(0)
+            (1, 2, 4, 3)
+
+            sage: T = Triangulation("(0,1,2)")
+            sage: T.square_about_edge(0)
+            (1, 2, 1, 2)
+        """
         # x<----------x
         # |     a    ^^
         # |         / |
