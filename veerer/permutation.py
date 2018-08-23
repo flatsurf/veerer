@@ -7,11 +7,12 @@ from array import array
 from math import log
 from six.moves import range
 
-#from . import HAS_SAGE
-#if HAS_SAGE:
-#    from sage.misc.prandom import shuffle, randint
-#else:
-#    from random import shuffle, randint
+try:
+    import sage.all
+except ImportError:
+    from random import shuffle, randint
+else:
+    from sage.misc.prandom import shuffle, randint
 
 def argmin(l):
     r"""
@@ -225,13 +226,30 @@ def str_to_cycles(s):
 
         sage: str_to_cycles('()(0,1)()(2,3)')
         [[0, 1], [2, 3]]
+
+        sage: str_to_cycles('(0,1,2)(~0,~1,~2)')
+        [[0, 1, 2], [-1, -2, -3]]
     """
     r = []
     for c_str in s[1:-1].split(')('):
         if not c_str:
             continue
-        r.append(map(int, c_str.replace(' ', '').split(',')))
+        r.append([~int(c[1:]) if c[0] == '~' else int(c) for c in c_str.replace(' ', '').split(',')])
     return r
+
+def perm_random(n):
+    r"""
+    Return a random permutation.
+
+    EXAMPLES::
+
+        sage: from veerer.permutation import perm_random, perm_check
+        sage: perm_check(perm_random(13), 13)
+        True
+    """
+    r = list(range(n))
+    shuffle(r)
+    return array('l', r)
 
 #####################################################################
 # Serialization
