@@ -128,7 +128,7 @@ class Triangulation(object):
                 raise RuntimeError('broken face permutation')
             if self._ep[self._ep[i]] != i:
                 raise RuntimeError('broken edge permutation') 
-             if self._fp[self._ep[self._vp[i]]] != i:
+            if self._fp[self._ep[self._vp[i]]] != i:
                 raise RuntimeError('fev relation not satisfied')
 
     def __eq__(self, other):
