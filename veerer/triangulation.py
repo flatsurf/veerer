@@ -6,17 +6,6 @@ from array import array
 
 from .even_permutation import *
 
-# These are broken forever - we have to look at ep to do this, so give
-# up.  I haven't deleted them yet, but I will after I copy them to
-# live inside of Triangulation (where they have access to ep).
-
-#def edge_label(e):
-#    if e < 0: return '~%d' % (~e)
-#    else: return str(e)
-
-#def norm(e):
-#    return e if e >= 0 else ~e
-
 class Triangulation(object):
     r"""
     A triangulation of an oriented surface
@@ -24,11 +13,11 @@ class Triangulation(object):
     with attributes:
 
     * _n  number of half-edges (an int)
-    * _vp  vertex permutation (an array)
-    * _ep  edge permutation (an array)
     * _fp  face permutation (an array)
+    * _ep  edge permutation (an array)
+    * _vp  vertex permutation (an array)
 
-    Each of vp, ep, fp is a permutation of oriented half-edges (aka
+    Each of fp, ep, vp is a permutation of oriented half-edges (aka
     "darts"), given as a function.  Our conventions for the
     permutations are set out in the following figure:
 
@@ -75,14 +64,14 @@ class Triangulation(object):
         [(~2, 1, ~0), (~1, 0, 2)]
 
     """
-    __slots__ = ['_n', '_vp', '_ep', '_fp']
+    __slots__ = ['_n', '_fp', '_ep', '_vp']
 
     def __init__(self, triangles, check=True):
         if isinstance(triangles, Triangulation):
             self._fp = triangles.face_permutation(copy=True)
             self._ep = triangles.edge_permutation(copy=True)
         else:
-            self._fp, self._ep = perm_init(triangles)
+            self._fp, self._ep = face_perm_init(triangles)
 
         fp = self._fp
         ep = self._ep
@@ -99,7 +88,7 @@ class Triangulation(object):
         # TODO: edge labels are disabled for now. 
         # el = self._fl = [None] * E # edge labels
 
-        v_base = [None] * n # Replaced 0 by None, as 0 is a possible edge label. 
+        v_base = [-1] * n 
         vp = self._vp = array('l', v_base)  
 
         for i in range(n):
@@ -114,15 +103,12 @@ class Triangulation(object):
     def _check(self):
         n = self._n
 
-        if not isinstance(self._fp, array) or len(self._fp) != n:
-            raise RuntimeError('broken face perm')
-        if not isinstance(self._ep, array) or len(self._ep) != n:
-            raise RuntimeError('broken edge perm')
-        if not isinstance(self._vp, array) or len(self._vp) != n:
-            raise RuntimeError('broken vertex perm')
-        perm_check(self._fp)
-        perm_check(self._ep)
-        perm_check(self._vp)
+        if not perm_check(self._fp, n):
+            raise RuntimeError('fp is not a permtation')
+        if not perm_check(self._ep, n):
+            raise RuntimeError('ep is not permutation')
+        if not perm_check(self._vp, n):
+            raise RuntimeError('vp is not a permutation')
 
         # The face, edge, and vertex permutations fp, ep, and vp must
         # satisfy the relations fp^3 = ep^2 = fp.ep.vp = Id.  Note
@@ -131,11 +117,11 @@ class Triangulation(object):
 
         for i in range(n):
             if self._fp[self._fp[self._fp[i]]] != i:
-                raise RuntimeError('broken face permutation') # used to be ValueError
+                raise RuntimeError('broken face permutation')
             if self._ep[self._ep[i]] != i:
                 raise RuntimeError('broken edge permutation') 
-            if self._fp[self._ep[self._vp[i]]] != i:
-                raise RuntimeError('fev condition not satisfied')
+             if self._fp[self._ep[self._vp[i]]] != i:
+                raise RuntimeError('fev relation not satisfied')
 
     def __eq__(self, other):
         if type(self) != type(other):
@@ -181,7 +167,10 @@ class Triangulation(object):
         
     def num_faces(self):
         return self._n / 3
-    
+
+    def __len__(self):
+        return self._n / 3
+
 
 
     def faces(self):
@@ -209,9 +198,6 @@ class Triangulation(object):
             seen[e] = seen[r] = seen[s] = True
             yield (e, r, s)
             
-    def __len__(self):
-        return (self._n + self.num_folded_edges()) / 3
-
     def vertices(self):
         r"""
         Return the vertices ordered by their labels.
