@@ -3,16 +3,68 @@ Triangulation of surfaces.
 """
 
 from array import array
+from .permutation import *
 
-from .even_permutation import *
-
-# To be deleted.
 
 def edge_label(e):
     raise ValueError
 
 def norm(e):
     raise ValueError
+
+def face_edge_perms_init(data):
+    r"""
+    EXAMPLES::
+
+        sage: from veerer.triangulation import face_edge_perms_init
+
+        sage: face_edge_perms_init('(0,1,2)(~0,~1,~2)')
+        (array('l', [1, 2, 0, 5, 3, 4]), array('l', [5, 4, 3, 2, 1, 0]))
+
+        sage: face_edge_perms_init('(0,1,2)')
+        (array('l', [1, 2, 0]), array('l', [0, 1, 2]))
+    """
+    if isinstance(data, str):
+        l = str_to_cycles(data)
+    else:
+        l = [[int(i) for i in c] for c in data]
+
+    # max label
+    k = max(max(c) for c in l) + 1
+
+    # how many ~ edges
+    n_twins = sum(sum(i < 0 for i in c) for c in l)
+
+    n = 2 * n_twins + (k - n_twins)
+
+    ep = [-1] * n # edge permutation
+    fp = [-1] * n # face permutation
+    twins = [None] * n_twins # tilde conversion
+    m = n - 1
+    for c in l:
+        for e in c:
+            if e < 0:
+                E = ~e
+                e = m
+                m -= 1
+                ep[E] = e
+                ep[e] = E
+    for i in range(n):
+        if ep[i] == -1:
+            ep[i] = i
+
+    for c in l:
+        k = len(c)
+        for i in range(k):
+            e0 = c[i]
+            e1 = c[(i+1) % k]
+            if e0 < 0:
+                e0 = ep[~e0]
+            if e1 < 0:
+                e1 = ep[~e1]
+            fp[e0] = e1
+
+    return perm_init(fp), perm_init(ep)
 
 class Triangulation(object):
     r"""
@@ -63,13 +115,13 @@ class Triangulation(object):
         sage: T.num_vertices()
         1
         sage: T.flip(0); T
-        [(~2, 0, ~1), (~0, 1, 2)]
+        [(0, ~1, ~2), (1, 2, ~0)]
         sage: T.flip(0); T
-        [(~2, 1, 0), (~1, ~0, 2)]
+        [(0, ~2, 1), (2, ~1, ~0)]
         sage: T.flip(0); T
-        [(~2, ~0, ~1), (0, 1, 2)]
+        [(0, 1, 2), (~1, ~2, ~0)]
         sage: T.flip(0); T
-        [(~2, 1, ~0), (~1, 0, 2)]
+        [(0, 2, ~1), (1, ~0, ~2)]
 
     """
     __slots__ = ['_n', '_fp', '_ep', '_vp']
@@ -79,7 +131,7 @@ class Triangulation(object):
             self._fp = triangles.face_permutation(copy=True)
             self._ep = triangles.edge_permutation(copy=True)
         else:
-            self._fp, self._ep = face_perm_init(triangles)
+            self._fp, self._ep = face_edge_perms_init(triangles)
 
         fp = self._fp
         ep = self._ep
@@ -96,9 +148,7 @@ class Triangulation(object):
         # TODO: edge labels are disabled for now. 
         # el = self._fl = [None] * E # edge labels
 
-        v_base = [-1] * n 
-        vp = self._vp = array('l', v_base)  
-
+        vp = self._vp = array('l', [-1] * n)
         for i in range(n):
             vp[fp[ep[i]]] = i
 
@@ -107,6 +157,33 @@ class Triangulation(object):
 
         if check:
             self._check()
+
+    @staticmethod
+    def from_face_edge_perms(fp, ep):
+        T = Triangulation.__new__(Triangulation)
+        n = T._n = len(fp)
+        fp = T._fp = fp
+        ep = T._ep = ep
+        vp = T._vp = array('l', [-1] * n)
+        for i in range(n):
+            vp[fp[ep[i]]] = i
+        return T
+
+    @staticmethod
+    def from_string(s):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import Triangulation
+
+            sage: T = Triangulation("(~11,4,~3)(~10,~0,11)(~9,0,10)(~8,9,1)(~7,8,~1)(~6,7,2)(~5,6,~2)(~4,5,3)")
+            sage: Triangulation.from_string(T.to_string()) == T
+            True
+        """
+        k = (len(s) - 1) / 2
+        fp = perm_from_base64_str(s[:k])
+        ep = perm_from_base64_str(s[k+1:])
+        return Triangulation.from_face_edge_perms(fp, ep)
 
     def _check(self):
         n = self._n
@@ -213,26 +290,20 @@ class Triangulation(object):
         EXAMPLES::
 
             sage: from veerer import *
-            sage: t = Triangulation([1, 2, 0, -1, -3, -2]) # Fix
-            sage: t.faces()
-            [(-3, -1, -2), (0, 1, 2)]
-
         """
-        return perm_cycles(self._fp)[0]
+        return perm_cycles(self._fp)
 
     def edges(self):
         r"""
         Return the list of faces as tuples of half-edges
         """
-        l = perm_cycles(self._ep)[0]
-        return l
+        return perm_cycles(self._ep)
 
     def vertices(self):
         r"""
         Return the list of faces as tuples of half-edges
         """
-        l = perm_cycles(self._vp)[0]
-        return l
+        return perm_cycles(self._vp)
 
     def num_vertices(self):
         return len(self.vertices())
@@ -261,7 +332,7 @@ class Triangulation(object):
 
     def __repr__(self):
         faces = self.faces()        
-        return '[' + ', '.join('(' + ', '.join(edge_label(e) for e in f) + ')' for f in l) + ']'
+        return '[' + ', '.join('(' + ', '.join(self._edge_rep(e) for e in f) + ')' for f in faces) + ']'
 
     def is_flippable(self, e):
         e = int(e)
@@ -451,23 +522,9 @@ class Triangulation(object):
 
             sage: T = Triangulation([(0,1,2),(-1,-2,-3)])
             sage: T.to_string()
-            'efdcab'
+            '6_120534_6_543210'
         """
-        return even_perm_base64_str(self._fp)
-
-    @staticmethod
-    def from_string(s, n):
-        r"""
-        EXAMPLES::
-
-            sage: from veerer import Triangulation
-
-            sage: T = Triangulation("(~11,4,~3)(~10,~0,11)(~9,0,10)(~8,9,1)(~7,8,~1)(~6,7,2)(~5,6,~2)(~4,5,3)")
-            sage: Triangulation.from_string(T.to_string(), T.num_edges()) == T
-            True
-        """
-        fp = even_perm_from_base64_str(s, n)
-        return Triangulation(fp)
+        return perm_base64_str(self._fp) + '_' + perm_base64_str(self._ep)
 
     def conjugate(self):
         r"""
@@ -487,5 +544,6 @@ class Triangulation(object):
             [(~5, ~4, ~3), (~2, ~1, ~0), (0, 2, 4), (1, 3, 5)]
 
         """
+        raise NotImplementedError
         self._fp = even_perm_conjugate(even_perm_invert(self._fp))
         self._vp = even_perm_invert(self._vp)
