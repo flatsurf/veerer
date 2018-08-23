@@ -8,7 +8,7 @@ from collections import deque
 from itertools import product
 
 from .constants import *
-from .even_permutation import *
+from .permutation import *
 from .misc import det2
 from .triangulation import Triangulation
 
@@ -36,20 +36,29 @@ class ColouredTriangulation(object):
 
     Built from an explicit triangulation (in cycle or list form) and a list of colors::
 
-        sage: ColouredTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
-        [(~2, ~0, ~1), (0, 1, 2)], ['Red', 'Red', 'Blue']
+        sage: ColouredTriangulation("(0,1,2)(~0,~1,~2)", [RED, RED, BLUE])
+        [(0, 1, 2), (~2, ~0, ~1)], 'RRB'
 
     From a stratum::
 
         sage: from surface_dynamics import *
 
         sage: ColouredTriangulation.from_stratum(AbelianStratum(2))
-        [(~8, 3, ~1), (~7, 1, 8), (~6, 2, 7), (~5, 0, 6), (~4, 5, ~0), (~3, 4, ~2)], ['Red', 'Red', 'Red', 'Blue', 'Blue', 'Blue', 'Blue', 'Blue', 'Blue']
+        [(0, 6, ~5), (1, 8, ~7), (2, 7, ~6), (3, ~1, ~8), (4, ~2, ~3), (5, ~0, ~4)], 'RRRBBBBBB'
 
         sage: ColouredTriangulation.from_stratum(QuadraticStratum({1:4}))
-        [(~17, 6, ~3), (~16, 4, 17), ..., (~6, 7, ~2)], ['Red', 'Red', ..., 'Blue']
+        [(0, 12, ~11), (1, 13, ~12), ..., (16, ~15, ~1)], 'RRRRRRBBBBBBBBBBBB'
 
-    From a flipper pseudo-Anosov (TO BE DONE)!
+    From a flipper pseudo-Anosov map::
+    
+        sage: import flipper
+
+        sage: T = flipper.load('S_2_1')
+        sage: h = T.mapping_class('abcD')
+        sage: h.is_pseudo_anosov()
+        True
+        sage: ColouredTriangulation.from_pseudo_anosov(h)
+        [(0, ~3, ~1), (1, 2, 14), ..., (~2, ~9, ~4)], 'RBRBRRBRBBBBRBR'
     """
     __slots__ = ['_triangulation', '_colouring']
 
@@ -64,21 +73,35 @@ class ColouredTriangulation(object):
         
         n = self._triangulation.num_half_edges()
         # A list : edge_indices --> {Red, Blue}
-        self._colouring = [colouring[self._triangulation._norm(i)] for i in range(n)]
+        if len(colouring) == self._triangulation.num_edges():
+            colouring = [colouring[self._triangulation._norm(i)] for i in range(n)]
+        elif len(colouring) == self._triangulation.num_half_edges():
+            colouring = colouring
+        else:
+            raise ValueError('wrong colouring argument')
+
+        self._colouring = array('l', colouring)
 
         if check:
-            assert(all(colour in COLOURS for colour in self._colouring))
-            for col in self._colouring:
-                assert col == BLUE or col == RED
+            self._check()
 
-            cols = set([RED, BLUE])
-            # no monochromatic face
-            for f in self._triangulation.faces():
-                assert set(self._colouring[e] for e in f) == cols
+    def _check(self):
+        n = self._triangulation.num_half_edges()
+        cols = self._colouring
+        assert isinstance(cols, array)
+        assert len(cols) == n
+        assert all(col in COLOURS for col in cols)
 
-            # no monochromatic vertex
-            for v in self._triangulation.vertices():
-                assert set(self._colouring[e] for e in v) == cols
+        ep = self._triangulation.edge_permutation(copy=False)
+        assert all(cols[e] == cols[ep[e]] for e in range(n))
+
+        # no monochromatic face
+        for f in self._triangulation.faces():
+            assert len(set(self._colouring[e] for e in f)) == 2
+
+        # no monochromatic vertex
+        for v in self._triangulation.vertices():
+            assert len(set(self._colouring[e] for e in v)) == 2
 
     def _edge_rep(self, e):
         return self._triangulation._edge_rep(e)
@@ -101,14 +124,13 @@ class ColouredTriangulation(object):
             sage: h.is_pseudo_anosov()
             True
             sage: ColouredTriangulation.from_pseudo_anosov(h)
-            [(~5, ~3, ~1), (~4, 1, ~0), (~2, 0, 3), (2, 5, 4)],
-            ['Blue', 'Blue', 'Blue', 'Red', 'Red', 'Blue']
+            [(0, 3, ~2), (1, ~0, ~4), (2, 5, 4), (~1, ~5, ~3)], 'BBBRRB'
         """
         FS = h.flat_structure()
         n = FS.triangulation.zeta
 
-        X = {i.label: e.x for i,e in f.edge_vectors.iteritems()}
-        Y = {i.label: e.y for i,e in f.edge_vectors.iteritems()}
+        X = {i.label: e.x for i,e in FS.edge_vectors.iteritems()}
+        Y = {i.label: e.y for i,e in FS.edge_vectors.iteritems()}
 
         triangles = [[x.label for x in t] for t in FS.triangulation]
         colours = [RED if X[e]*Y[e] > 0 else BLUE for e in range(n)]
@@ -125,9 +147,11 @@ class ColouredTriangulation(object):
             sage: from surface_dynamics import *
             sage: from veerer import *
 
-            sage: ColouredTriangulation.from_stratum(AbelianStratum(2))
-            [(~8, 3, ~1), (~7, 1, 8), ..., (~3, 4, ~2)], ['Red', 'Red', ..., 'Blue',
-              'Blue', 'Blue']
+            sage: T = ColouredTriangulation.from_stratum(AbelianStratum(2))
+            sage: T
+            [(0, 6, ~5), (1, 8, ~7), ..., (5, ~0, ~4)], 'RRRBBBBBB'
+            sage: T.stratum()
+            H_2(2)
 
             sage: Q = QuadraticStratum(9,-1)
             sage: CTreg = ColouredTriangulation.from_stratum(Q.regular_component())
@@ -142,11 +166,11 @@ class ColouredTriangulation(object):
 
             sage: c = QuadraticCylinderDiagram('(0)-(0)')
             sage: ColouredTriangulation.from_stratum(c)
-            [(~2, 1, ~0), (~1, 0, 2)], ['Red', 'Blue', 'Blue']
+            [(0, 2, ~1), (1, ~0, ~2)], 'RBB'
 
             sage: c = QuadraticCylinderDiagram('(0,0)-(1,1,2,2,3,3)')
             sage: ColouredTriangulation.from_stratum(c)
-            [(~11, 4, ~3), (~10, ~0, 11), ..., (~4, 5, 3)], ['Red', 'Red', ..., 'Blue']
+            [(0, 10, ~9), (1, ~8, 9), ..., (11, ~10, ~0)], 'RRRRBBBBBBBB'
 
             sage: c = CylinderDiagram('(0,6,4,5)-(3,6,5) (1,3,2)-(0,1,4,2)')
             sage: CT = ColouredTriangulation.from_stratum(c)
@@ -222,19 +246,15 @@ class ColouredTriangulation(object):
 
             sage: from veerer import *
 
-            sage: T = ColouredTriangulation.from_string('BBR_eacdfb')
+            sage: T = ColouredTriangulation.from_string('BBR:3_120_3_012')
             sage: T.to_string()
-            'BBR_eacdfb'
+            'BBR:3_120_3_012'
             sage: T.iso_sig()
-            'RBB_adbecf'
+            BROKEN!
         """
-        colours, triangles = s.split('_')
-        n = len(colours)
-
-        p = even_perm_from_base64_str(triangles, n)
-        triangles = even_perm_cycles(p)[0]
-        colours = [RED if colour == 'R' else BLUE for colour in colours]
-        return ColouredTriangulation(triangles, colours, *args, **kwds)
+        s_colours, s_triangulation = s.split(':')
+        triangulation = Triangulation.from_string(s_triangulation)
+        return ColouredTriangulation(triangulation, s_colours)
 
     from_iso_sig = from_string
 
@@ -273,8 +293,21 @@ class ColouredTriangulation(object):
         return T
 
     def __str__(self):
-        n = self._triangulation.num_edges() 
-        return str(self._triangulation) + ', ' + str(self._colouring[:n])
+        r"""
+        TESTS::
+
+            sage: ColouredTriangulation("(0,1,2)", [RED, RED, BLUE])
+            [(0, 1, 2)], 'RRB'
+        """
+        n = self._triangulation.num_half_edges() 
+        ep = self._triangulation.edge_permutation()
+        col_str = ''
+        for e in range(n):
+            if ep[e] < e:
+                continue
+            col_str += colour_to_char(self._colouring[e])
+
+        return str(self._triangulation) + ', ' + repr(col_str)
 
     def __repr__(self):
         return str(self)
@@ -772,8 +805,8 @@ class ColouredTriangulation(object):
                 best_relabellings.append(relabelling)
                 best = (colouring_new[:], fp_new[:])
 
-        p0 = even_perm_invert(best_relabellings[0])
-        return [even_perm_compose(p, p0) for p in best_relabellings]
+        p0 = perm_invert(best_relabellings[0])
+        return [perm_compose(p, p0) for p in best_relabellings]
 
     def rotate(self):
         r"""
@@ -841,7 +874,7 @@ class ColouredTriangulation(object):
         nb_edges = sum(aut[e] == ep[e] or aut[e] == e for e in range(n))
 
         # vertices
-        verts, edge_to_vert = even_perm_cycles(self._vp)
+        verts, edge_to_vert = perm_cycles(self._vp)
         for i,v in enumerate(verts):
             if edge_to_vert[aut[v[0]]] == i:
                 # deg does not change
@@ -851,7 +884,7 @@ class ColouredTriangulation(object):
                 pass
 
         # faces
-        faces, edge_to_face = even_perm_cycles(self._fp)
+        faces, edge_to_face = perm_cycles(self._fp)
         for i,f in enumerate(faces):
             nb_faces += edge_to_face[aut[f[0]]] == i
 
@@ -872,10 +905,9 @@ class ColouredTriangulation(object):
             sage: T == TT
             True
         """
-        n = self._triangulation.num_edges()
-        colours = ''.join('R' if self._colouring[i] == RED else 'B' for i in range(n))
-        perm = even_perm_base64_str(self._triangulation.face_permutation())
-        return colours + '_' + perm
+        colours = ''.join(colour_to_char(c) for c in self._colouring)
+        t = self._triangulation.to_string()
+        return colours + ':' + t
 
     def iso_sig(self):
         r"""
@@ -920,7 +952,7 @@ class ColouredTriangulation(object):
         _, (colours, fp) = self.best_relabelling()
 
         char_colours = ''.join('R' if colours[i] == RED else 'B' for i in range(n))
-        char_edges = even_perm_base64_str(fp)
+        char_edges = perm_base64_str(fp)
 
         return char_colours + '_' + char_edges
 
