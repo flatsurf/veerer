@@ -20,6 +20,9 @@
   What do the train tracks look like?  I think that they just have
   stops... so it is fine. 
 
+TODO: Abelian differentials should layout correctly (in order to avoid
+ trouble, just fix signs in the constructor)
+
 2018-08-21 [Vincent, Saul]
 
 Random thoughts:
