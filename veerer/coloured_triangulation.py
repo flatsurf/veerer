@@ -1400,7 +1400,7 @@ class ColouredTriangulation(object):
         vectors.extend(vectors[::-1])
 
         # get correct signs for each triangle
-        for i,j,k in self._triangulation:
+        for i,j,k in self._triangulation.faces():
             if det2(vectors[i], vectors[j]) < 0:
                 vectors[j] = -vectors[j]
             if det2(vectors[j], vectors[k]) < 0:
