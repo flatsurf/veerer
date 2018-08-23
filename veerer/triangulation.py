@@ -6,6 +6,15 @@ from array import array
 
 from .even_permutation import *
 
+# These are broken forever - we have to look at ep to do this, so give
+# up.  I haven't deleted them yet, but I will after I copy them to
+# live inside of Triangulation (where they have access to ep).
+
+def edge_label(e):
+    raise ValueError
+
+def norm(e):
+    raise ValueError
 class Triangulation(object):
     r"""
     A triangulation of an oriented surface
