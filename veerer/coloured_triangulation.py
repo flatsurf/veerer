@@ -976,6 +976,16 @@ class ColouredTriangulation(object):
             [[3, 8, 4, -11]]
             sage: T.cylinders(RED)
             [[9, 15]]
+
+        TESTS::
+
+            sage: from veerer import *
+
+            sage: T = ColouredTriangulation.from_string('RBBBRBBBBRRR_vwkesxgabijfdcuthrqpmnlo')
+            sage: T.cylinders(BLUE)
+            [[1, 2], [6, 5]]
+            sage: T.cylinders(RED)
+            []
         """
         n = self._triangulation.num_edges()
         fp = self._triangulation.face_permutation(copy=False)
@@ -1001,6 +1011,7 @@ class ColouredTriangulation(object):
                 door = a
             else:
                 door = b
+            door0 = door
 
             cc = []  # cycle to be stored
             cyl = True
@@ -1019,10 +1030,41 @@ class ColouredTriangulation(object):
                 else:
                     cyl = False
                     break
-            if cyl:
+            if cyl and door == door0:
                 cylinders.append(cc)
 
         return cylinders
+
+    def is_cylindrical(self, col=None):
+        r"""
+        Return whether this veering triangulation is cylindrical.
+
+        A Veering triangulation is blue cylindrical (resp red cylindrical) if
+        all its triangles have two blue edges (resp red).
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T = ColouredTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
+            sage: T.is_cylindrical()
+            True
+        """
+        if col is None:
+            return self.is_cylindrical(BLUE) or self.is_cylindrical(RED)
+
+        n = self._triangulation.num_edges()
+        fp = self._triangulation.face_permutation(copy=False)
+        cols = self._colouring
+        seen = [False] * (2 * n)
+        for a in range(-n, n):
+            if seen[a]:
+                continue
+            b = fp[a]
+            c = fp[b]
+            if (cols[a] == col) + (cols[b] == col) + (cols[c] == col) != 2:
+                return False
+        return True
 
     def back_flip(self, i, col):
         r"""
@@ -1234,19 +1276,19 @@ class ColouredTriangulation(object):
 
             sage: T = ColouredTriangulation([(0,1,2),(-1,-2,-3)], [RED, RED, BLUE])
             sage: T.train_track_min_solution(VERTICAL)
-            [1.0, 2.0, 1.0]
+            [1, 2, 1]
             sage: T.train_track_min_solution(VERTICAL, allow_degenerations=True)
-            [0.0, 1.0, 1.0]
+            [0, 1, 1]
 
             sage: T.train_track_min_solution(HORIZONTAL)
-            [2.0, 1.0, 1.0]
+            [2, 1, 1]
             sage: T.train_track_min_solution(HORIZONTAL, allow_degenerations=True)
-            [1.0, 0.0, 1.0]
+            [1, 0, 1]
         """
         from sage.numerical.mip import MixedIntegerLinearProgram
 
         n = self._triangulation.num_edges()
-        M = MixedIntegerLinearProgram(maximization=False)
+        M = MixedIntegerLinearProgram(solver='PPL', maximization=False)
         x = M.new_variable()
         M.set_objective(M.sum(x[e] for e in range(n))) # try to minimize length
         self._set_train_track_constraints(M.add_constraint, x, slope, 1, allow_degenerations)
@@ -1335,8 +1377,8 @@ class ColouredTriangulation(object):
             if det2(vectors[j], vectors[k]) < 0:
                 vectors[k] = -vectors[k]
             if vectors[i] + vectors[j] + vectors[k]:
-                raise RuntimeError('bad vectors:\n vec[%s] = %s\n vec[%s] = %s\n vec[%s] = %s' \
-                                   % (edge_label(i), vectors[i], edge_label(j), vectors[j], edge_label(k), vectors[k]))
+                raise RuntimeError('bad vectors for %s:\n vec[%s] = %s\n vec[%s] = %s\n vec[%s] = %s' \
+                                   % (self.to_string(), edge_label(i), vectors[i], edge_label(j), vectors[j], edge_label(k), vectors[k]))
 
             if det2(vectors[k], vectors[i]) < 0:
                 raise RuntimeError
@@ -1398,6 +1440,12 @@ class ColouredTriangulation(object):
 
             sage: CT.flat_structure_min(True)
             Flat Triangulation made of 16 triangles
+
+        A bad example::
+
+            sage: T = ColouredTriangulation.from_string("RBRRBBRBR_gjbpaqechdfonmlkir")
+            sage: T.flat_structure_min()
+            Flat Triangulation made of 6 triangles
         """
         VH = self.train_track_min_solution(HORIZONTAL, allow_degenerations=allow_degenerations)
         VV = self.train_track_min_solution(VERTICAL, allow_degenerations=allow_degenerations)
