@@ -11,6 +11,14 @@ HORIZONTAL, VERTICAL = 'Horizontal', 'Vertical'
 COLOURS = [RED, BLUE]
 SLOPES = [HORIZONTAL, VERTICAL]
 
-GEOMETRIC, CORE, NONE = 'Geometric', 'Core', 'None'
-TYPE_COLOURS = {NONE: 'black', CORE: 'orange', GEOMETRIC: 'green'}
+CORE = 0
+GEOMETRIC = 1
+CYLINDRICAL = 1 << 2
+
+TYPE_COLOURS = {
+    CORE: '#BFBFBF',          # light gray
+    GEOMETRIC: '#50AA50',     # green
+    CYLINDRICAL: '#FFA500',   # orange
+    GEOMETRIC | CYLINDRICAL: '#FA8072' # salmon
+    }
 
