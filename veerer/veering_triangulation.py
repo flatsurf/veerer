@@ -103,12 +103,14 @@ class VeeringTriangulation(Triangulation):
             raise error('bad colouring attribute')
 
         # no monochromatic face
-        if any(len(set(self._colouring[e] for e in f)) != 2 for f in self.faces()):
-            raise error('monochromatic face {}'.format(f))
+        for f in self.faces():
+            if len(set(self._colouring[e] for e in f)) != 2:
+                raise error('monochromatic face {}'.format(f))
 
         # no monochromatic vertex
-        if any(len(set(self._colouring[e] for e in v)) != 2 for v in self.vertices()):
-            raise error('monochromatic vertex {}'.format(v))
+        for v in self.vertices():
+            if len(set(self._colouring[e] for e in v)) != 2:
+                raise error('monochromatic vertex {}'.format(v))
 
     @classmethod
     def from_pseudo_anosov(cls, h):
@@ -622,7 +624,50 @@ class VeeringTriangulation(Triangulation):
         else:
             raise ValueError
 
-    def good_starts(self):
+    def relabel(self, p):
+        r"""
+        Relabel inplace this veering triangulation according to the permutation ``p``.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", [RED, BLUE, BLUE])
+            sage: T.relabel([0,1,3,2,5,4])
+            sage: T
+            [(0, 1, ~2), (2, ~0, ~1)], 'RBB'
+            sage: T._check()
+
+        TESTS:
+
+        This example used to be wrong::
+
+            sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
+            sage: T.relabel([1,5,0,2,4,3])
+            sage: T.edge_colour(0) == BLUE
+            True
+            sage: T.edge_colour(1) == RED
+            True
+            sage: T._check()
+
+            sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
+            sage: from veerer.permutation import perm_random
+            sage: for _ in range(10):
+            ....:     r = perm_random(6)
+            ....:     T.relabel(r)
+            ....:     T._check()
+        """
+        n = self._n
+        ep = self._ep
+        if not perm_check(p, n):
+            p = perm_init(p)
+            if not perm_check(p, n):
+                raise ValueError('invalid relabeling permutation')
+
+        Triangulation.relabel(self, p)
+        self._colouring = perm_on_array(p, self._colouring)
+
+    def _automorphism_good_starts(self):
         r"""
         Start at a RED before a BLUE.
 
@@ -631,8 +676,8 @@ class VeeringTriangulation(Triangulation):
             sage: from veerer import *
 
             sage: T = VeeringTriangulation("(0,1,2)", "RRB")
-            sage: T.good_starts()
-            [0]
+            sage: len(T._automorphism_good_starts())
+            1
         """
         starts = []
         best_word = None
@@ -723,68 +768,9 @@ class VeeringTriangulation(Triangulation):
 
         return starts
 
-    def edge_colour(self, e):
-        return self._colouring[e]
-
-    def relabel(self, p):
-        r"""
-        Relabel inplace this veering triangulation according to the permutation ``p``.
-
-        EXAMPLES::
-
-            sage: from veerer import *
-
-            sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", [RED, BLUE, BLUE])
-            sage: T.relabel([0,1,3,2,5,4])
-            sage: T
-            [(0, 1, ~2), (2, ~0, ~1)], 'RBB'
-            sage: T._check()
-
-        TESTS:
-
-        This example used to be wrong::
-
-            sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
-            sage: T.relabel([1,5,0,2,4,3])
-            sage: T.edge_colour(0) == BLUE
-            True
-            sage: T.edge_colour(1) == RED
-            True
-            sage: T._check()
-        """
-        n = self._n
-        ep = self._ep
-        if not perm_check(p, n):
-            p = perm_init(p)
-            if not perm_check(p, n):
-                raise ValueError('invalid relabeling permutation')
-
-        Triangulation.relabel(self, p)
-        self._colouring = perm_on_array(p, self._colouring)
-
-    def best_relabelling(self):
-        n = self._n
-        fp = self._fp
-        best = None
-
-        for start_edge in self.good_starts():
-            relabelling = self._relabelling_from(start_edge)
-
-            # relabelled data
-            fp_new = perm_conjugate(self._fp, relabelling)
-            ep_new = perm_conjugate(self._ep, relabelling)
-            colouring_new = perm_on_array(relabelling, self._colouring)
-
-            T = (colouring_new, fp_new, ep_new)
-            if best is None or T < best:
-                best = T
-                best_relabelling = relabelling
-
-        return best_relabelling, best
-
     def automorphisms(self):
         r"""
-        Return the list of automorphisms of this coloured triangulation.
+        Return the list of automorphisms of this veering triangulation.
 
         The output is a list of arrays that are permutations acting on the set
         of half edges.
@@ -793,39 +779,29 @@ class VeeringTriangulation(Triangulation):
 
             sage: from veerer import *
 
-        An example with four symmetries in H(1,1)::
+        An example with 4 symmetries in genus 2::
 
-            sage: p = "(0,~1,2)(~0,1,~3)(4,~5,3)(~4,6,~2)(7,~6,8)(~7,5,~9)(10,~11,9)(~10,11,~8)"
-            sage: cols = 'BRBBBRRBBBBR'
-            sage: T = VeeringTriangulation(p, cols)
-            sage: A = T.automorphisms()
+            sage: fp = "(0,~1,2)(~0,1,~3)(4,~5,3)(~4,6,~2)(7,~6,8)(~7,5,~9)(10,~11,9)(~10,11,~8)"
+            sage: cols = "BRBBBRRBBBBR"
+            sage: V = VeeringTriangulation(fp, cols)
+            sage: A = V.automorphisms()
             sage: len(A)
             4
-            sage: all(T.relabel(a) == T for a in A)
-            True
-
-        A very symmetric example in H(0^5)::
-
-            sage: T = VeeringTriangulation.from_string("RBBBBRBBRBBRBBR_tDnjlwgizdfCacmbBAeyxhvukspqor")
-            sage: print(len(T.automorphisms()))
-            10
+            sage: S = V.copy()
+            sage: for a in A:
+            ....:     S.relabel(a)
+            ....:     assert S == V
         """
-        n = self._n
-        fp = self._fp
-        ep = self._ep
-        colouring = self._colouring
-
         best = None
         best_relabellings = []
-
-        for start_edge in self.good_starts():
+        for start_edge in self._automorphism_good_starts():
             relabelling = self._relabelling_from(start_edge)
 
-            fp_new = perm_conjugate(fp, relabelling)
-            ep_new = perm_conjugate(ep, relabelling)
-            colouring_new = perm_conjugate(relabelling, colouring)
+            fp = perm_conjugate(self._fp, relabelling)
+            ep = perm_conjugate(self._ep, relabelling)
+            cols = perm_on_array(relabelling, self._colouring)
 
-            T = (colouring_new, fp_new, ep_new)
+            T = (cols, fp, ep)
             if best is None or T == best:
                 best_relabellings.append(relabelling)
                 best = T
@@ -836,6 +812,26 @@ class VeeringTriangulation(Triangulation):
 
         p0 = perm_invert(best_relabellings[0])
         return [perm_compose(p, p0) for p in best_relabellings]
+
+    def edge_colour(self, e):
+        return self._colouring[e]
+
+    def best_relabelling(self):
+        best = None
+        for start_edge in self._automorphism_good_starts():
+            relabelling = self._relabelling_from(start_edge)
+
+            # relabelled data
+            fp = perm_conjugate(self._fp, relabelling)
+            ep = perm_conjugate(self._ep, relabelling)
+            cols = perm_on_array(relabelling, self._colouring)
+
+            T = (cols, fp, ep)
+            if best is None or T < best:
+                best = T
+                best_relabelling = relabelling
+
+        return best_relabelling, best
 
     def rotate(self):
         r"""
@@ -879,7 +875,7 @@ class VeeringTriangulation(Triangulation):
             sage: T = VeeringTriangulation(faces, cols)
             sage: T.conjugate()
             sage: T
-            [(~5, ~4, ~3), (~2, ~1, ~0), (0, 2, 4), (1, 3, 5)], ['Red', 'Blue', 'Blue', 'Red', 'Blue', 'Blue']
+            [(0, 2, 4), (1, 3, 5), (~5, ~4, ~3), (~1, ~0, ~2)], 'RBBRBB'
             sage: T._check()
         """
         Triangulation.conjugate(self)
@@ -965,14 +961,15 @@ class VeeringTriangulation(Triangulation):
             sage: cols = [RED, RED, RED, RED, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE]
             sage: T = VeeringTriangulation(t, cols)
             sage: T.iso_sig()
-            'RBBBBBBBRRRB_twbvcudxfhjmkigesrqponla'
+            'RBRBRBBBRBBBBBBRBBBRBRBR_7ad9e8fbhjl0mkig654321nc_nmlkjihgfedcba9876543210'
 
         If we relabel the triangulation, the isomorphic signature does not change::
 
             sage: from veerer.permutation import perm_random
-            sage: p = perm_random(12)
-            sage: T.relabel(p).iso_sig()
-            'RBBBBBBBRRRB_twbvcudxfhjmkigesrqponla'
+            sage: p = perm_random(24)
+            sage: T.relabel(p)
+            sage: T.iso_sig()
+            'RBRBRBBBRBBBBBBRBBBRBRBR_7ad9e8fbhjl0mkig654321nc_nmlkjihgfedcba9876543210'
 
         An isomorphic triangulation can be reconstructed from the isomorphic
         signature via::
@@ -986,19 +983,27 @@ class VeeringTriangulation(Triangulation):
 
         TESTS::
 
-            sage: T = VeeringTriangulation.from_string('RBBBBRBRB_aqhbprdgcfeonmjkil')
-            sage: p = [2, 3, 5, 0, -5, -8, 6, -9, 1, -2, 8, -7, 7, 4, -1, -6, -4, -3]
-            sage: T.iso_sig() == T.relabel(p).iso_sig()
-            True
+            sage: from veerer.veering_triangulation import VeeringTriangulation
+            sage: from veerer.permutation import perm_random
+
+            sage: t = [(-12, 4, -4), (-11, -1, 11), (-10, 0, 10), (-9, 9, 1),
+            ....:      (-8, 8, -2), (-7, 7, 2), (-6, 6, -3), (-5, 5, 3)]
+            sage: cols = [RED, RED, RED, RED, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE]
+            sage: T = VeeringTriangulation(t, cols)
+            sage: iso_sig = T.iso_sig()
+            sage: for _ in range(10):
+            ....:     p = perm_random(24)
+            ....:     T.relabel(p)
+            ....:     assert T.iso_sig() == iso_sig
         """
         n = self._n
-        _, (colours, fp, ep) = self.best_relabelling()
+        _, (cols, fp, ep) = self.best_relabelling()
 
-        colours = ''.join('R' if colours[i] == RED else 'B' for i in range(n))
+        cols = ''.join('R' if cols[i] == RED else 'B' for i in range(n))
         fp = perm_base64_str(fp)
         ep = perm_base64_str(ep)
 
-        return colours + '_' + fp + '_' + ep
+        return cols + '_' + fp + '_' + ep
 
     def canonical(self):
         r"""
@@ -1035,7 +1040,7 @@ class VeeringTriangulation(Triangulation):
             [(0, 1, 2), (~2, ~0, ~1)], 'RRB'
 
             sage: T.flip(1, BLUE); T
-            [(0, ~2, 1), (~1, ~0, 2)], 'RBB'
+            [(0, ~2, 1), (2, ~1, ~0)], 'RBB'
             sage: T.flip(2, BLUE); T
             [(0, ~1, ~2), (1, 2, ~0)], 'RBB'
         """
@@ -1252,12 +1257,13 @@ class VeeringTriangulation(Triangulation):
         else:
             raise ValueError('bad slope parameter')
 
-        n = self.num_edges()
+        low_bound = max(0, int(low_bound))
+        ne = self.num_edges()
         ep = self._ep
 
         # non-negativity
-        for e in range(n):
-            if ep[e] != e and ep[e] < n:
+        for e in range(ne):
+            if ep[e] != e and ep[e] < ne:
                 raise ValueError('edge permutation not in standard form')
             if not low_bound or \
                 (allow_degenerations and \
@@ -1315,6 +1321,7 @@ class VeeringTriangulation(Triangulation):
             sage: l
             [x1 <= y0 + y2, y0 <= x1 + x2]
         """
+        hw_bound = max(0, int(hw_bound))
         for e in self.forward_flippable_edges():
             a, b, c, d = self.square_about_edge(e)
             insert(x[self._norm(e)] <= y[self._norm(a)] + y[self._norm(d)] - hw_bound)
@@ -1343,12 +1350,16 @@ class VeeringTriangulation(Triangulation):
             A 2-dimensional polyhedron in QQ^3 defined as the convex hull of 1 point, 2 rays
             sage: P.generators()
             Generator_System {point(0/1, 0/1, 0/1), ray(1, 1, 0), ray(0, 1, 1)}
+
+            sage: P = T.train_track_polytope(VERTICAL, low_bound=3)
+            sage: P.generators()
+            Generator_System {ray(1, 1, 0), ray(0, 1, 1), point(3/1, 6/1, 3/1)}
         """
         require_package('ppl', 'train_track_polytope')
 
         cs = ppl.Constraint_System()
-        n = self._n
-        variables = [ppl.Variable(e) for e in range(n)]
+        ne = self.num_edges()
+        variables = [ppl.Variable(e) for e in range(ne)]
         self._set_train_track_constraints(cs.insert, variables, slope, low_bound, False)
         return ppl.C_Polyhedron(cs)
 
@@ -1400,6 +1411,8 @@ class VeeringTriangulation(Triangulation):
 
             sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
             sage: T.geometric_polytope()
+            A 4-dimensional polyhedron in QQ^6 defined as the convex hull of 1 point, 7 rays
+            sage: T.geometric_polytope(1, 1, 1)
             A 4-dimensional polyhedron in QQ^6 defined as the convex hull of 1 point, 7 rays
 
         TESTS::
@@ -1534,12 +1547,6 @@ class VeeringTriangulation(Triangulation):
 
             sage: CT.flat_structure_min(True)
             Flat Triangulation made of 16 triangles
-
-        A bad example::
-
-            sage: T = VeeringTriangulation.from_string("RBRRBBRBR_gjbpaqechdfonmlkir")
-            sage: T.flat_structure_min()
-            Flat Triangulation made of 6 triangles
         """
         require_package('sage', 'flat_structure_min')
 
@@ -1649,20 +1656,6 @@ class VeeringTriangulation(Triangulation):
             sage: from surface_dynamics import *
             sage: from veerer import *
 
-            sage: s = 'RRRRBBBBBBBB_uvwfjilpedcbqkonmtsrhaxg'
-            sage: T = VeeringTriangulation.from_string(s)
-            sage: T.is_geometric('polytope')
-            False
-            sage: T.is_geometric('LP')
-            False
-
-            sage: s = 'RRRRBBBBBBBB_uvwfgkrpedchjaonmtlixbsq'
-            sage: T = VeeringTriangulation.from_string(s)
-            sage: T.is_geometric('polytope')
-            True
-            sage: T.is_geometric('LP')
-            True
-
         TESTS::
 
             sage: from veerer import *
@@ -1690,17 +1683,12 @@ class VeeringTriangulation(Triangulation):
         elif method == 'polytope2':
             return not self.geometric_polytope(1,1,1).is_empty()
         elif method == 'LP':
-            raise RuntimeError
-            try:
-                import ppl
-            except ImportError:
-                raise ImportError('pplpy is not installed on your computer. Follow '
-                                  'the instructions at https://gitlab.com/videlec/pplpy')
+            require_package('ppl', 'is_geometric')
 
-            n = self.num_edges()
-            M = ppl.MIP_Problem(2*n)
-            x = [ppl.Variable(i) for i in range(n)]
-            y = [ppl.Variable(n+i) for i in range(n)]
+            ne = self.num_edges()
+            M = ppl.MIP_Problem(2*ne)
+            x = [ppl.Variable(e) for e in range(ne)]
+            y = [ppl.Variable(e) for e in range(ne, 2*ne)]
 
             self._set_train_track_constraints(M.add_constraint, x, VERTICAL, True, False)
             self._set_train_track_constraints(M.add_constraint, y, HORIZONTAL, True, False)
@@ -1709,7 +1697,7 @@ class VeeringTriangulation(Triangulation):
             return M.solve()['status'] != 'unfeasible'
 
         else:
-            raise ValueError("method must be 'polytope' or 'LP'")
+            raise ValueError("method must be 'polytope', 'polytope2' or 'LP'")
 
     def edge_has_curve(self, e, verbose=False):
         r"""
