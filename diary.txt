@@ -1,3 +1,34 @@
+2018-08-24
+
+Discussed how L^\infty Del triangulations behave under
+degeneration.... Ian is full of ideas and points to his first paper on
+the arXiv for a discussion of collapsing clusters of zeros.  Some of
+the relevant points are whether or not things converge in angle... Ie
+we will allow \RR^* rescaling but of course not \CC^* rescaling.
+
+What are the local obstructions to being geometric?  The "obvious" one
+we found is the following:
+
+[(~1, ~a, b), (~b, 0, c), (~c, 1, d), (~d, e, ~0)]
+
+which is a slit torus. :) Note that the edges b and d are forward and
+backward flippable.  So to be geometric we must have
+
+y_1 + y_c > x_b = x_c + x_0 (for b)
+
+and 
+
+y_1 + y_c = y_d < x_c + x_0 (for d)
+
+which is a contradiction.  :)
+
+What is the frequency of such a subtriangulation among all core
+triangulations?  We want to show that it is positive, and thus the
+non-geometric core triangulations have a strictly faster exponential
+growth rate... Compare to the probability that a permutation contains
+a two-cycle of the form (k k+1) (which gives a slit torus in the
+square-tiled surface, etc).
+
 2018-08-22
 
 - Note that our automaton has two symmetries, not four, due to the way
