@@ -547,6 +547,32 @@ class Triangulation(object):
 
         return a,b,c,d
 
+    def relabel(self, p):
+        r"""
+        Relabel this triangulation inplace according to the permutation ``p``.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T = Triangulation([(0,1,2), (-1,-2,-3)])
+            sage: T.relabel([1,5,0,2,4,3])
+            sage: T.faces()
+            [[0, 1, 5], [2, 3, 4]]
+            sage: T.edges()
+            [[0, 2], [1, 3], [4, 5]]
+            sage: T._check()
+        """
+        n = self._n
+        if not perm_check(p, n):
+            p = perm_init(p)
+            if not perm_check(p, n):
+                raise ValueError('invalid relabeling permutation')
+
+        self._vp = perm_conjugate(self._vp, p)
+        self._ep = perm_conjugate(self._ep, p)
+        self._fp = perm_conjugate(self._fp, p)
+
     def flip(self, e):
         r"""
         Flip the edge ``e``.
