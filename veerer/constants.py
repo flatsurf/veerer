@@ -47,6 +47,9 @@ def colour_to_char(col):
     else:
         raise ValueError("unknown color code '%d'" % d)
 
+########
+# SLOPES
+########
 HORIZONTAL, VERTICAL = 'Horizontal', 'Vertical'
 
 SLOPES = [HORIZONTAL, VERTICAL]

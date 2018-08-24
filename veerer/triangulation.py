@@ -459,9 +459,12 @@ class Triangulation(object):
         # 2 - 2g = \chi so 
         return (2 - self.euler_characteristic()) / 2
 
-    def __repr__(self):
+    def __str__(self):
         faces = self.faces()        
         return '[' + ', '.join('(' + ', '.join(self._edge_rep(e) for e in f) + ')' for f in faces) + ']'
+
+    def __repr__(self):
+        return str(self)
 
     def is_flippable(self, e):
         r"""

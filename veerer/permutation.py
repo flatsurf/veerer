@@ -412,6 +412,9 @@ def perm_on_list(p, t):
     """
     return [p[i] for i in t]
 
+def perm_on_array(p, a):
+    n = len(p)
+    return array('l', [a[p[i]] for i in range(n)])
 
 def perm_on_cyclic_list(p, t):
     r"""

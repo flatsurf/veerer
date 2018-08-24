@@ -1,11 +1,15 @@
-
+r"""
+Train-track and triangulations automata.
+"""
 from __future__ import print_function, absolute_import
 
 import os, sys, shutil
 from time import time
 
-from .coloured_triangulation import ColouredTriangulation, ngon
+from .veering_triangulation import VeeringTriangulation
 from .constants import *
+
+from .env import sage
 
 class Automaton(object):
     r"""
@@ -81,8 +85,7 @@ class Automaton(object):
             sage: A.to_graph(directed=False, multiedges=False, loops=True)
             Looped graph on 86 vertices
         """
-        from . import HAS_SAGE
-        if not HAS_SAGE:
+        if sage is None:
             raise ValueError('Only available in SageMath')
         elif directed:
             from sage.graphs.digraph import DiGraph

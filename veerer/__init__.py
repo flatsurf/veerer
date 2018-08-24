@@ -8,17 +8,11 @@ from __future__ import absolute_import
 
 from .constants import RED, BLUE, HORIZONTAL, VERTICAL
 from .triangulation import Triangulation
-from .coloured_triangulation import ColouredTriangulation
+from .veering_triangulation import VeeringTriangulation
 from .automaton import Automaton
 
-try:
-    import sage.all
-except ImportError:
-    HAS_SAGE = False
-else:
-    HAS_SAGE = True
-
-if HAS_SAGE:
+from .env import sage
+if sage is not None:
     from .layout import FlatTriangulation
 
-del absolute_import
+del sage, absolute_import
