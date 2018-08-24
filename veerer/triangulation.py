@@ -216,9 +216,10 @@ class Triangulation(object):
             sage: Triangulation.from_string(T.to_string()) == T
             True
         """
-        k = (len(s) - 1) / 2
-        fp = perm_from_base64_str(s[:k])
-        ep = perm_from_base64_str(s[k+1:])
+        n,fp,ep = s.split('_')
+        n = uint_from_base64_str(n)
+        fp = perm_from_base64_str(fp, n)
+        ep = perm_from_base64_str(ep, n)
         return Triangulation.from_face_edge_perms(fp, ep, check=check)
 
     def _check(self, error=RuntimeError):
@@ -703,9 +704,9 @@ class Triangulation(object):
 
             sage: T = Triangulation("(0,1,2)(~0,~1,~2)")
             sage: T.to_string()
-            '6_120534_6_543210'
+            '6_120534_543210'
         """
-        return perm_base64_str(self._fp) + '_' + perm_base64_str(self._ep)
+        return uint_base64_str(self._n) + '_' + perm_base64_str(self._fp) + '_' + perm_base64_str(self._ep)
 
     def conjugate(self):
         r"""
