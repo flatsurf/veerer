@@ -579,6 +579,28 @@ class Triangulation(object):
 
         The returned relabelling array maps the current edge to the new
         labelling.
+        
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T = Triangulation("(~2, 1, ~0)(~1, 0, 2)")
+            sage: T._relabelling_from(3)
+            array('l', [4, 5, 3, 0, 1, 2])
+
+            sage: T = Triangulation("(0, 1, 2)")
+            sage: T._relabelling_from(1)
+            array('l', [1, 0, 2])
+
+            sage: T = Triangulation("(~2, 1, ~0)(~1, 0, 2)")
+            sage: p = T._relabelling_from(0)
+            sage: T.relabel(p)
+            sage: for i in range(6):
+            ....:     p = T._relabelling_from(i)
+            ....:     S = T.copy()
+            ....:     S.relabel(p)
+            ....:     assert S == T
+
         """
         n = self._n
         ep = self._ep
@@ -597,7 +619,8 @@ class Triangulation(object):
         to_process = [start_edge]
         if ep[start_edge] != start_edge:
             to_process.append(ep[start_edge])
-
+            
+            
         while to_process:
             e0 = to_process.pop()
             e = vp[e0]
@@ -608,11 +631,11 @@ class Triangulation(object):
                     if ep[e] != e:
                         relabelling[ep[e]] = m
                         m = m - 1
-                    to_process.append(ep[e])
+                        to_process.append(ep[e])
                 e = vp[e]
 
         # check that everybody has a name!
-        assert k == m+1
+        assert k == m + 1
 
         return relabelling
 
