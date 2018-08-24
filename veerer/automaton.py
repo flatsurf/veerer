@@ -42,6 +42,22 @@ class Automaton(object):
         sage: A = Automaton.from_triangulation(T)
         sage: len(A)
         876
+
+    Quadratic strata::
+
+        sage: T = VeeringTriangulation('(0,1,2)', 'BBR')
+        sage: A = Automaton.from_triangulation(T)
+        sage: len(A)
+        2
+
+    The examples below is Q(1^2, -1^2) with two folded edges::
+
+        sage: fp = '(0,1,2)(~0,~3,~8)(3,5,4)(~4,~1,~5)(6,7,8)(~6,9,~2)'
+        sage: cols = 'BRBRBBBRBR'
+        sage: T = VeeringTriangulation(fp, cols)
+        sage: A = Automaton.from_triangulation(T)
+        sage: len(A)
+        1074
     """
     def __init__(self, graph):
         self._graph = graph
@@ -256,6 +272,16 @@ class Automaton(object):
     def geometric_triangulations(self, method=None):
         r"""
         Return the list of geometric configurations.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: from surface_dynamics import *
+
+            sage: T = VeeringTriangulation.from_stratum(AbelianStratum(2))
+            sage: A = Automaton.from_triangulation(T)
+            sage: len(A.geometric_triangulations())
+            54
         """
         geoms = []
         for s in self:
@@ -267,6 +293,16 @@ class Automaton(object):
     def cylindrical_triangulations(self):
         r"""
         Return the list of cylindrical configurations.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: from surface_dynamics import *
+
+            sage: T = VeeringTriangulation.from_stratum(AbelianStratum(2))
+            sage: A = Automaton.from_triangulation(T)
+            sage: len(A.cylindrical_triangulations())
+            24
         """
         cylindricals = []
         for s in self:

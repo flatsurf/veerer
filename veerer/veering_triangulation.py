@@ -180,6 +180,9 @@ class VeeringTriangulation(Triangulation):
             sage: CT.stratum()
             H_4(6)
         """
+        # TODO: for now there is no account of possible folded edges
+        # in the cylinder diagram. This has to be changed in
+        # surface_dynamics...
         require_package('surface_dynamics', 'from_stratum')
 
         from surface_dynamics.flat_surfaces.strata import Stratum, StratumComponent
@@ -471,6 +474,12 @@ class VeeringTriangulation(Triangulation):
             sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
             sage: T.stratum()
             H_1(0)
+
+            sage: fp = '(0,1,2)(~0,~3,~8)(3,5,4)(~4,~1,~5)(6,7,8)(~6,9,~2)'
+            sage: cols = 'BRBRBBBRBR'
+            sage: T = VeeringTriangulation(fp, cols)
+            sage: T.stratum()
+            Q_1(1^2, -1^2)
         """
         require_package('surface_dynamics', 'stratum')
 
