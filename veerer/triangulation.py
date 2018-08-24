@@ -7,14 +7,6 @@ from six.moves import range, map, zip
 from array import array
 from .permutation import *
 
-# TODO: to be removed
-def edge_label(e):
-    raise ValueError
-
-# TODO: to be removed
-def norm(e):
-    raise ValueError
-
 def face_edge_perms_init(data):
     r"""
     EXAMPLES::
@@ -68,6 +60,30 @@ def face_edge_perms_init(data):
             fp[e0] = e1
 
     return perm_init(fp), perm_init(ep)
+
+# NOTE: we don't really care that we have a triangulation here. When
+# there is no restriction on the cycle decomposition of _fp we got
+# a coding for any cell decomposition (modulo possible folded edges).
+# flipping here still makes sense
+#
+#  +                 +                 +               _ +
+#   \b             a/                   \            _/ /
+#    \      e      /                     \      e __/  /
+#     +-----------+       --------->      +    __/    +
+#    /             \                     /  __/        \
+#   /c             d\                   /__/            \
+#  +                 +                 +/                +
+#
+# and we have operations that consist in removing/adding edges.
+# For that purpose, we need to deal with partial permutations of
+# {0, 1, ..., n-1}.
+#
+# TODO: implement: is_removable(), remove(), add()
+#
+# Though, many of it is already done in the flatsurf package
+# with a quite different encoding
+#
+#    https://github.com/videlec/sage-flatsurf
 
 class Triangulation(object):
     r"""
