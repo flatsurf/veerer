@@ -40,6 +40,8 @@ def flipper_edge(T, e):
     EXAMPLES::
 
         sage: import flipper
+        sage: from veerer.layout import flipper_edge
+
         sage: T = flipper.create_triangulation([(0r,1r,2r),(-1r,-2r,-3r)])
         sage: sorted([flipper_edge(T, e) for e in T.edges])
         [0, 1, 2, 3, 4, 5]
@@ -121,9 +123,9 @@ class FlatVeeringTriangulationLayout:
     Or a coloured triangulation (in that situation the "smallest" integral
     solution is picked)::
 
-        sage: T = ColouredTriangulation.from_string('RBBBBRBBRBRBRBB_dBnzCaeyDgkbmjficAlhxwvutspqor')
+        sage: T = VeeringTriangulation("(0,1,2)(~0,~1,3)", "BRBB")
         sage: FlatVeeringTriangulationLayout.from_coloured_triangulation(T)
-        Flat Triangulation made of 10 triangles
+        Flat Triangulation made of 2 triangles
 
     Or a pseudo-Anosov homeomorphism from flipper::
 
@@ -191,7 +193,8 @@ class FlatVeeringTriangulationLayout:
         EXAMPLES::
 
             sage: from veerer import *
-            sage: T = ColouredTriangulation.from_string('BBRBBBRRBRBRRBBRRB_uBFyjzCdocvwqsemEbrgtxlAJkHDnGihfaIp')
+            sage: T = VeeringTriangulation("(0,1,2)(~0,~1,3)", "BRRR")
+            sage: assert T.is_core()
             sage: F = T.flat_structure_min()
             sage: F.set_pos()
             sage: F._check()
@@ -278,7 +281,7 @@ class FlatVeeringTriangulationLayout:
 
             sage: from veerer import *
 
-            sage: T = ColouredTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
+            sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
             sage: FlatVeeringTriangulationLayout.from_coloured_triangulation(T)
             Flat Triangulation made of 2 triangles
         """
@@ -309,15 +312,11 @@ class FlatVeeringTriangulationLayout:
 
             sage: from veerer import *
 
-            sage: T = ColouredTriangulation.from_string('BBRBBBRRBRBRRBBRRB_uBFyjzCdocvwqsemEbrgtxlAJkHDnGihfaIp')
+            sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "BBR")
             sage: F = T.flat_structure_min(allow_degenerations=True)
             sage: F.set_pos(cylinders=T.cylinders(BLUE) + T.cylinders(RED))
             sage: F.plot()
-            Graphics object consisting of 84 graphics primitives
-
-            sage: T = ColouredTriangulation.from_string('RBBBRBBBBRRR_vwkesxgabijfdcuthrqpmnlo')
-            sage: F = T.flat_structure_min()
-            sage: F.set_pos(cylinders=T.cylinders(BLUE) + T.cylinders(RED))
+            Graphics object consisting of 13 graphics primitives
         """
         nf = self._triangulation.num_faces()
         face_seen = [False] * nf
