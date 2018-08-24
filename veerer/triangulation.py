@@ -550,7 +550,7 @@ class Triangulation(object):
     def relabel(self, p):
         r"""
         Relabel this triangulation inplace according to the permutation ``p``.
-
+        
         EXAMPLES::
 
             sage: from veerer import *
@@ -572,6 +572,49 @@ class Triangulation(object):
         self._vp = perm_conjugate(self._vp, p)
         self._ep = perm_conjugate(self._ep, p)
         self._fp = perm_conjugate(self._fp, p)
+
+    def _relabelling_from(self, start_edge):
+        r"""
+        Return the relabelling map.
+
+        The returned relabelling array maps the current edge to the new
+        labelling.
+        """
+        n = self._n
+        ep = self._ep
+        vp = self._vp
+
+        k = 0 # current available label at the front.
+        m = n - 1 # current available label at the back.
+        relabelling = array('l', [-1] * n)
+        relabelling[start_edge] = 0
+        k = k + 1
+
+        if ep[start_edge] != start_edge:
+            relabelling[ep[start_edge]] = m
+            m = m - 1
+
+        to_process = [start_edge]
+        if ep[start_edge] != start_edge:
+            to_process.append(ep[start_edge])
+
+        while to_process:
+            e0 = to_process.pop()
+            e = vp[e0]
+            while e != e0:
+                if relabelling[e] == -1:
+                    relabelling[e] = k
+                    k = k + 1
+                    if ep[e] != e:
+                        relabelling[ep[e]] = m
+                        m = m - 1
+                    to_process.append(ep[e])
+                e = vp[e]
+
+        # check that everybody has a name!
+        assert k == m+1
+
+        return relabelling
 
     def flip(self, e):
         r"""
