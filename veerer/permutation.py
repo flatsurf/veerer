@@ -103,7 +103,7 @@ def perm_id(n):
 def perm_init(data):
     """
     Returns a permutation from the given data.
-    
+
     If data is a list of integers, then they are considered to be
     the images of the permutation. If ``data`` is a list of list
     then each list in ``data`` is considered as a cycle. Finally,
@@ -233,15 +233,15 @@ def perm_random(n):
 CHARS = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+-'
 CHARS_INV = {j:i for i,j in enumerate(CHARS)}
 
-def uint_to_base64_str(n, l=None):
+def uint_base64_str(n, l=None):
     r"""
     EXAMPLES::
 
-        sage: from veerer.permutation import uint_to_base64_str
+        sage: from veerer.permutation import uint_base64_str
 
-        sage: uint_to_base64_str(15)
+        sage: uint_base64_str(15)
         'f'
-        sage: uint_to_base64_str(15, 3)
+        sage: uint_base64_str(15, 3)
         '00f'
     """
     n = int(n)
@@ -260,11 +260,11 @@ def uint_from_base64_str(s):
     r"""
     EXAMPLES::
 
-        sage: from veerer.permutation import uint_from_base64_str, uint_to_base64_str
+        sage: from veerer.permutation import uint_from_base64_str, uint_base64_str
 
         sage: uint_from_base64_str('mqb')
         91787
-        sage: uint_to_base64_str(91787)
+        sage: uint_base64_str(91787)
         'mqb'
 
         sage: uint_from_base64_str('00mqb')
@@ -287,18 +287,18 @@ def perm_base64_str(p):
         sage: from array import array
 
         sage: perm_base64_str([3,1,0,2])
-        '4_3102'
+        '3102'
         sage: s = perm_base64_str(range(2048))
         sage: s
-        'w0_00010203...v+v-'
-        sage: perm_from_base64_str(s) == array('l', range(2048))
+        '00010203...v+v-'
+        sage: perm_from_base64_str(s, 2048) == array('l', range(2048))
         True
     """
     n = len(p)
     l = int(log(n, 64)) + 1 # number of digits used for each entry
-    return uint_to_base64_str(n) + '_' + ''.join(uint_to_base64_str(i, l) for i in p)
+    return ''.join(uint_base64_str(i, l) for i in p)
 
-def perm_from_base64_str(s):
+def perm_from_base64_str(s, n):
     r"""
     EXAMPLES::
 
@@ -307,21 +307,19 @@ def perm_from_base64_str(s):
 
         sage: p = array('l', [3,0,2,1])
         sage: s = perm_base64_str(p)
-        sage: perm_from_base64_str(s) == p
+        sage: perm_from_base64_str(s, 4) == p
         True
 
         sage: r = list(range(3000))
         sage: shuffle(r)
         sage: p = array('l', r)
-        sage: perm_from_base64_str(perm_base64_str(p)) == p
+        sage: perm_from_base64_str(perm_base64_str(p), 3000) == p
         True
     """
-    n, p = s.split('_')
-    n = uint_from_base64_str(n)
     l = int(log(n, 64)) + 1 # number of digits used for each entry
-    if len(p) != n * l:
+    if len(s) != n * l:
         raise ValueError('wrong length')
-    return array('l', (uint_from_base64_str(p[i:i+l]) for i in range(0,len(p),l)))
+    return array('l', (uint_from_base64_str(s[i:i+l]) for i in range(0,len(s),l)))
 
 #####################################################################
 # Cycles and action
@@ -518,6 +516,25 @@ def perm_compose(p1, p2):
     return r
 
 def perm_conjugate(p1, p2):
+    r"""
+    Conjugate ``p1`` by ``p2``.
+
+    Let call ``res`` the output of this function. If ``p1`` was
+    mapping ``a`` to ``b`` then ``res`` will map ``p2[a]``
+    to ``p2[b]``.
+
+    EXAMPLES::
+
+        sage: from veerer.permutation import perm_conjugate, perm_random
+
+        sage: p1 = perm_random(23)
+        sage: p2 = perm_random(23)
+        sage: res = perm_conjugate(p1, p2)
+        sage: res[p2[14]] == p2[p1[14]]
+        True
+        sage: res[p2[19]] == p2[p1[19]]
+        True
+    """
     n = len(p1)
     res = array('l', [-1] * n)
     for i in range(n):
