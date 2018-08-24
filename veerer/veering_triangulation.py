@@ -59,7 +59,7 @@ class VeeringTriangulation(Triangulation):
         [(0, 12, ~11), (1, 13, ~12), ..., (16, ~15, ~1)], 'RRRRRRBBBBBBBBBBBB'
 
     From a flipper pseudo-Anosov map::
-    
+
         sage: import flipper
 
         sage: T = flipper.load('S_2_1')
@@ -76,7 +76,7 @@ class VeeringTriangulation(Triangulation):
 
         if isinstance(colouring, str):
             colouring = [RED if c == 'R' else BLUE for c in colouring]
-        
+
         n = self._n
         # A list : edge_indices --> {Red, Blue}
         if len(colouring) == self.num_edges():
@@ -336,7 +336,7 @@ class VeeringTriangulation(Triangulation):
             sage: VeeringTriangulation("(0,1,2)", [RED, RED, BLUE])
             [(0, 1, 2)], 'RRB'
         """
-        n = self.num_half_edges() 
+        n = self.num_half_edges()
         ep = self.edge_permutation(copy=False)
         col_str = ''
         for e in range(n):
@@ -355,12 +355,12 @@ class VeeringTriangulation(Triangulation):
 
     def angles(self):
         r"""
-        Return the list of angles (divided by \pi). 
+        Return the list of angles (divided by \pi).
 
         Note that the vertices of the triangulation are labeled. The
-        angles are given in the same order.  
+        angles are given in the same order.
 
-        # ??? Confused - there is no labelling yet. 
+        # ??? Confused - there is no labelling yet.
 
         EXAMPLES::
 
@@ -429,7 +429,7 @@ class VeeringTriangulation(Triangulation):
         """
         if self.num_folded_edges() > 0:
             return False
-        
+
         ep = self._ep
         vp = self._vp
 
@@ -723,6 +723,9 @@ class VeeringTriangulation(Triangulation):
 
         return starts
 
+    def edge_colour(self, e):
+        return self._colouring[e]
+
     def relabel(self, p):
         r"""
         Relabel inplace this veering triangulation according to the permutation ``p``.
@@ -733,6 +736,7 @@ class VeeringTriangulation(Triangulation):
 
             sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", [RED, BLUE, BLUE])
             sage: T.relabel([0,1,3,2,5,4])
+            sage: T
             [(0, 1, ~2), (2, ~0, ~1)], 'RBB'
             sage: T._check()
 
@@ -742,7 +746,9 @@ class VeeringTriangulation(Triangulation):
 
             sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
             sage: T.relabel([1,5,0,2,4,3])
-            sage: T._colouring == array('l', [BLUE, RED, BLUE, RED, RED, RED])
+            sage: T.edge_colour(0) == BLUE
+            True
+            sage: T.edge_colour(1) == RED
             True
             sage: T._check()
         """
@@ -766,9 +772,9 @@ class VeeringTriangulation(Triangulation):
         n = self._n
         ep = self._ep
         vp = self._vp
-        
-        k = 0 # current available label at the front. 
-        m = n - 1 # current available label at the back. 
+
+        k = 0 # current available label at the front.
+        m = n - 1 # current available label at the back.
         relabelling = array('l', [-1] * n)
         relabelling[start_edge] = 0
         k = k + 1
@@ -795,7 +801,7 @@ class VeeringTriangulation(Triangulation):
                 e = vp[e]
 
         # check that everybody has a name!
-        assert k == m+1 
+        assert k == m+1
 
         return relabelling
 
@@ -1216,7 +1222,7 @@ class VeeringTriangulation(Triangulation):
         e = int(e)
         assert(self.is_flippable(e))
         E = self._ep[e]
-        
+
         Triangulation.back_flip(self, e)
         self._colouring[e] = self._colouring[E] = col
 
@@ -1418,7 +1424,7 @@ class VeeringTriangulation(Triangulation):
             point(1/1, 0/1, 1/1)
         """
         require_package('ppl', 'train_track_min_solution')
-            
+
         n = self.num_edges()
         M = ppl.MIP_Problem(n)
 
@@ -1801,7 +1807,7 @@ class VeeringTriangulation(Triangulation):
         colouring = self._colouring
         edge_rep = self._edge_rep
         ep = self._ep
-        
+
         if verbose:
             print('[edge_has_curve] checking edge %s with color %s' % (edge_rep(e), colouring[e]))
 
