@@ -18,27 +18,27 @@ class Automaton(object):
         sage: from veerer import *
         sage: from surface_dynamics import *
 
-        sage: T = ColouredTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
+        sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
         sage: A = Automaton.from_triangulation(T)
         sage: len(A)
         2
 
-        sage: T = ColouredTriangulation.from_stratum(AbelianStratum(2))
+        sage: T = VeeringTriangulation.from_stratum(AbelianStratum(2))
         sage: A = Automaton.from_triangulation(T)
         sage: len(A)
         86
 
-        sage: T = ColouredTriangulation.from_stratum(QuadraticStratum(2,-1,-1))
+        sage: T = VeeringTriangulation.from_stratum(QuadraticStratum(2,-1,-1))
         sage: A = Automaton.from_triangulation(T)
         sage: len(A)
         160
 
-        sage: T = ColouredTriangulation.from_stratum(QuadraticStratum(2,2))
+        sage: T = VeeringTriangulation.from_stratum(QuadraticStratum(2,2))
         sage: A = Automaton.from_triangulation(T)
         sage: len(A)
         846
 
-        sage: T = ColouredTriangulation.from_stratum(AbelianStratum(1,1))
+        sage: T = VeeringTriangulation.from_stratum(AbelianStratum(1,1))
         sage: A = Automaton.from_triangulation(T)
         sage: len(A)
         876
@@ -48,7 +48,7 @@ class Automaton(object):
         self._iso_sigs = sorted(graph)
         self._index = dict((sig, index) for index, sig in enumerate(self._iso_sigs))
     def __str__(self):
-        return "Core Veering Automaton of '%s' with %s vertices" % (min(self._graph), len(self._graph))
+        return "Core Veering Automaton with %s vertices" % len(self._graph)
     def __repr__(self):
         return str(self)
     def __len__(self):
@@ -75,10 +75,13 @@ class Automaton(object):
             sage: from veerer import *
             sage: from surface_dynamics import *
 
-            sage: T = ColouredTriangulation.from_string("BBBRBRBRR_ebackjdlfqnhiogrmp")
+            sage: fp = "(0,~7,6)(1,~8,~2)(2,~6,~3)(3,5,~4)(4,8,~5)(7,~1,~0)"
+            sage: cols = 'RBRBRBBBB'
+            sage: T = VeeringTriangulation(fp, cols)
             sage: A = Automaton.from_triangulation(T)
             sage: A
-            Core Veering Automaton of 'RBBBBRBRB_aqhbprdgcfeonmjkil' with 86 vertices
+            Core Veering Automaton with 86 vertices
+
             sage: A.to_graph()
             Looped multi-digraph on 86 vertices
 
@@ -111,7 +114,7 @@ class Automaton(object):
             sage: from veerer import *
             sage: from surface_dynamics import *
 
-            sage: T = ColouredTriangulation.from_string("BBBRBRBRR_ebackjdlfqnhiogrmp")
+            sage: T = VeeringTriangulation.from_stratum(AbelianStratum(2))
             sage: A = Automaton.from_triangulation(T)
             sage: rot = A.rotation_automorphism()
 
@@ -121,7 +124,7 @@ class Automaton(object):
         """
         aut = {}
         for a in self._graph:
-            T = ColouredTriangulation.from_string(a)
+            T = VeeringTriangulation.from_string(a)
             T.rotate()
             aut[a] = T.iso_sig()
         return aut
@@ -135,7 +138,7 @@ class Automaton(object):
             sage: from veerer import *
             sage: from surface_dynamics import *
 
-            sage: T = ColouredTriangulation.from_string("BBBRBRBRR_ebackjdlfqnhiogrmp")
+            sage: T = VeeringTriangulation.from_stratum(AbelianStratum(2))
             sage: A = Automaton.from_triangulation(T)
             sage: conj = A.conjugation_automorphism()
 
@@ -151,7 +154,7 @@ class Automaton(object):
         """
         aut = {}
         for a in self._graph:
-            T = ColouredTriangulation.from_string(a)
+            T = VeeringTriangulation.from_string(a)
             T.conjugate()
             aut[a] = T.iso_sig()
         return aut
@@ -183,9 +186,10 @@ class Automaton(object):
         EXAMPLES::
 
             sage: from veerer import *
+            sage: from surface_dynamics import *
 
             sage: filename = tmp_filename() + '.dot'
-            sage: T = ColouredTriangulation.from_string('RBRBRBBRR_gjabprdhcfeonmlkiq')
+            sage: T = VeeringTriangulation.from_stratum(AbelianStratum(2))
             sage: A = Automaton.from_triangulation(T)
             sage: A.export_dot(filename)
         """
@@ -221,7 +225,7 @@ class Automaton(object):
         f.write('digraph MyGraph {\n')
         f.write(' node [shape=circle style=filled margin=0 width=0 height=0]\n')
         for g in self._iso_sigs:
-            T = ColouredTriangulation.from_iso_sig(g)
+            T = VeeringTriangulation.from_string(g)
             if triangulations:
                 t_filename = os.path.join(path, g + '.svg')
                 t_rel_filename = os.path.join(rel_path, g + '.svg')
@@ -255,7 +259,7 @@ class Automaton(object):
         """
         geoms = []
         for s in self:
-            c = ColouredTriangulation.from_string(s)
+            c = VeeringTriangulation.from_string(s)
             if c.is_geometric(method=method):
                 geoms.append(s)
         return geoms
@@ -266,7 +270,7 @@ class Automaton(object):
         """
         cylindricals = []
         for s in self:
-            c = ColouredTriangulation.from_string(s)
+            c = VeeringTriangulation.from_string(s)
             if c.is_cylindrical():
                 cylindricals.append(s)
         return cylindricals
@@ -283,7 +287,6 @@ class Automaton(object):
 
         T = T.copy()
         iso_sig = T.iso_sig()
-        n = T._triangulation.num_edges()
         d = T.stratum_dimension()
         count = 0
 
