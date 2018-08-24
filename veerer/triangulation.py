@@ -100,15 +100,15 @@ class Triangulation(object):
     "darts"), given as a function.  Our conventions for the
     permutations are set out in the following figure:
 
-          ~b           
-        ----->         
+          ~b
+        ----->
     w-----------*-----------v
-     \             <-----  /  
+     \             <-----  /
       \ \             b   / /
        \ \ c             / /~a
         \ \     F       / /
-         \ v           / v 
-          *         ^ *  
+         \ v           / v
+          *         ^ *
          ^ \       / /
           \ \   a / /
          ~c\ \   / /
@@ -161,7 +161,7 @@ class Triangulation(object):
         fp = self._fp
         ep = self._ep
         n = self._n = len(fp)
-        
+
         # TODO: face labels are disabled for now. We should actually
         # make it a *partition* of the faces (two faces are allowed to
         # have the same label) The trivial partition {0,1,2,...,F-1}
@@ -170,7 +170,7 @@ class Triangulation(object):
         # labelled
         # fl = self._fl = [None] * F # face labels
 
-        # TODO: edge labels are disabled for now. 
+        # TODO: edge labels are disabled for now.
         # el = self._fl = [None] * E # edge labels
 
         vp = self._vp = array('l', [-1] * n)
@@ -296,7 +296,7 @@ class Triangulation(object):
             if self._fp[i] == i or self._fp[self._fp[self._fp[i]]] != i:
                 raise error('broken face permutation')
             if self._ep[self._ep[i]] != i:
-                raise error('broken edge permutation') 
+                raise error('broken edge permutation')
             if self._fp[self._ep[self._vp[i]]] != i:
                 raise error('fev relation not satisfied')
 
@@ -388,7 +388,7 @@ class Triangulation(object):
         n = self._n
         ep = self._ep
         return [i for i in range(n) if ep[i]==i]
-        
+
     def num_folded_edges(self):
         n = self._n
         ep = self._ep
@@ -405,7 +405,7 @@ class Triangulation(object):
     def _norm(self, e):
         f = self._ep[e]
         return f if f < e else e
-    
+
     def num_faces(self):
         return self._n / 3
 
@@ -473,11 +473,11 @@ class Triangulation(object):
             sage: T.genus()
             1
         """
-        # 2 - 2g = \chi so 
+        # 2 - 2g = \chi so
         return (2 - self.euler_characteristic()) / 2
 
     def __str__(self):
-        faces = self.faces()        
+        faces = self.faces()
         return '[' + ', '.join('(' + ', '.join(self._edge_rep(e) for e in f) + ')' for f in faces) + ']'
 
     def __repr__(self):
@@ -550,7 +550,7 @@ class Triangulation(object):
     def relabel(self, p):
         r"""
         Relabel this triangulation inplace according to the permutation ``p``.
-        
+
         EXAMPLES::
 
             sage: from veerer import *
@@ -572,72 +572,6 @@ class Triangulation(object):
         self._vp = perm_conjugate(self._vp, p)
         self._ep = perm_conjugate(self._ep, p)
         self._fp = perm_conjugate(self._fp, p)
-
-    def _relabelling_from(self, start_edge):
-        r"""
-        Return the relabelling map.
-
-        The returned relabelling array maps the current edge to the new
-        labelling.
-        
-        EXAMPLES::
-
-            sage: from veerer import *
-
-            sage: T = Triangulation("(~2, 1, ~0)(~1, 0, 2)")
-            sage: T._relabelling_from(3)
-            array('l', [4, 5, 3, 0, 1, 2])
-
-            sage: T = Triangulation("(0, 1, 2)")
-            sage: T._relabelling_from(1)
-            array('l', [1, 0, 2])
-
-            sage: T = Triangulation("(~2, 1, ~0)(~1, 0, 2)")
-            sage: p = T._relabelling_from(0)
-            sage: T.relabel(p)
-            sage: for i in range(6):
-            ....:     p = T._relabelling_from(i)
-            ....:     S = T.copy()
-            ....:     S.relabel(p)
-            ....:     assert S == T
-
-        """
-        n = self._n
-        ep = self._ep
-        vp = self._vp
-
-        k = 0 # current available label at the front.
-        m = n - 1 # current available label at the back.
-        relabelling = array('l', [-1] * n)
-        relabelling[start_edge] = 0
-        k = k + 1
-
-        if ep[start_edge] != start_edge:
-            relabelling[ep[start_edge]] = m
-            m = m - 1
-
-        to_process = [start_edge]
-        if ep[start_edge] != start_edge:
-            to_process.append(ep[start_edge])
-            
-            
-        while to_process:
-            e0 = to_process.pop()
-            e = vp[e0]
-            while e != e0:
-                if relabelling[e] == -1:
-                    relabelling[e] = k
-                    k = k + 1
-                    if ep[e] != e:
-                        relabelling[ep[e]] = m
-                        m = m - 1
-                        to_process.append(ep[e])
-                e = vp[e]
-
-        # check that everybody has a name!
-        assert k == m + 1
-
-        return relabelling
 
     def flip(self, e):
         r"""
@@ -688,7 +622,7 @@ class Triangulation(object):
         B = self._ep[b]
         C = self._ep[c]
         D = self._ep[d]
-        
+
         # Disabled for now
         # F = self._fl[e]
         # G = self._fl[E]
@@ -768,7 +702,7 @@ class Triangulation(object):
         B = self._ep[b]
         C = self._ep[c]
         D = self._ep[d]
-        
+
         # Disabled for now
         # F = self._fl[e]
         # G = self._fl[E]
@@ -853,3 +787,138 @@ class Triangulation(object):
 
         self._fp = perm_conjugate(perm_invert(self._fp), self._ep)
         self._vp = perm_invert(self._vp)
+
+    def _relabelling_from(self, start_edge):
+        r"""
+        Return a canonical relabelling map obtained from walking
+        along the triangulation starting at ``start_edge``.
+
+        The returned relabelling array maps the current edge to the new
+        labelling.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: from array import array
+
+        The torus example (6 symmetries)::
+
+            sage: fp = array('l', [1, 5, 4, 2, 3, 0])
+            sage: ep = array('l', [4, 3, 5, 1, 0, 2])
+            sage: vp = array('l', [2, 4, 1, 0, 5, 3])
+            sage: T = Triangulation.from_face_edge_perms(fp, ep, vp)
+            sage: T._relabelling_from(3)
+            array('l', [4, 5, 3, 0, 1, 2])
+
+            sage: p = T._relabelling_from(0)
+            sage: T.relabel(p)
+            sage: for i in range(6):
+            ....:     p = T._relabelling_from(i)
+            ....:     S = T.copy()
+            ....:     S.relabel(p)
+            ....:     assert S == T
+
+    The sphere example (3 symmetries)::
+
+            sage: fp = array('l', [1, 2, 0])
+            sage: ep = array('l', [0, 1, 2])
+            sage: vp = array('l', [2, 0, 1])
+            sage: T = Triangulation.from_face_edge_perms(fp, ep, vp)
+            sage: T._relabelling_from(1)
+            array('l', [1, 0, 2])
+            sage: p = T._relabelling_from(0)
+            sage: T.relabel(p)
+            sage: for i in range(3):
+            ....:     p = T._relabelling_from(i)
+            ....:     S = T.copy()
+            ....:     S.relabel(p)
+            ....:     assert S == T
+        """
+        n = self._n
+        ep = self._ep
+        vp = self._vp
+
+        k = 0 # current available label at the front.
+        m = n - 1 # current available label at the back.
+        relabelling = array('l', [-1] * n)
+        relabelling[start_edge] = 0
+        k = k + 1
+
+        if ep[start_edge] != start_edge:
+            relabelling[ep[start_edge]] = m
+            m = m - 1
+
+        to_process = [start_edge]
+        if ep[start_edge] != start_edge:
+            to_process.append(ep[start_edge])
+
+        while to_process:
+            e0 = to_process.pop()
+            e = vp[e0]
+            while e != e0:
+                if relabelling[e] == -1:
+                    relabelling[e] = k
+                    k = k + 1
+                    if ep[e] != e:
+                        relabelling[ep[e]] = m
+                        m = m - 1
+                        to_process.append(ep[e])
+                e = vp[e]
+
+        # check that everybody has a name!
+        assert k == m + 1
+
+        return relabelling
+
+    def _automorphism_good_starts(self):
+        # TODO: for now this is a very naive
+        return range(self._n)
+
+    def automorphisms(self):
+        r"""
+        Return the list of automorphisms of this triangulation or veering triangulation.
+
+        The output is a list of arrays that are permutations acting on the set
+        of half edges.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+        An example with 4 symmetries in genus 2::
+
+            sage: T = Triangulation("(0,~1,2)(~0,1,~3)(4,~5,3)(~4,6,~2)(7,~6,8)(~7,5,~9)(10,~11,9)(~10,11,~8)")
+            sage: A = T.automorphisms()
+            sage: len(A)
+            4
+
+        And the "sphere octagon" has 8::
+
+            sage: s  = "(0,8,~7)(1,9,~0)(2,10,~1)(3,11,~2)(4,12,~3)(5,13,~4)(6,14,~5)(7,15,~6)"
+            sage: len(Triangulation(s).automorphisms())
+            8
+        """
+        n = self._n
+        fp = self._fp
+        ep = self._ep
+
+        best = None
+        best_relabellings = []
+
+        for start_edge in self._automorphism_good_starts():
+            relabelling = self._relabelling_from(start_edge)
+
+            fp_new = perm_conjugate(fp, relabelling)
+            ep_new = perm_conjugate(ep, relabelling)
+
+            T = (fp_new, ep_new)
+            if best is None or T == best:
+                best_relabellings.append(relabelling)
+                best = T
+            elif T < best:
+                del best_relabellings[:]
+                best_relabellings.append(relabelling)
+                best = T
+
+        p0 = perm_invert(best_relabellings[0])
+        return [perm_compose(p, p0) for p in best_relabellings]
