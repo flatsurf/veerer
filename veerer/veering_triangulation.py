@@ -231,7 +231,29 @@ class VeeringTriangulation(Triangulation):
         return VeeringTriangulation(triangles, colors)
 
     @classmethod
-    def from_string(cls, s, *args, **kwds):
+    def from_face_edge_perms(self, colouring, fp, ep, vp=None, check=True):
+        T = VeeringTriangulation.__new__(VeeringTriangulation)
+        T._n = len(fp)
+        T._fp = fp
+        T._ep = ep
+
+        if vp is None:
+            n = T._n
+            fp = T._fp
+            ep = T._ep
+            vp = array('l', [-1] * n)
+            for i in range(n):
+                vp[fp[ep[i]]] = i
+        T._vp = vp
+        T._colouring = colouring
+
+        if check:
+            T._check(ValueError)
+
+        return T
+
+    @classmethod
+    def from_string(cls, s, check=True):
         r"""
         Deserialization from the string ``s``.
 
@@ -242,17 +264,20 @@ class VeeringTriangulation(Triangulation):
 
             sage: from veerer import *
 
-            sage: T = VeeringTriangulation.from_string('BBR:3_120_3_012')
+            sage: T = VeeringTriangulation.from_string('RRB_120_012')
             sage: T.to_string()
-            'BBR:3_120_3_012'
-            sage: T.iso_sig()
-            BROKEN!
-        """
-        s_colours, s_triangulation = s.split(':')
-        triangulation = Triangulation.from_string(s_triangulation)
-        return VeeringTriangulation(triangulation, s_colours)
+            'RRB_120_012'
 
-    from_iso_sig = from_string
+            sage: T = VeeringTriangulation.from_string('RRBBRR_120534_543210')
+            sage: T.to_string()
+            'RRBBRR_120534_543210'
+        """
+        cols, fp, ep,  = s.split('_')
+        n = len(cols)
+        fp = perm_from_base64_str(fp, n)
+        ep = perm_from_base64_str(ep, n)
+        cols = array('l', [RED if c == 'R' else BLUE for c in cols])
+        return VeeringTriangulation.from_face_edge_perms(cols, fp, ep, check=check)
 
     def __eq__(self, other):
         if type(self) != type(other):
@@ -584,6 +609,14 @@ class VeeringTriangulation(Triangulation):
     def good_starts(self):
         r"""
         Start at a RED before a BLUE.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T = VeeringTriangulation("(0,1,2)", "RRB")
+            sage: T.good_starts()
+            [0]
         """
         starts = []
         best_word = None
@@ -704,28 +737,35 @@ class VeeringTriangulation(Triangulation):
         return T
 
     def _relabelling_from(self, start_edge):
+        r"""
+        Return the relabelling map.
+
+        The returned relabelling array maps the current edge to the new
+        labelling.
+        """
         n = self._n
         ep = self._ep
         vp = self._vp
         
         k = 0 # current available label at the front. 
         m = n - 1 # current available label at the back. 
-        relabelling = [None] * n
+        relabelling = array('l', [-1] * n)
         relabelling[start_edge] = 0
         k = k + 1
+
         if ep[start_edge] != start_edge:
             relabelling[ep[start_edge]] = m
             m = m - 1
 
-        to_process = []
-        to_process.append(start_edge)
+        to_process = [start_edge]
         if ep[start_edge] != start_edge:
             to_process.append(ep[start_edge])
+
         while to_process:
             e0 = to_process.pop()
             e = vp[e0]
             while e != e0:
-                if relabelling[e] is None:
+                if relabelling[e] == -1:
                     relabelling[e] = k
                     k = k + 1
                     if ep[e] != e:
@@ -733,6 +773,9 @@ class VeeringTriangulation(Triangulation):
                         m = m - 1
                     to_process.append(ep[e])
                 e = vp[e]
+
+        # check that everybody has a name!
+        assert k == m+1 
 
         return relabelling
 
@@ -744,19 +787,12 @@ class VeeringTriangulation(Triangulation):
         for start_edge in self.good_starts():
             relabelling = self._relabelling_from(start_edge)
 
-            # relabelled face permutation
-            fp_new = [None] * n
-            for e in range(n):
-                #fp_new[e] = relabelling[fp[inv_relabelling[e]]]
-                fp_new[relabelling[e]] = relabelling[fp[e]]
+            # relabelled data
+            fp_new = perm_conjugate(self._fp, relabelling)
+            ep_new = perm_conjugate(self._ep, relabelling)
+            colouring_new = perm_on_array(relabelling, self._colouring)
 
-            # relabelled colouring
-            colouring_new = [None] * n
-            for e in range(n):
-#                colouring_new[self._norm(relabelling[e])] = self._colouring[e]
-                colouring_new[relabelling[e]] = self._colouring[e]
-
-            T = (colouring_new, fp_new)
+            T = (colouring_new, fp_new, ep_new)
             if best is None or T < best:
                 best = T
                 best_relabelling = relabelling
@@ -793,34 +829,27 @@ class VeeringTriangulation(Triangulation):
         """
         n = self._n
         fp = self._fp
+        ep = self._ep
+        colouring = self._colouring
 
         best = None
         best_relabellings = []
 
-        fp_new = [None] * n
-        colouring_new = [None] * n
         for start_edge in self.good_starts():
             relabelling = self._relabelling_from(start_edge)
 
-            # relabelled face permutation
-            for e in range(n):
-                #fp_new[e] = relabelling[fp[inv_relabelling[e]]]
-                fp_new[relabelling[e]] = relabelling[fp[e]]
+            fp_new = perm_conjugate(fp, relabelling)
+            ep_new = perm_conjugate(ep, relabelling)
+            colouring_new = perm_conjugate(relabelling, colouring)
 
-            # relabelled colouring
-            for e in range(n):
-                # removed norm... 
-                colouring_new[relabelling[e]] = self._colouring[e]
-
-            T = (colouring_new, fp_new)
+            T = (colouring_new, fp_new, ep_new)
             if best is None or T == best:
                 best_relabellings.append(relabelling)
-                if best is None:
-                    best = (colouring_new[:], fp_new[:])
+                best = T
             elif T < best:
                 del best_relabellings[:]
                 best_relabellings.append(relabelling)
-                best = (colouring_new[:], fp_new[:])
+                best = T
 
         p0 = perm_invert(best_relabellings[0])
         return [perm_compose(p, p0) for p in best_relabellings]
@@ -925,6 +954,10 @@ class VeeringTriangulation(Triangulation):
             sage: from veerer import *
             sage: from surface_dynamics import *
 
+            sage: T = VeeringTriangulation("(0,1,2)", "RRB")
+            sage: T.to_string()
+            'RRB_120_012'
+
             sage: T = VeeringTriangulation.from_stratum(QuadraticStratum({1:20}))
             sage: s = T.to_string()
             sage: TT = VeeringTriangulation.from_string(s)
@@ -932,8 +965,9 @@ class VeeringTriangulation(Triangulation):
             True
         """
         colours = ''.join(colour_to_char(c) for c in self._colouring)
-        t = Triangulation.to_string(self)
-        return colours + ':' + t
+        fp = perm_base64_str(self._fp)
+        ep = perm_base64_str(self._ep)
+        return colours + '_' + fp + '_' + ep
 
     def iso_sig(self):
         r"""
@@ -975,12 +1009,13 @@ class VeeringTriangulation(Triangulation):
             True
         """
         n = self._n
-        _, (colours, fp) = self.best_relabelling()
+        _, (colours, fp, ep) = self.best_relabelling()
 
-        char_colours = ''.join('R' if colours[i] == RED else 'B' for i in range(n))
-        char_edges = perm_base64_str(fp)
+        colours = ''.join('R' if colours[i] == RED else 'B' for i in range(n))
+        fp = perm_base64_str(fp)
+        ep = perm_base64_str(ep)
 
-        return char_colours + '_' + char_edges
+        return colours + '_' + fp + '_' + ep
 
     def canonical(self):
         r"""
@@ -1248,10 +1283,13 @@ class VeeringTriangulation(Triangulation):
         else:
             raise ValueError('bad slope parameter')
 
-        n = self._n
+        n = self.num_edges()
+        ep = self._ep
 
         # non-negativity
         for e in range(n):
+            if ep[e] != e and ep[e] < n:
+                raise ValueError('edge permutation not in standard form')
             if not low_bound or \
                 (allow_degenerations and \
                  ((slope == HORIZONTAL and self.is_forward_flippable(e)) or \
@@ -1265,6 +1303,9 @@ class VeeringTriangulation(Triangulation):
             # find the large edge
             # if horizontal, this is the one opposite to the RED/BLUE transition
             # if vertical this is the one opposite to the BLUE/RED transition
+            i = self._norm(i)
+            j = self._norm(j)
+            k = self._norm(k)
             if self._colouring[i] == POS and self._colouring[j] == NEG:
                 # k is large
                 l,s1,s2 = k,i,j
@@ -1353,31 +1394,32 @@ class VeeringTriangulation(Triangulation):
         - ``allow_degenerations`` - boolean - if ``True`` then allow certain
           degenerations to occur.
 
+        OUTPUT: a point from ppl
+
         EXAMPLES::
 
             sage: from veerer import *
 
             sage: T = VeeringTriangulation([(0,1,2),(-1,-2,-3)], [RED, RED, BLUE])
             sage: T.train_track_min_solution(VERTICAL)
-            [1, 2, 1]
+            point(1/1, 2/1, 1/1)
             sage: T.train_track_min_solution(VERTICAL, allow_degenerations=True)
-            [0, 1, 1]
+            point(0/1, 1/1, 1/1)
 
             sage: T.train_track_min_solution(HORIZONTAL)
-            [2, 1, 1]
+            point(2/1, 1/1, 1/1)
             sage: T.train_track_min_solution(HORIZONTAL, allow_degenerations=True)
-            [1, 0, 1]
+            point(1/1, 0/1, 1/1)
         """
-        from sage.numerical.mip import MixedIntegerLinearProgram
+        require_package('ppl', 'train_track_min_solution')
+            
+        n = self.num_edges()
+        M = ppl.MIP_Problem(n)
 
-        n = self._n
-        M = MixedIntegerLinearProgram(solver='PPL', maximization=False)
-        x = M.new_variable()
-        M.set_objective(M.sum(x[e] for e in range(n))) # try to minimize length
+        x = [ppl.Variable(e) for e in range(n)]
+        M.set_objective_function(-sum(x))
         self._set_train_track_constraints(M.add_constraint, x, slope, 1, allow_degenerations)
-        M.solve()
-        x = M.get_values(x)
-        return [x[e] for e in range(n)]
+        return M.optimizing_point()
 
     def geometric_polytope(self, x_low_bound=0, y_low_bound=0, hw_bound=0):
         r"""
@@ -1597,10 +1639,10 @@ class VeeringTriangulation(Triangulation):
             return self.train_track_polytope(HORIZONTAL).affine_dimension() == d and \
                    self.train_track_polytope(VERTICAL).affine_dimension() == d
         elif method == 'LP':
-            require_package('pplpy', 'is_core')
+            require_package('ppl', 'is_core')
 
             n = self.num_edges()
-            x = [ppl.Variable(i) for i in range(n)]
+            x = [ppl.Variable(e) for e in range(n)]
             for slope in (HORIZONTAL, VERTICAL):
                 M = ppl.MIP_Problem(n)
                 self._set_train_track_constraints(M.add_constraint, x, slope, True, False)
