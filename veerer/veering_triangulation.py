@@ -557,12 +557,20 @@ class VeeringTriangulation(Triangulation):
             sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
             sage: T.forward_flippable_edges()
             [1]
-            sage: T.relabel([1,5,0,2,4,3]).forward_flippable_edges()
-
 
             sage: T = VeeringTriangulation("(0,1,2)", [RED, RED, BLUE])
             sage: T.forward_flippable_edges()
             [1]
+
+        TESTS::
+
+            sage: from veerer.permutation import perm_random
+            sage: from veerer.veering_triangulation import VeeringTriangulation
+            sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], "RRB")
+            sage: for _ in range(10):
+            ....:     rel = perm_random(6)
+            ....:     T.relabel(rel)
+            ....:     assert len(T.forward_flippable_edges()) == 1
         """
         ep = self._ep
         n = self._n
