@@ -548,6 +548,8 @@ class VeeringTriangulation(Triangulation):
 
     def forward_flippable_edges(self):
         r"""
+        Return the set of forward flippable edges.
+
         EXAMPLES::
 
             sage: from veerer import *
@@ -555,6 +557,8 @@ class VeeringTriangulation(Triangulation):
             sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
             sage: T.forward_flippable_edges()
             [1]
+            sage: T.relabel([1,5,0,2,4,3]).forward_flippable_edges()
+
 
             sage: T = VeeringTriangulation("(0,1,2)", [RED, RED, BLUE])
             sage: T.forward_flippable_edges()
@@ -566,6 +570,8 @@ class VeeringTriangulation(Triangulation):
 
     def is_backward_flippable(self, e):
         r"""
+        Test whether the edge ``e`` is backward flippable.
+
         EXAMPLES::
 
             sage: from veerer import *
@@ -582,6 +588,8 @@ class VeeringTriangulation(Triangulation):
 
     def backward_flippable_edges(self):
         r"""
+        Return the list of backward flippable edges.
+
         EXAMPLES::
 
             sage: from veerer import *
@@ -709,7 +717,7 @@ class VeeringTriangulation(Triangulation):
 
     def relabel(self, p):
         r"""
-        Relabel the triangulation according to the permutation ``p``.
+        Relabel inplace this veering triangulation according to the permutation ``p``.
 
         EXAMPLES::
 
@@ -719,6 +727,16 @@ class VeeringTriangulation(Triangulation):
             sage: T.relabel([0,1,3,2,5,4])
             [(0, 1, ~2), (2, ~0, ~1)], 'RBB'
             sage: T._check()
+
+        TESTS:
+
+        This example used to be wrong::
+
+            sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
+            sage: T.relabel([1,5,0,2,4,3])
+            sage: T._colouring == array('l', [BLUE, RED, BLUE, RED, RED, RED])
+            True
+            sage: T._check()
         """
         n = self._n
         ep = self._ep
@@ -727,14 +745,8 @@ class VeeringTriangulation(Triangulation):
             if not perm_check(p, n):
                 raise ValueError('invalid relabeling permutation')
 
-        T = VeeringTriangulation.__new__(VeeringTriangulation)
-        T._n = self._n
-        T._vp = perm_conjugate(self._vp, p)
-        T._ep = perm_conjugate(self._ep, p)
-        T._fp = perm_conjugate(self._fp, p)
-        T._colouring = perm_on_array(p, self._colouring)
-
-        return T
+        Triangulation.relabel(self, p)
+        self._colouring = perm_on_array(p, self._colouring)
 
     def _relabelling_from(self, start_edge):
         r"""
@@ -1409,6 +1421,8 @@ class VeeringTriangulation(Triangulation):
 
     def geometric_polytope(self, x_low_bound=0, y_low_bound=0, hw_bound=0):
         r"""
+        Return the geometric polytope of this veering triangulation.
+
         EXAMPLES::
 
             sage: from veerer import *
