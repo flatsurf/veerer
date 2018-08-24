@@ -33,9 +33,9 @@ def colour_from_char(c):
         ValueError: unknown color 'X'
     """
     if c == cRED:
-        a[i] = RED
+        return RED
     elif c == cBLUE:
-        a[i] = BLUE
+        return BLUE
     else:
         raise ValueError("unknown color '%s'" % c)
 

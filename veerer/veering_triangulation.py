@@ -803,8 +803,8 @@ class VeeringTriangulation(Triangulation):
         r"""
         Return the list of automorphisms of this coloured triangulation.
 
-        The output is a list of arrays that are signed permutations given
-        as lists of length 2n.
+        The output is a list of arrays that are permutations acting on the set
+        of half edges.
 
         EXAMPLES::
 
@@ -986,8 +986,8 @@ class VeeringTriangulation(Triangulation):
 
         If we relabel the triangulation, the isomorphic signature does not change::
 
-            sage: from veerer.even_permutation import signed_permutation_random
-            sage: p = signed_permutation_random(12)
+            sage: from veerer.permutation import perm_random
+            sage: p = perm_random(12)
             sage: T.relabel(p).iso_sig()
             'RBBBBBBBRRRB_twbvcudxfhjmkigesrqponla'
 
@@ -1047,14 +1047,14 @@ class VeeringTriangulation(Triangulation):
 
             sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
             sage: T.flip(1, RED); T
-            [(~2, 1, 0), (~1, ~0, 2)], ['Red', 'Red', 'Blue']
+            [(0, ~2, 1), (2, ~1, ~0)], 'RRB'
             sage: T.flip(0, RED); T
-            [(~2, ~0, ~1), (0, 1, 2)], ['Red', 'Red', 'Blue']
+            [(0, 1, 2), (~2, ~0, ~1)], 'RRB'
 
             sage: T.flip(1, BLUE); T
-            [(~2, 1, 0), (~1, ~0, 2)], ['Red', 'Blue', 'Blue']
+            [(0, ~2, 1), (~1, ~0, 2)], 'RBB'
             sage: T.flip(2, BLUE); T
-            [(~2, 0, ~1), (~0, 1, 2)], ['Red', 'Blue', 'Blue']
+            [(0, ~1, ~2), (1, 2, ~0)], 'RBB'
         """
         e = int(e)
         assert(self.is_flippable(e))
@@ -1079,33 +1079,19 @@ class VeeringTriangulation(Triangulation):
 
             sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
             sage: T.cylinders(RED)
-            [[0, -2]]
+            [[0, 4]]
             sage: T.cylinders(BLUE)
             []
 
             sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "BRB")
             sage: T.cylinders(BLUE)
-            [[0, -3]]
+            [[0, 3]]
             sage: T.cylinders(RED)
             []
 
         An example with both blue and red cylinders in Q(1,1,1,1)::
 
-            sage: T = VeeringTriangulation.from_string('BBRBBBRRBRBRRBBRRB_uBFyjzCdocvwqsemEbrgtxlAJkHDnGihfaIp')
-            sage: T.cylinders(BLUE)
-            [[3, 8, 4, -11]]
-            sage: T.cylinders(RED)
-            [[9, 15]]
-
-        TESTS::
-
-            sage: from veerer import *
-
-            sage: T = VeeringTriangulation.from_string('RBBBRBBBBRRR_vwkesxgabijfdcuthrqpmnlo')
-            sage: T.cylinders(BLUE)
-            [[1, 2], [6, 5]]
-            sage: T.cylinders(RED)
-            []
+            sage: T = 1 # find an example again
         """
         n = self._n
         fp = self._fp
@@ -1431,11 +1417,6 @@ class VeeringTriangulation(Triangulation):
             sage: T.geometric_polytope()
             A 4-dimensional polyhedron in QQ^6 defined as the convex hull of 1 point, 7 rays
 
-            sage: s = 'RRRRBBBBBBBB_uvwfgkrpedchjaonmtlixbsq'
-            sage: T = VeeringTriangulation.from_string(s)
-            sage: T.geometric_polytope()
-            A 8-dimensional polyhedron in QQ^24 defined as the convex hull of 1 point, 20 rays
-
         TESTS::
 
             sage: from veerer import *
@@ -1457,12 +1438,11 @@ class VeeringTriangulation(Triangulation):
         """
         require_package('ppl', 'geometric_polytope')
 
-        n = self._n
-
         # 1. train-track conditions
         P = self.train_track_polytope(VERTICAL, low_bound=x_low_bound)
         P.concatenate_assign(self.train_track_polytope(HORIZONTAL, low_bound=y_low_bound))
 
+        n = self.num_edges()
         x = [ppl.Variable(e) for e in range(n)]
         y = [ppl.Variable(n+e) for e in range(n)]
 
@@ -1483,15 +1463,17 @@ class VeeringTriangulation(Triangulation):
             from sage.rings.rational_field import QQ
             base_ring = QQ
 
-        n = self._n
-        assert len(VH) == len(VV) == n
+        assert len(VH) == len(VV) == self.num_edges()
         assert all(x >=0 for x in VH)
         assert all(x >= 0 for x in VV)
 
         V = VectorSpace(base_ring, 2)
         vectors = [V((x, y if self._colouring[i] == RED else -y)) for \
                    i,(x,y) in enumerate(zip(VV, VH))]
-        vectors.extend(vectors[::-1])
+        m = self.num_edges()
+        n = self.num_half_edges()
+        ep = self._ep
+        vectors.extend(vectors[ep[e]] for e in range(m,n))
 
         # get correct signs for each triangle
         for i,j,k in self.faces():
@@ -1507,8 +1489,8 @@ class VeeringTriangulation(Triangulation):
             if det2(vectors[k], vectors[i]) < 0:
                 raise RuntimeError
 
-        from .layout import FlatTriangulation
-        return FlatTriangulation(self, vectors)
+        from .layout import FlatVeeringTriangulationLayout
+        return FlatVeeringTriangulationLayout(self, vectors)
 
     def flat_structure_middle(self):
         r"""
@@ -1520,13 +1502,16 @@ class VeeringTriangulation(Triangulation):
 
         EXAMPLES::
 
-            sage: from surface_dynamics import *
             sage: from veerer import *
 
+            sage: T = VeeringTriangulation("(0,1,2)", "RRB")
+            sage: T.flat_structure_middle()
+            Flat Triangulation made of 1 triangles
+
+            sage: from surface_dynamics import *
             sage: Q = QuadraticStratum({1:4, -1:4})
             sage: CT = VeeringTriangulation.from_stratum(Q)
-            sage: F = CT.flat_structure_middle()
-            sage: F
+            sage: CT.flat_structure_middle()
             Flat Triangulation made of 16 triangles
         """
         n = self.num_edges()
@@ -1571,8 +1556,18 @@ class VeeringTriangulation(Triangulation):
             sage: T.flat_structure_min()
             Flat Triangulation made of 6 triangles
         """
+        require_package('sage', 'flat_structure_min')
+
         VH = self.train_track_min_solution(HORIZONTAL, allow_degenerations=allow_degenerations)
         VV = self.train_track_min_solution(VERTICAL, allow_degenerations=allow_degenerations)
+
+        assert VH.is_point()
+        assert VV.is_point()
+
+        from sage.rings.rational import Rational
+        D = VH.divisor()
+        VH = [Rational((c,D)) for c in VH.coefficients()]
+        VV = [Rational((c,D)) for c in VV.coefficients()]
 
         return self._flat_structure_from_train_track_lengths(VH, VV)
 

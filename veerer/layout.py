@@ -1,9 +1,6 @@
 r"""
 Flat veering triangulations.
 """
-# Note that these are not "flat structures" as there are real
-# restrictions on the possible shapes of triangles coming from the
-# veering structure.  
 
 from sage.structure.sequence import Sequence
 
@@ -21,6 +18,7 @@ from sage.plot.line import line2d
 from sage.plot.polygon import polygon2d
 from sage.plot.text import text
 from sage.plot.bezier_path import bezier_path
+from sage.plot.point import point2d
 
 from .constants import BLUE, RED, PURPLE, GREEN, HORIZONTAL, VERTICAL
 from .misc import flipper_nf_to_sage, flipper_nf_element_to_sage, det2
@@ -29,76 +27,61 @@ from .triangulation import Triangulation
 QQx = PolynomialRing(QQ, 'x')
 _Fields = Fields()
 
+EDGE_COLORS = {
+    BLUE: 'blue',
+    RED: 'red',
+    PURPLE: 'purple',
+    GREEN: 'green'
+    }
+
+
+def flipper_edge(T, e):
+    r"""
+    EXAMPLES::
+
+        sage: import flipper
+        sage: T = flipper.create_triangulation([(0r,1r,2r),(-1r,-2r,-3r)])
+        sage: sorted([flipper_edge(T, e) for e in T.edges])
+        [0, 1, 2, 3, 4, 5]
+    """
+    n = (3 * T.num_triangles)
+    e = e.label
+    return n * (e < 0) + e
+
+def flipper_edge_perm(n):
+    from array import array
+    return array('l', range(n-1,-1,-1))
+
 def edge_label(i):
-    if i< 0:
-        return '~%d' % (-i-1)
-    else:
-        return str(i)
+    raise ValueError
 
 def vec_slope(v):
-    if v[0] == 0:
+    r"""
+    Return the slope of a 2d vector ``v``.
+
+    EXAMPLES::
+
+        sage: from veerer.constants import RED, BLUE, PURPLE, GREEN
+        sage: from veerer.layout import vec_slope
+
+        sage: vec_slope((1,0)) == PURPLE
+        True
+        sage: vec_slope((0,1)) == GREEN
+        True
+        sage: vec_slope((1,1)) == vec_slope((-1,-1)) == RED
+        True
+        sage: vec_slope((1,-1)) == vec_slope((1,-1)) == BLUE
+        True
+    """
+    if v[0].is_zero():
         return GREEN
-    elif v[1] == 0:
+    elif v[1].is_zero():
         return PURPLE
     elif v[0] * v[1] > 0:
         return RED
     else:
         return BLUE
 
-def edge_slope(e, f, pos):
-    return vec_slope(pos[f] - pos[e])
-
-def draw_my_segment(s, t, pos, vectors, **kwds):
-    x,y = pos[t] - pos[s]
-    opts = {}
-    if pos[~s] == pos[t] and vectors[s] == -vectors[~s]:
-        opts['alpha'] = 0.5
-        opts['linestyle'] = 'dotted'
-    if y.is_zero():
-        col = 'purple'
-    elif x.is_zero():
-        col = 'green'
-    elif x.sign() == y.sign():
-        col = 'red'
-    else:
-        col = 'blue'
-    return line2d([pos[s],pos[t]], color=col, **opts)
-
-def draw_my_triangle(e1,e2,e3,pos,vectors):
-    G = Graphics()
-
-    # computing slopes in order to determine filling color
-    nred = nblue = 0
-    for e,f in ((e1,e2),(e2,e3),(e3,e1)):
-        slope = edge_slope(e, f, pos)
-        if slope == RED:
-            nred += 1
-        elif slope == BLUE:
-            nblue += 1
-
-    if nred == 2:
-        color = (.75, 0.5, 0.5)
-    elif nblue == 2:
-        color = (.5, 0.5, .75)
-    else:
-        color = (.5, 0.5, 0.5)
-
-    G += polygon2d([pos[e1],pos[e2],pos[e3],pos[e1]], alpha=0.41, color=color)
-
-    G += draw_my_segment(e1, e2, pos, vectors)
-    G += draw_my_segment(e2, e3, pos, vectors)
-    G += draw_my_segment(e3, e1, pos, vectors)
-
-    G += text(edge_label(e1), (8*pos[e1]+5*pos[e2]+pos[e3])/14, color='black')
-    G += text(edge_label(e2), (8*pos[e2]+5*pos[e3]+pos[e1])/14, color='black')
-    G += text(edge_label(e3), (8*pos[e3]+5*pos[e1]+pos[e2])/14, color='black')
-
-    return G
-
-def orientation(u, v, w):
-    a = v - u
-    b = w - u
-    return (a[0]*b[1] - a[1]*b[0]).sign()
 
 def has_intersection(triangles, new_triangle, pos):
     r"""
@@ -119,7 +102,7 @@ def has_intersection(triangles, new_triangle, pos):
 
     return False
 
-class FlatTriangulation:
+class FlatVeeringTriangulationLayout:
     r"""
     A flat triangulation.
 
@@ -132,14 +115,14 @@ class FlatTriangulation:
 
         sage: triangles = [(0, 1, 2), (-1, -2, -3)]
         sage: vecs = [(1, 2), (-2, -1), (1, -1), (1, -1), (-2, -1), (1, 2)]
-        sage: FlatTriangulation(triangles, vecs)
+        sage: FlatVeeringTriangulationLayout(triangles, vecs)
         Flat Triangulation made of 2 triangles
 
     Or a coloured triangulation (in that situation the "smallest" integral
     solution is picked)::
 
         sage: T = ColouredTriangulation.from_string('RBBBBRBBRBRBRBB_dBnzCaeyDgkbmjficAlhxwvutspqor')
-        sage: FlatTriangulation.from_coloured_triangulation(T)
+        sage: FlatVeeringTriangulationLayout.from_coloured_triangulation(T)
         Flat Triangulation made of 10 triangles
 
     Or a pseudo-Anosov homeomorphism from flipper::
@@ -148,7 +131,7 @@ class FlatTriangulation:
 
         sage: T = flipper.load('S_2_1')
         sage: h = T.mapping_class('abCeF')
-        sage: FlatTriangulation.from_pseudo_anosov(h)
+        sage: FlatVeeringTriangulationLayout.from_pseudo_anosov(h)
         Flat Triangulation made of 12 triangles
     """
     def __init__(self, triangles, vectors,
@@ -163,22 +146,28 @@ class FlatTriangulation:
         - ``blue_cylinders`` and ``red_cylinders`` - optional list of edges
         """
         if isinstance(triangles, Triangulation):
-            triangles = triangles.faces()
+            self._triangulation = triangles.copy()
+        else:
+            self._triangulation = Triangulation(triangles)
 
-        self._triangulation = Triangulation(triangles)
-        n = self._triangulation.num_edges()
-        self._edge_to_face = [None] * (2*n)
+        n = self._triangulation.num_half_edges()
+        m = self._triangulation.num_edges()
+        self._edge_to_face = [None] * n
         self._faces = self._triangulation.faces()
 
-        for i,(e0,e1,e2) in enumerate(self._triangulation):
+        for i,(e0,e1,e2) in enumerate(self._triangulation.faces()):
             self._edge_to_face[e0] = i
             self._edge_to_face[e1] = i
             self._edge_to_face[e2] = i
 
-        if len(vectors) == n:
-            vectors = list(vectors)
-            vectors.extend(vectors[::-1])
-        if len(vectors) != 2*n:
+        if len(vectors) == m:
+            ep = self._triangulation._ep
+            for e in range(m):
+                E = ep[e]
+                if e != E and E < m:
+                    raise ValueError("edge perm not in standard form")
+            vectors = vectors + [vectors[ep[e]] for e in range(m,n)]
+        if len(vectors) != n:
             raise ValueError('wrong number of vectors')
 
         vectors = Sequence([vector(v) for v in vectors])
@@ -190,8 +179,10 @@ class FlatTriangulation:
             self._V = self._V.change_ring(self._K)
             vectors = [v.change_ring(self._K) for v in vectors]
 
-        self._vectors = list(vectors)        # edge vectors
-        self._pos = None                     # vertex positions (list of length 2 * num_edges)
+        self._vectors = list(vectors)        # edge vectors     (list of length n)
+
+        # for actual display
+        self._pos = None                     # vertex positions (list of length n)
 
         self._check()
 
@@ -205,12 +196,14 @@ class FlatTriangulation:
             sage: F.set_pos()
             sage: F._check()
         """
-        n = self._triangulation.num_edges()
+        n = self._triangulation.num_half_edges()
+        ep = self._triangulation._ep
         for a in range(n):
+            A = ep[a]
             u = self._vectors[a]
-            v = self._vectors[~a]
+            v = self._vectors[A]
             if u != v and u != -v:
-                raise ValueError('vec[%s] = %s while vec[%s] = %s' % (edge_label(a), u, edge_label(~a), v))
+                raise ValueError('ep[%s] = %s but vec[%s] = %s and vec[%s] = %s' % (a, u, A, v))
 
         vectors = self._vectors
         for a,b,c in self._faces:
@@ -218,10 +211,11 @@ class FlatTriangulation:
             vb = vectors[b]
             vc = vectors[c]
             if va + vb + vc:
-                raise ValueError('vec[%s] = %s, vec[%s] = %s and vec[%s] = %s do not sum to zero' % (edge_label(a), va, edge_label(b), vb, edge_label(c), vc))
+                raise ValueError('vec[%s] = %s, vec[%s] = %s and vec[%s] = %s do not sum to zero' % (a, va, b, vb, c, vc))
+
             if det2(va, vb) <= 0 or det2(vb, vc) <= 0 or det2(vc, va) <= 0:
                 raise ValueError('(%s, %s, %s) is a clockwise triangle' %
-                        (edge_label(a), edge_label(b), edge_label(c)))
+                        (a, b, c))
 
         pos = self._pos
         if pos is not None:
@@ -229,12 +223,13 @@ class FlatTriangulation:
                 if pos[a] + vectors[a] != pos[b] or \
                    pos[b] + vectors[b] != pos[c] or \
                    pos[c] + vectors[c] != pos[a]:
-                    raise ValueError('pos[%s] = %s, pos[%s] = %s, pos[%s] = %s while vec[%s] = %s, vec[%s] = %s, vec[%s] = %s' % (edge_label(a), pos[a],
-                                   edge_label(b), pos[b],
-                                   edge_label(c), pos[c],
-                                   edge_label(a), vectors[a],
-                                   edge_label(b), vectors[b],
-                                   edge_label(c), vectors[c]))
+                    raise ValueError('pos[%s] = %s, pos[%s] = %s, pos[%s] = %s while vec[%s] = %s, vec[%s] = %s, vec[%s] = %s' % (
+                                   a, pos[a],
+                                   b, pos[b],
+                                   c, pos[c],
+                                   a, vectors[a],
+                                   b, vectors[b],
+                                   c, vectors[c]))
 
     @classmethod
     def from_pseudo_anosov(cls, h):
@@ -248,23 +243,31 @@ class FlatTriangulation:
 
             sage: T = flipper.load('SB_4')
             sage: h = T.mapping_class('s_0S_1s_2S_3s_1S_2')
-            sage: FlatTriangulation.from_pseudo_anosov(h)
+            sage: FlatVeeringTriangulationLayout.from_pseudo_anosov(h)
             Flat Triangulation made of 4 triangles
         """
-        F = h.flat_structure()
-        triangles = [(e.label, f.label, g.label) for e,f,g in F.triangulation]
-        n = 3 * len(triangles) / 2
-        x = F.edge_vectors.values()[0].x
+        from permutation import perm_init
+        Fh = h.flat_structure()
+        Th = Fh.triangulation
+        n = 3 * Th.num_triangles # number of half edges
+
+        # extract triangulation
+        triangles = [(flipper_edge(Th, e), flipper_edge(Th, f), flipper_edge(Th, g)) for e,f,g in Th]
+        fp = perm_init(triangles)
+        ep = flipper_edge_perm(n)
+        T = Triangulation.from_face_edge_perms(fp, ep)
+
+        # extract flat structure
+        x = Fh.edge_vectors.values()[0].x
         K = flipper_nf_to_sage(x.number_field)
         V = VectorSpace(K, 2)
         # translate into Sage number field
-        Vec = {e.label: V((flipper_nf_element_to_sage(v.x, K),
+        Vec = {flipper_edge(Th,e): V((flipper_nf_element_to_sage(v.x, K),
                                flipper_nf_element_to_sage(v.y, K)))
-                  for e,v in F.edge_vectors.items()}
+                  for e,v in Fh.edge_vectors.items()}
         vectors = [Vec[i] for i in range(n)]
-        vectors.extend(Vec[i] for i in range(-n, 0))
 
-        return FlatTriangulation(triangles, vectors)
+        return FlatVeeringTriangulationLayout(T, vectors)
 
     @classmethod
     def from_coloured_triangulation(cls, T):
@@ -276,17 +279,23 @@ class FlatTriangulation:
             sage: from veerer import *
 
             sage: T = ColouredTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
-            sage: FlatTriangulation.from_coloured_triangulation(T)
+            sage: FlatVeeringTriangulationLayout.from_coloured_triangulation(T)
             Flat Triangulation made of 2 triangles
         """
         return T.flat_structure_min()
 
     def xy_scaling(self, sx, sy):
+        r"""
+        Apply Teichmueller flow to actually see things.
+        """
         for i,v in enumerate(self._vectors):
             self._vectors[i] = self._V((sx*v[0], sy*v[1]))
 
+    def _edge_slope(self, e):
+        return vec_slope(self._vectors[e])
+
     def __repr__(self):
-        return 'Flat Triangulation made of %s triangles' % len(self._triangulation)
+        return 'Flat Triangulation made of %s triangles' % self._triangulation.num_faces()
 
     def set_pos(self, cylinders=None):
         r"""
@@ -310,9 +319,10 @@ class FlatTriangulation:
             sage: F = T.flat_structure_min()
             sage: F.set_pos(cylinders=T.cylinders(BLUE) + T.cylinders(RED))
         """
-        nf = len(self._triangulation)
+        nf = self._triangulation.num_faces()
         face_seen = [False] * nf
-        fp = self._triangulation.face_permutation()
+        fp = self._triangulation.face_permutation(copy=False)
+        ep = self._triangulation.edge_permutation(copy=False)
         vectors = self._vectors
         pos = self._pos = [None] * (3*nf)
 
@@ -326,7 +336,7 @@ class FlatTriangulation:
                 pos[a] = self._V((0,0))
 
                 for e in cyl:
-                    a = ~e
+                    a = ep[e]
                     b = fp[a]
                     c = fp[b]
                     face_seen[self._edge_to_face[a]] = True
@@ -338,7 +348,7 @@ class FlatTriangulation:
                         vectors[b] *= -1
                         vectors[c] *= -1
 
-                    pos[a] = pos[~a] + vectors[~a]
+                    pos[a] = pos[e] + vectors[e]
                     pos[b] = pos[a] + vectors[a]
                     pos[c] = pos[b] + vectors[b]
                     xmin = min(xmin, pos[a][0], pos[b][0], pos[c][0])
@@ -350,7 +360,7 @@ class FlatTriangulation:
                 #    and the current height position
                 t = self._V((-xmin, y-ymin))
                 for e in cyl:
-                    a = ~e
+                    a = ep[e]
                     b = fp[a]
                     c = fp[b]
                     pos[a] += t
@@ -360,12 +370,12 @@ class FlatTriangulation:
                 # 3. set new starting height
                 y += ymax - ymin + 1
 
-        n = self._triangulation.num_edges()
-        for e in range(-n, n):
+        n = self._triangulation.num_half_edges()
+        for e in range(n):
             f = self._edge_to_face[e]
             if (self._pos[e] is None) != (face_seen[self._edge_to_face[e]] is False):
                 a,b,c = self._faces[f]
-                raise RuntimeError('cylinder badly set: pos[%s] = %s while its face (%s,%s,%s) is %s' % (edge_label(e), self._pos[e], edge_label(a), edge_label(b), edge_label(c), 'seen' if face_seen[self._edge_to_face[e]] else 'unseen'))
+                raise RuntimeError('cylinder badly set: pos[%s] = %s while its face (%s,%s,%s) is %s' % (e, self._pos[e], a, b, c, 'seen' if face_seen[self._edge_to_face[e]] else 'unseen'))
 
         # random forest
         while any(x is False for x in face_seen):
@@ -401,7 +411,7 @@ class FlatTriangulation:
                 t_edges = list(self._faces[t])
                 shuffle(t_edges)
                 for e in t_edges:
-                    a = ~e
+                    a = ep[e]
                     assert pos[e] is not None
                     assert self._edge_to_face[e] == t
                     f = self._edge_to_face[a]
@@ -419,7 +429,7 @@ class FlatTriangulation:
 #                             edge_label(t_edges[2]),
 #                             edge_label(e),
 #                             edge_label(a), edge_label(b), edge_label(c)))
-                        if vectors[e] == vectors[~e]:
+                        if vectors[e] == vectors[ep[e]]:
                             vectors[a] *= -1
                             vectors[b] *= -1
                             vectors[c] *= -1
@@ -447,10 +457,108 @@ class FlatTriangulation:
             # set new height
             y += ymax - ymin + 1
 
-        n = self._triangulation.num_edges()
-        for e in range(-n, n):
+        n = self._triangulation.num_half_edges()
+        for e in range(n):
             if self._pos[e] is None:
-                raise RuntimeError('pos[%s] not set properly' % edge_label(e))
+                raise RuntimeError('pos[%s] not set properly' % e)
+
+    def _edge_is_boundary(self, e):
+        fp = self._triangulation.face_permutation(copy=False)
+        ep = self._triangulation.edge_permutation(copy=False)
+        pos = self._pos
+        vectors = self._vectors
+        E = ep[e]
+        return pos[fp[e]] != pos[E] or vectors[e] != -vectors[E]
+
+    ###################################################################
+    # Plotting functions
+    ###################################################################
+
+    def _plot_edge(self, e, **opts):
+        r"""
+        Plot the edge ``e``.
+        """
+        assert self._pos is not None
+
+        pos = self._pos
+        vectors = self._vectors
+        fp = self._triangulation._fp
+        ep = self._triangulation._ep
+
+        oopts = {}
+        E = ep[e]
+        u = pos[e]
+        v = pos[fp[e]]
+        if not self._edge_is_boundary(e):
+            # the edge is between adjacent faces
+            oopts['alpha'] = 0.5
+            oopts['linestyle'] = 'dotted'
+
+        oopts['color'] = EDGE_COLORS[self._edge_slope(e)]
+
+        oopts.update(opts)
+
+        L = line2d([u, v], **oopts)
+
+        if e == E:
+            # folded edge
+            L += point2d([(u + v) / 2], color='black', marker='x', pointsize=100)
+
+        return L
+
+    def _plot_edge_label(self, a, **opts):
+        assert self._pos is not None
+
+        fp = self._triangulation.face_permutation(copy=False)
+        ep = self._triangulation.edge_permutation(copy=False)
+        pos = self._pos
+
+        b = fp[a]
+        c = fp[b]
+
+        if a == ep[a]:
+            # folded edge
+            pos = (6.5 * pos[a].n() + 6.5 * pos[b].n() + pos[c].n()) / 14
+        else:
+            pos = (8 * pos[a].n() + 5 * pos[b].n() + pos[c].n()) / 14
+
+        return text(self._triangulation._edge_rep(a), pos, color='black')
+
+    def _plot_face(self, a):
+        r"""
+        Plot the face that contains the edge ``a``.
+        """
+        assert self._pos is not None
+
+        G = Graphics()
+        fp = self._triangulation.face_permutation(copy=False)
+        b = fp[a]
+        c = fp[b]
+        pos = self._pos
+
+        # computing slopes in order to determine filling color
+        nred = nblue = 0
+        for e in (a,b,c):
+            slope = self._edge_slope(e)
+            if slope == RED:
+                nred += 1
+            elif slope == BLUE:
+                nblue += 1
+
+        if nred == 2:
+            color = (.75, 0.5, 0.5)
+        elif nblue == 2:
+            color = (.5, 0.5, .75)
+        else:
+            color = (.5, 0.5, 0.5)
+
+        G += polygon2d([pos[a], pos[b], pos[c], pos[a]], alpha=0.41, color=color)
+
+        G += self._plot_edge_label(a)
+        G += self._plot_edge_label(b)
+        G += self._plot_edge_label(c)
+
+        return G
 
     def _plot_train_track(self, slope):
         pos = self._pos
@@ -510,9 +618,7 @@ class FlatTriangulation:
                                cs2 + 0.3 * os2, cs2]], rgbcolor=color)
         return G
 
-
-    def plot(self, horizontal_train_track=False,
-                   vertical_train_track=False):
+    def plot(self, horizontal_train_track=False, vertical_train_track=False):
         r"""
         Return a graphics.
 
@@ -527,19 +633,27 @@ class FlatTriangulation:
         if self._pos is None:
             self.set_pos()
 
-        n = len(self._triangulation)
-
         G = Graphics()
+        n = self._triangulation.num_half_edges()
+        fp = self._triangulation.face_permutation(copy=False)
+        ep = self._triangulation.edge_permutation(copy=False)
 
-        for (a,b,c) in self._faces:
-            G += draw_my_triangle(a, b, c, self._pos, self._vectors)
+        # 1. plot faces
+        for e in range(n):
+            if e < fp[e] and e < fp[fp[e]]:
+                G += self._plot_face(e)
 
+        # 2. plot edges
+        for e in range(n):
+            if self._edge_is_boundary(e) or e <= ep[e]:
+                G += self._plot_edge(e)
+
+        # 3. possibly plot train tracks
         if horizontal_train_track:
             G += self._plot_train_track(HORIZONTAL)
         if vertical_train_track:
             G += self._plot_train_track(VERTICAL)
 
-        #print pos
         G.set_aspect_ratio(1)
         G.axes(False)
         return G

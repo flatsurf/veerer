@@ -13,6 +13,6 @@ from .automaton import Automaton
 
 from .env import sage
 if sage is not None:
-    from .layout import FlatTriangulation
+    from .layout import FlatVeeringTriangulationLayout
 
 del sage, absolute_import
