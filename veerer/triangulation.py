@@ -876,7 +876,7 @@ class Triangulation(object):
 
     def automorphisms(self):
         r"""
-        Return the list of automorphisms of this triangulation or veering triangulation.
+        Return the list of automorphisms of this triangulation.
 
         The output is a list of arrays that are permutations acting on the set
         of half edges.
