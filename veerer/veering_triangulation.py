@@ -1181,7 +1181,7 @@ class VeeringTriangulation(Triangulation):
             sage: T0 = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
             sage: T = T0.copy()
             sage: T.flip(1, RED); T.flip(0, RED)
-            sage: T.flip_flip(0, RED); T.flip_back(1, RED)
+            sage: T.flip_back(0, RED); T.flip_back(1, RED)
             sage: T == T0
             True
 
