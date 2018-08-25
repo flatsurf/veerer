@@ -28,13 +28,13 @@ except ImportError:
     ppl = None
 
 msg = {
-    'sage': 'the function {} can only be called in Sage. See http://www.sagemath.org/',
+    'sage': 'the function {} can only be called when running inside of Sage. See http://www.sagemath.org/',
 
-    'surface_dynamics': 'the function {} does only work with the package surface_dynamics installed. See https://pypi.org/project/surface_dynamics/ for instructions.',
+    'surface_dynamics': 'the function {} only works when the package surface_dynamics is installed. See https://pypi.org/project/surface_dynamics/ for instructions.',
 
-    'flipper': 'the function {} does only work with the package flipper installed. See https://pypi.org/project/flipper/ for instructions',
+    'flipper': 'the function {} only works when the package flipper is installed. See https://pypi.org/project/flipper/ for instructions',
 
-    'pplpy': 'the function {} does only work with the package pplpy installed. See https://pypi.org/project/pplpy/ for instructions.'
+    'pplpy': 'the function {} only works when the package pplpy is installed. See https://pypi.org/project/pplpy/ for instructions.'
     }
 
 mods = {
