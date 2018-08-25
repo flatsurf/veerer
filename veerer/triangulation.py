@@ -664,12 +664,12 @@ class Triangulation(object):
             sage: T0 = Triangulation([(0,1,2),(-1,-2,-3)])
             sage: T = T0.copy()
             sage: T.flip(0)
-            sage: T.back_flip(0)
+            sage: T.flip_back(0)
             sage: T == T0
             True
 
             sage: T.flip(1); T.flip(2)
-            sage: T.back_flip(2); T.back_flip(1)
+            sage: T.flip_back(2); T.flip_back(1)
             sage: T == T0
             True
         """

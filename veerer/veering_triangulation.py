@@ -1170,7 +1170,7 @@ class VeeringTriangulation(Triangulation):
                 return False
         return True
 
-    def back_flip(self, e, col):
+    def flip_back(self, e, col):
         r"""
         Flip backward an edge in place
 
@@ -1181,12 +1181,12 @@ class VeeringTriangulation(Triangulation):
             sage: T0 = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
             sage: T = T0.copy()
             sage: T.flip(1, RED); T.flip(0, RED)
-            sage: T.back_flip(0, RED); T.back_flip(1, RED)
+            sage: T.flip_flip(0, RED); T.flip_back(1, RED)
             sage: T == T0
             True
 
             sage: T.flip(1, BLUE); T.flip(2, BLUE)
-            sage: T.back_flip(2, BLUE); T.back_flip(1, RED)
+            sage: T.flip_back(2, BLUE); T.flip_back(1, RED)
             sage: T == T0
             True
         """
@@ -1194,7 +1194,7 @@ class VeeringTriangulation(Triangulation):
         assert(self.is_flippable(e))
         E = self._ep[e]
 
-        Triangulation.back_flip(self, e)
+        Triangulation.flip_back(self, e)
         self._colouring[e] = self._colouring[E] = col
 
     def _set_train_track_constraints(self, insert, x, slope, low_bound, allow_degenerations):
@@ -1876,7 +1876,7 @@ class VeeringTriangulation(Triangulation):
                 if self.edge_has_curve(e):
                     break
                 else:
-                    self.back_flip(e, old_col)
+                    self.flip_back(e, old_col)
 
 def ngon(n):
     n = int(n)
