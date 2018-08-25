@@ -654,7 +654,7 @@ class Triangulation(object):
         # self._vl[e] = x
         # self._vl[E] = v
 
-    def back_flip(self, e):
+    def flip_back(self, e):
         r"""
         Flip back the edge ``e``.
 
