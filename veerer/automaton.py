@@ -393,12 +393,12 @@ class Automaton(object):
                 print('[automaton] not core')
 
             # not core or already visited
-            T.back_flip(e, old_col)
+            T.flip_back(e, old_col)
             assert T.iso_sig() == iso_sigs[-1]
 
             while flips and not branch[-1]:
                 e,old_col = flips.pop()
-                T.back_flip(e, old_col)
+                T.flip_back(e, old_col)
                 branch.pop()
                 iso_sigs.pop()
                 assert T.iso_sig() == iso_sigs[-1]
