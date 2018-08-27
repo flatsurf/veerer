@@ -329,7 +329,7 @@ class VeeringTriangulation(Triangulation):
         T._vp = self._vp[:]
         T._ep = self._ep[:]
         T._fp = self._fp[:]
-        T._colouring = self._colouring
+        T._colouring = self._colouring[:]
         return T
 
     def __str__(self):
