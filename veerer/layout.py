@@ -1,6 +1,14 @@
 r"""
 Flat veering triangulations.
+
+Note:
+
+- when graphviz generates a svg it specifies a given size with the
+  attributes "width" and "height". This would better be redefined
+  to width="100%".
 """
+
+import math
 
 from sage.structure.sequence import Sequence
 
@@ -23,6 +31,7 @@ from sage.plot.point import point2d
 from .constants import BLUE, RED, PURPLE, GREEN, HORIZONTAL, VERTICAL
 from .misc import flipper_nf_to_sage, flipper_nf_element_to_sage, det2
 from .triangulation import Triangulation
+from .veering_triangulation import VeeringTriangulation
 
 QQx = PolynomialRing(QQ, 'x')
 _Fields = Fields()
@@ -53,9 +62,6 @@ def flipper_edge(T, e):
 def flipper_edge_perm(n):
     from array import array
     return array('l', range(n-1,-1,-1))
-
-def edge_label(i):
-    raise ValueError
 
 def vec_slope(v):
     r"""
@@ -103,6 +109,11 @@ def has_intersection(triangles, new_triangle, pos):
                     return True
 
     return False
+
+# TODO:
+# class FlatVeeringTriangulation(VeeringTriangulation)
+# in this class we do not choose the color after a flip.
+# it is entierly determined by the slopes of the vectors.
 
 class FlatVeeringTriangulationLayout:
     r"""
@@ -154,13 +165,6 @@ class FlatVeeringTriangulationLayout:
 
         n = self._triangulation.num_half_edges()
         m = self._triangulation.num_edges()
-        self._edge_to_face = [None] * n
-        self._faces = self._triangulation.faces()
-
-        for i,(e0,e1,e2) in enumerate(self._triangulation.faces()):
-            self._edge_to_face[e0] = i
-            self._edge_to_face[e1] = i
-            self._edge_to_face[e2] = i
 
         if len(vectors) == m:
             ep = self._triangulation._ep
@@ -183,6 +187,9 @@ class FlatVeeringTriangulationLayout:
 
         self._vectors = list(vectors)        # edge vectors     (list of length n)
 
+        cols = [vec_slope(self._vectors[e]) for e in range(n)]
+        self._triangulation = VeeringTriangulation(self._triangulation, cols)
+
         # for actual display
         self._pos = None                     # vertex positions (list of length n)
 
@@ -199,6 +206,8 @@ class FlatVeeringTriangulationLayout:
             sage: F.set_pos()
             sage: F._check()
         """
+        self._triangulation._check()
+
         n = self._triangulation.num_half_edges()
         ep = self._triangulation._ep
         for a in range(n):
@@ -206,10 +215,10 @@ class FlatVeeringTriangulationLayout:
             u = self._vectors[a]
             v = self._vectors[A]
             if u != v and u != -v:
-                raise ValueError('ep[%s] = %s but vec[%s] = %s and vec[%s] = %s' % (a, u, A, v))
+                raise ValueError('ep[%s] = %s but vec[%s] = %s' % (a, u, A, v))
 
         vectors = self._vectors
-        for a,b,c in self._faces:
+        for a,b,c in self._triangulation.faces():
             va = vectors[a]
             vb = vectors[b]
             vc = vectors[c]
@@ -222,7 +231,7 @@ class FlatVeeringTriangulationLayout:
 
         pos = self._pos
         if pos is not None:
-            for a,b,c in self._faces:
+            for a,b,c in self._triangulation.faces():
                 if pos[a] + vectors[a] != pos[b] or \
                    pos[b] + vectors[b] != pos[c] or \
                    pos[c] + vectors[c] != pos[a]:
@@ -300,7 +309,7 @@ class FlatVeeringTriangulationLayout:
     def __repr__(self):
         return 'Flat Triangulation made of %s triangles' % self._triangulation.num_faces()
 
-    def set_pos(self, cylinders=None):
+    def set_pos(self, cylinders=None, y_space=0.1):
         r"""
         Set position randomly.
 
@@ -318,6 +327,15 @@ class FlatVeeringTriangulationLayout:
             sage: F.plot()
             Graphics object consisting of 13 graphics primitives
         """
+        n = self._triangulation.num_half_edges()
+        half_edge_to_face = [None] * n
+        faces = self._triangulation.faces()
+
+        for i,(e0,e1,e2) in enumerate(faces):
+            half_edge_to_face[e0] = i
+            half_edge_to_face[e1] = i
+            half_edge_to_face[e2] = i
+
         nf = self._triangulation.num_faces()
         face_seen = [False] * nf
         fp = self._triangulation.face_permutation(copy=False)
@@ -338,7 +356,7 @@ class FlatVeeringTriangulationLayout:
                     a = ep[e]
                     b = fp[a]
                     c = fp[b]
-                    face_seen[self._edge_to_face[a]] = True
+                    face_seen[half_edge_to_face[a]] = True
 #                    print(' -- %s --> (%s, %s, %s)' % (edge_label(e), edge_label(a),
 #                         edge_label(b), edge_label(c)))
 
@@ -367,14 +385,14 @@ class FlatVeeringTriangulationLayout:
                     pos[c] += t
 
                 # 3. set new starting height
-                y += ymax - ymin + 1
+                y += ymax - ymin + y_space
 
         n = self._triangulation.num_half_edges()
         for e in range(n):
-            f = self._edge_to_face[e]
-            if (self._pos[e] is None) != (face_seen[self._edge_to_face[e]] is False):
-                a,b,c = self._faces[f]
-                raise RuntimeError('cylinder badly set: pos[%s] = %s while its face (%s,%s,%s) is %s' % (e, self._pos[e], a, b, c, 'seen' if face_seen[self._edge_to_face[e]] else 'unseen'))
+            f = half_edge_to_face[e]
+            if (pos[e] is None) != (face_seen[half_edge_to_face[e]] is False):
+                a,b,c = faces[f]
+                raise RuntimeError('cylinder badly set: pos[%s] = %s while its face (%s,%s,%s) is %s' % (e, self._pos[e], a, b, c, 'seen' if face_seen[half_edge_to_face[e]] else 'unseen'))
 
         # random forest
         while any(x is False for x in face_seen):
@@ -386,7 +404,7 @@ class FlatVeeringTriangulationLayout:
 #            print('new root: {}'.format(edge_label(start)))
 
             # sets its position
-            a, b, c = self._faces[start]
+            a, b, c = faces[start]
             pos[a] = self._V.zero()
             pos[b] = pos[a] + vectors[a]
             pos[c] = pos[b] + vectors[b]
@@ -403,21 +421,21 @@ class FlatVeeringTriangulationLayout:
             edges = {t:[] for t in range(nf)}
             wait = [start]
             face_seen[start] = True
-            faces = [start]
+            q = [start]
             while wait:
                 shuffle(wait)
                 t = wait.pop()
-                t_edges = list(self._faces[t])
+                t_edges = list(faces[t])
                 shuffle(t_edges)
                 for e in t_edges:
                     a = ep[e]
                     assert pos[e] is not None
-                    assert self._edge_to_face[e] == t
-                    f = self._edge_to_face[a]
+                    assert half_edge_to_face[e] == t
+                    f = half_edge_to_face[a]
                     if face_seen[f] is False:
                         edges[t].append(e)
                         face_seen[f] = True
-                        faces.append(f)
+                        q.append(f)
                         wait.append(f)
 
                         b = fp[a]
@@ -446,15 +464,15 @@ class FlatVeeringTriangulationLayout:
 
             # translate
             t = self._V((-xmin, y-ymin))
-            for f in faces:
+            for f in q:
 #                print('translate %s by %s' % (f, t))
-                a,b,c = self._faces[f]
+                a,b,c = faces[f]
                 pos[a] += t
                 pos[b] += t
                 pos[c] += t
 
             # set new height
-            y += ymax - ymin + 1
+            y += ymax - ymin + y_space
 
         n = self._triangulation.num_half_edges()
         for e in range(n):
@@ -468,6 +486,76 @@ class FlatVeeringTriangulationLayout:
         vectors = self._vectors
         E = ep[e]
         return pos[fp[e]] != pos[E] or vectors[e] != -vectors[E]
+
+    def glue_side_by_side(self, a):
+        r"""
+        Move the face to which a belongs so that e is in the middle
+        of a quadrilateral.
+        """
+        if not self._edge_is_boundary(a):
+            return
+
+        pos = self._pos
+        vectors = self._vectors
+        fp = self._triangulation.face_permutation(copy=False)
+        ep = self._triangulation.edge_permutation(copy=False)
+        A = ep[a]
+        b = fp[a]
+        c = fp[b]
+        if a == A:
+            return
+
+        if vectors[a] == vectors[A]:
+            vectors[a] *= -1
+            vectors[b] *= -1
+            vectors[c] *= -1
+        pos[a] = pos[A] + vectors[A]
+        pos[b] = pos[a] + vectors[a]
+        pos[c] = pos[b] + vectors[b]
+
+        self._check()
+
+    def flip(self, e):
+        if not self._triangulation.is_forward_flippable(e):
+            raise ValueError
+
+        # be sure that e is in the middle of a quadrilateral
+        ep = self._triangulation.edge_permutation(copy=False)
+        fp = self._triangulation.face_permutation(copy=False)
+        E = ep[e]
+        pos = self._pos
+
+        if pos is not None:
+            self.glue_side_by_side(E)
+
+        # now update
+        a = fp[e]; b = fp[a]
+        c = fp[E]; d = fp[c]
+        vectors = self._vectors
+        # x<----------x
+        # |     a    ^^
+        # |         / |
+        # |        /  |
+        # |       /   |
+        # |b    e/   d|
+        # |     /     |
+        # |    /      |
+        # |   /       |
+        # |  /        |
+        # | /         |
+        # v/    c     |
+        # x---------->x
+
+        if pos is not None:
+            pos[e] = pos[d]
+            pos[E] = pos[b]
+        vectors[e] = vectors[d] + vectors[a]
+        vectors[E] = vectors[b] + vectors[c]
+
+        self._triangulation.flip(e, vec_slope(vectors[e]))
+
+        self._check()
+
 
     ###################################################################
     # Plotting functions
@@ -505,25 +593,61 @@ class FlatVeeringTriangulationLayout:
 
         return L
 
-    def _plot_edge_label(self, a, **opts):
+    def _plot_edge_label(self, a, tilde=None, **opts):
         assert self._pos is not None
 
         fp = self._triangulation.face_permutation(copy=False)
         ep = self._triangulation.edge_permutation(copy=False)
         pos = self._pos
+        vectors = self._vectors
 
         b = fp[a]
         c = fp[b]
 
+        posa = pos[a].n()
+        posb = pos[b].n()
+        vc = vectors[c].n()
+        vc /= vc.norm()
+        relposc = posa - vc
+
         if a == ep[a]:
             # folded edge
-            pos = (6.5 * pos[a].n() + 6.5 * pos[b].n() + pos[c].n()) / 14
+            pos = (6.5 * posa + 6.5 * posb + relposc) / 14
         else:
-            pos = (8 * pos[a].n() + 5 * pos[b].n() + pos[c].n()) / 14
+            pos = (8 * posa + 5 * posb + relposc) / 14
 
-        return text(self._triangulation._edge_rep(a), pos, color='black')
 
-    def _plot_face(self, a):
+
+        if tilde is None:
+            tilde = self._edge_is_boundary(a)
+
+        if tilde:
+            if a > ep[a]:
+                lab = "%s=~%s"%(a, ep[a])
+            else:
+                lab = str(a)
+        else:
+            lab = str(a)
+
+        x, y = self._vectors[a]
+        if y.is_zero():
+            angle=0
+        elif x.is_zero():
+            if y > 0:
+                angle = 90
+            else:
+                angle = 270
+        else:
+            x = float(x)
+            y = float(y)
+            angle = math.acos(x / math.sqrt(x**2 + y**2))
+            if y < 0:
+                angle *= -1.0
+            angle *= 180 / math.pi
+
+        return text(lab, pos, rotation=angle, color='black')
+
+    def _plot_face(self, a, edge_labels=True):
         r"""
         Plot the face that contains the edge ``a``.
         """
@@ -553,9 +677,10 @@ class FlatVeeringTriangulationLayout:
 
         G += polygon2d([pos[a], pos[b], pos[c], pos[a]], alpha=0.41, color=color)
 
-        G += self._plot_edge_label(a)
-        G += self._plot_edge_label(b)
-        G += self._plot_edge_label(c)
+        if edge_labels:
+            G += self._plot_edge_label(a)
+            G += self._plot_edge_label(b)
+            G += self._plot_edge_label(c)
 
         return G
 
@@ -575,7 +700,7 @@ class FlatVeeringTriangulationLayout:
             NEG = RED
             color = 'green'
 
-        for e0, e1, e2 in self._triangulation:
+        for e0, e1, e2 in self._triangulation.faces():
             # determine the large edge
             v0 = vectors[e0]
             v1 = vectors[e1]
@@ -617,7 +742,7 @@ class FlatVeeringTriangulationLayout:
                                cs2 + 0.3 * os2, cs2]], rgbcolor=color)
         return G
 
-    def plot(self, horizontal_train_track=False, vertical_train_track=False):
+    def plot(self, horizontal_train_track=False, vertical_train_track=False, edge_labels=True):
         r"""
         Return a graphics.
 
@@ -628,6 +753,16 @@ class FlatVeeringTriangulationLayout:
 
         - ``vertical_train_track`` - boolean - whether to plot the vertical
           train-track on the surface
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: faces = "(0, ~3, 4)(1, 2, ~7)(3, ~1, ~2)(5, ~8, ~4)(6, ~5, 8)(7, ~6, ~0)"
+            sage: colours = 'RBRRBRBRB'
+            sage: T = VeeringTriangulation(faces, colours)
+            sage: FS = T.flat_structure_min()
+            sage: FS.plot(horizontal_train_track=True)
+            sage: FS.plot(vertical_train_track=True)
         """
         if self._pos is None:
             self.set_pos()
@@ -640,7 +775,7 @@ class FlatVeeringTriangulationLayout:
         # 1. plot faces
         for e in range(n):
             if e < fp[e] and e < fp[fp[e]]:
-                G += self._plot_face(e)
+                G += self._plot_face(e, edge_labels=edge_labels)
 
         # 2. plot edges
         for e in range(n):
