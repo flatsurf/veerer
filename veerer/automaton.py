@@ -239,7 +239,7 @@ class Automaton(object):
         f.write('\n')
 
         f.write('digraph MyGraph {\n')
-        f.write(' node [shape=circle style=filled margin=0 width=0 height=0]\n')
+        f.write(' node [shape=circle style=filled margin=0.1 width=0 height=0]\n')
         for g in self._iso_sigs:
             T = VeeringTriangulation.from_string(g)
             if triangulations:
