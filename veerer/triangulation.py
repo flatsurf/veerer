@@ -483,6 +483,225 @@ class Triangulation(object):
     def __repr__(self):
         return str(self)
 
+    def _check_homology_matrix(self, m):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: T = Triangulation("(0,1,2)(~0,~1,~2)")
+            sage: m = matrix([[1,1],[-1,0],[0,-1]])
+            sage: T._check_homology_matrix(m)
+        """
+        ne = self.num_edges()
+        ep = self._ep
+
+        assert m.nrows() == ne
+        V = m._row_ambient_module()
+
+        # boundary condition
+        for F in self.faces():
+            v = V.zero()
+            for e in F:
+                E = ep[e]
+                if E > e:
+                    v += m[e]
+                elif E < e:
+                    v -= m[E]
+                else:
+                    # folded edge condition
+                    # NOTE: it is stupid to keep all these zeros in
+                    # the matrix! We should label the folded edges
+                    # after the non-folded ones...
+                    # though we can allow non-zero stuff assuming
+                    # that the half edge is oriented toward the pole
+                    assert m[e].is_zero()
+            assert v.is_zero()
+
+    def flip_homological_action(self, e, m):
+        r"""
+        Multiply the matrix ``m`` on the left by the homology action of
+        the ``e``-flip.
+
+        The matrix ``m`` must have ``ne`` rows and each column represents a
+        vector in cohomology. That is to say, each column has to satisfy the
+        following conditions:
+
+        - for each face `F` the evaluation on its boundary is zero.
+
+        - for each folded edge, the corresponding entry is zero.
+
+        INPUT:
+
+        - ``e`` - a half edge
+
+        - ``m`` - matrix
+
+        EXAMPLES::
+
+            sage: from veerer import Triangulation
+
+            sage: T = Triangulation("(0,1,2)(~0,~1,~2)")
+            sage: A = matrix([[1,1],[-1,0],[0,-1]])
+            sage: B = copy(A)
+            sage: for e in [0,1,0,1]:
+            ....:     T.flip_homological_action(e, B)
+            ....:     T.flip(e)
+            sage: B
+            [ 1 -3]
+            [-1  4]
+            [ 0 -1]
+
+        In the above example we are back to the initial triangulation and
+        one can recover the homology matrix using pseudo inverses::
+
+            sage: A.pseudoinverse() * B
+            [ 1 -4]
+            [ 0  1]
+
+        Another torus example (a single Dehn twist along the curve
+        w)::
+
+            sage: T = Triangulation("(1,~0,4)(2,~4,~1)(3,~2,5)(~5,~3,0)")
+            sage: u = [0,1,0,0,-1,0]
+            sage: v = [0,0,0,1,0,-1]
+            sage: w = [1,1,1,1,0,0]
+            sage: A = matrix(ZZ, 3, 6, [u,v,w]).transpose()
+            sage: B = copy(A)
+            sage: for i in (0,2,1,3):
+            ....:     T.flip_homological_action(i, B)
+            ....:     T.flip(i)
+            ....:     T._check_homology_matrix(B)
+            sage: p = "(0,2)(~0,~2)(1,3)(~1,~3)"
+            sage: T.relabel_homological_action(p, B)
+            sage: T.relabel(p)
+            sage: T._check_homology_matrix(B)
+            sage: A.pseudoinverse() * B
+            [1 0 0]
+            [0 1 0]
+            [1 1 1]
+        """
+        from sage.modules.free_module import FreeModule
+        from sage.rings.integer_ring import ZZ
+
+        ne = self.num_edges()
+        assert m.nrows() == ne
+        ep = self._ep
+
+        V = FreeModule(ZZ, ne)
+
+        # matrix check (to be disabled)
+        self._check_homology_matrix(m)
+
+        if ep[e] == e:
+            return
+        elif ep[e] < e:
+            e = ep[e]
+
+        a,b,c,d = self.square_about_edge(e)
+        # v_e becomes v_a + v_d. We might want to use optimized row operations
+        # such as
+        #   swap_rows(i, j)
+        #   add_multiple_of_row(i, j, s)
+        V = m._row_ambient_module()
+
+        v = V.zero()
+        A = ep[a]
+        if a < A:
+            v += m[a]
+        elif A < a:
+            v -= m[A]
+        D = ep[d]
+        if d < D:
+            v += m[d]
+        elif D < d:
+            v -= m[D]
+
+        m[e] = v
+
+    def relabel_homological_action(self, p, m):
+        r"""
+        Acts on the homological vectors ``m`` by the relabeling permutation ``p``.
+
+        The matrix ``m`` must have ``ne`` rows and each column represents a
+        vector in cohomology. That is to say, each column has to satisfy the
+        following conditions:
+
+        - for each face `F` the evaluation on its boundary is zero.
+
+        - for each folded edge, the corresponding entry is zero.
+
+        INPUT:
+
+        - ``p`` - automorphism
+
+        - ``m`` - matrix
+
+        EXAMPLES::
+
+            sage: from veerer import Triangulation
+
+            sage: T = Triangulation("(1,~0,4)(2,~4,~1)(3,~2,5)(~5,~3,0)")
+            sage: u = [0,1,0,0,-1,0]
+            sage: v = [0,0,0,1,0,-1]
+            sage: w = [1,1,1,1,0,0]
+            sage: A = matrix(ZZ, 3, 6, [u,v,w]).transpose()
+            sage: T._check_homology_matrix(A)
+            sage: perms = ["(0,1)(~0,~1)", "(3,~3)", "(3,~5)(~3,5)",
+            ....:          "(0,1,2,~0,~1,~2)",
+            ....:          "(0,~1,4,~0,1,~4)(2,3)(~2,~3)"]
+            sage: for p in perms*5:
+            ....:     T.relabel_homological_action(p, A)
+            ....:     T.relabel(p)
+            ....:     T._check_homology_matrix(A)
+        """
+        n = self._n
+        ne = self.num_edges()
+        if not perm_check(p, n):
+            p = perm_init(p, self._n, self._ep)
+            if not perm_check(p, n):
+                raise ValueError('invalid relabeling permutation')
+
+        q = perm_invert(p)
+
+        ep = self._ep
+        seen = [False] * ne
+
+        for e0 in range(ne):
+            if seen[e0]:
+                continue
+
+            seen[e0] = True
+
+            e = q[e0]
+            E = ep[e]
+            if E < e:
+                is_e0_neg = True
+                e,E = E,e
+            else:
+                is_e0_neg = False
+            while not seen[e]:
+                assert e < ne
+                seen[e] = True
+
+                ee = q[e]
+                EE = ep[ee]
+
+                if EE < ee:
+                    is_neg = True
+                    ee, EE = EE, ee
+                else:
+                    is_neg = False
+                m.swap_rows(e, ee)
+                if is_neg:
+                    m[e] *= -1
+
+                e = ee
+
+            # one more sign change?
+            assert e == e0
+            if is_e0_neg:
+                m[e] *= -1
+
     def is_flippable(self, e):
         r"""
         Check whether the half-edge e is flippable.
@@ -562,10 +781,25 @@ class Triangulation(object):
             sage: T.edges()
             [[0, 2], [1, 3], [4, 5]]
             sage: T._check()
+
+            sage: T = Triangulation("(0,1,~2)(2,~0,~1)")
+            sage: T.relabel("(0,~0)(1,~1)")
+            sage: T
+            [(0, 1, 2), (~1, ~2, ~0)]
+
+            sage: T0 = Triangulation("(1,~0,4)(2,~4,~1)(3,~2,5)(~5,~3,0)")
+            sage: T = T0.copy()
+            sage: T.flip_back(1)
+            sage: T.flip_back(3)
+            sage: T.flip_back(0)
+            sage: T.flip_back(2)
+            sage: T.relabel("(0,2)(~0,~2)(1,3)(~1,~3)")
+            sage: T == T0
+            True
         """
         n = self._n
         if not perm_check(p, n):
-            p = perm_init(p)
+            p = perm_init(p, self._n, self._ep)
             if not perm_check(p, n):
                 raise ValueError('invalid relabeling permutation')
 

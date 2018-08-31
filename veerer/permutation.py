@@ -100,7 +100,7 @@ def perm_id(n):
     """
     return array('l', range(n))
 
-def perm_init(data):
+def perm_init(data, n=None, involution=None):
     """
     Returns a permutation from the given data.
 
@@ -112,7 +112,6 @@ def perm_init(data):
     EXAMPLES::
 
         sage: from veerer.permutation import perm_init
-
 
     As a list of integers::
 
@@ -147,21 +146,33 @@ def perm_init(data):
     """
     if isinstance(data, (array, tuple, list)):
         if not data:
-            return array('l', [])
+            if n is not None:
+                return array('l', range(n))
+            else:
+                return array('l', [])
         elif isinstance(data[0], (tuple, list)):
-            return perm_from_cycles(data)
+            return perm_from_cycles(data, n=n, involution=involution)
         else:
             return array('l', (-1 if x is None else x for x in data))
 
     if isinstance(data, str):
         c = str_to_cycles(data)
-        return perm_from_cycles(c)
+        return perm_from_cycles(c, n=n, involution=involution)
 
     raise TypeError("The input must be list, tuple or string")
 
-def perm_from_cycles(t):
+def perm_from_cycles(t, n=None, involution=None):
     r"""
     Returns a permutation on `[0, n-1]` from a list of cycles on `[0, n-1]`
+
+    INPUT:
+
+    - ``t`` - cycles
+
+    - ``n`` - optional domain size
+
+    - ``involution`` (optional) - if provided use it to convert minus
+      signs
 
     EXAMPLES::
 
@@ -174,16 +185,34 @@ def perm_from_cycles(t):
         array('l')
         sage: perm_from_cycles([[],[]])
         array('l')
+
+        sage: perm_from_cycles([[1,-2,0,3]], n=6, involution=[0,4,5,3,1,2])
+        array('l', [3, 4, 2, 1, 0, 5])
     """
     if not any(tt for tt in t):
         return array('l', [])
 
-    res = array('l', range(max(map(max, t))+1))
+    if n is None:
+        n = max(map(max, t)) + 1
+    else:
+        n = int(n)
+
+    res = array('l', range(n))
 
     for c in t:
-        for j in range(len(c)-1):
-            res[c[j]] = int(c[j+1])
-        res[c[-1]] = int(c[0])
+        a = int(c[0])
+        if a < 0:
+            a = n+a if involution is None else involution[~a]
+        for j in range(1,len(c)):
+            b = int(c[j])
+            if b < 0:
+                b = n+b if involution is None else involution[~b]
+            res[a] = b
+            a = b
+        b = int(c[0])
+        if b < 0:
+            b = n+b if involution is None else involution[~b]
+        res[a] = b
 
     return res
 
