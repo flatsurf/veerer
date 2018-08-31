@@ -31,6 +31,42 @@ def best_rotation(X):
 def edge_label(e):
     raise ValueError
 
+def ppl_cone_to_hashable(P):
+    r"""
+    EXAMPLES::
+
+        sage: from veerer.veering_triangulation import VeeringTriangulation, ppl_cone_to_hashable, ppl_cone_from_hashable
+        sage: from surface_dynamics import *
+
+        sage: T = VeeringTriangulation.from_stratum(AbelianStratum(2))
+        sage: P = T.geometric_polytope()
+        sage: h = ppl_cone_to_hashable(P)
+        sage: P == ppl_cone_from_hashable(h)
+        True
+    """
+    eqns = []
+    ieqs = []
+    for constraint in P.minimized_constraints():
+        if constraint.inhomogeneous_term():
+            raise ValueError('not a cone')
+        if constraint.is_equality():
+            eqns.append(tuple(constraint.coefficients()))
+        elif constraint.is_inequality():
+            ieqs.append(tuple(constraint.coefficients()))
+        else:
+            raise RuntimeError
+    eqns.sort()
+    ieqs.sort()
+    return (P.space_dimension(), tuple(eqns), tuple(ieqs))
+
+def ppl_cone_from_hashable((d, eqns, ieqs)):
+    P = ppl.C_Polyhedron(d)
+    for constraint in eqns:
+        P.add_constraint(sum(coeff * ppl.Variable(i) for i,coeff in enumerate(constraint)) == 0)
+    for constraint in ieqs:
+        P.add_constraint(sum(coeff * ppl.Variable(i) for i,coeff in enumerate(constraint)) >= 0)
+    return P
+
 class VeeringTriangulation(Triangulation):
     r"""
     Veering triangulation.
@@ -1870,6 +1906,58 @@ class VeeringTriangulation(Triangulation):
                     print('[edge_has_curve] adding %s on top of the queue' % edge_rep(s))
 
         return False
+
+    def geometric_neighbours(self, L=None):
+        r"""
+        Return the geometric neighbours
+        """
+        require_package('ppl', 'geometric_neighbours')
+
+        P = self.geometric_polytope()
+        if L is None:
+            dim = self.stratum().dimension()
+            if P.affine_dimension() != 2 * dim:
+                raise ValueError('not geometric')
+        else:
+            P.intersection_update(L)
+            dim = P.affine_dimension()
+            if dim % 2:
+                raise ValueError('dimension would better be even...')
+            dim = dim // 2
+
+        ne = self.num_edges()
+        x = [ppl.Variable(e) for e in range(ne)]
+        y = [ppl.Variable(ne+e) for e in range(ne)]
+
+        # constructing the Delaunay facets
+        delaunay_facets = {}
+        for e in self.forward_flippable_edges():
+            a,b,c,d = self.square_about_edge(e)
+
+            Q = ppl.C_Polyhedron(P)
+            Q.add_constraint(x[self._norm(e)] == y[self._norm(a)] + y[self._norm(d)])
+            if Q.affine_dimension() == 2*dim - 1:
+                hQ = ppl_cone_to_hashable(Q)
+                if hQ not in delaunay_facets:
+                    delaunay_facets[hQ] = [Q, []]
+                delaunay_facets[hQ][1].append(e)
+
+        # computing colouring of the new triangulations
+        neighbours = []
+        for Q, edges in delaunay_facets.values():
+            for cols in product([BLUE, RED], repeat=len(edges)):
+                S = ppl.C_Polyhedron(Q)
+                Z = list(zip(edges, cols))
+                for e,col in Z:
+                    a,b,c,d = self.square_about_edge(e)
+                    if col == RED:
+                        S.add_constraint(x[self._norm(a)] <= x[self._norm(d)])
+                    else:
+                        S.add_constraint(x[self._norm(a)] >= x[self._norm(d)])
+                if S.affine_dimension() == 2*dim - 1:
+                    neighbours.append(Z)
+
+        return neighbours
 
     def _check_edge_has_curve(self):
         r"""
