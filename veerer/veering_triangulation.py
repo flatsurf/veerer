@@ -1086,9 +1086,28 @@ class VeeringTriangulation(Triangulation):
             sage: T.cylinders(RED)
             []
 
-        An example with both blue and red cylinders in Q(1,1,1,1)::
+        Some examples in Q(4, -1^8)::
 
-            sage: T = 1 # find an example again
+            sage: T = VeeringTriangulation("(0,1,2)", "BBR")
+            sage: T.cylinders(BLUE)
+            [[0, 1]]
+            sage: T.cylinders(RED)
+            []
+
+            sage: T = VeeringTriangulation("(5,4,7)(~5,3,10)(1,~0,8)(~1,~4,11)(2,6,9)(~2,0,12)", "BBBBBBBRRRRRR")
+            sage: T.cylinders(BLUE)
+            [[3, 17, 4, 15, 16, 13, 6]]
+            sage: T.cylinders(RED)
+
+            sage: fp = "[(0, 12, 3), (1, 2, 11), (4, 6, 7), (5, ~2, 10), (8, ~5, ~4), (9, ~1, ~0)]"
+            sage: cols = "BBRRRBBBBRRRB"
+            sage: T = VeeringTriangulation(fp, cols)
+            sage: T.cylinders(BLUE)
+            [[6, 7]]
+
+            sage: T.cylinders(RED)
+            [[10, 13, 11]]
+
         """
         n = self._n
         fp = self._fp
@@ -1110,18 +1129,32 @@ class VeeringTriangulation(Triangulation):
                 seen[a] = seen[ep[a]] = seen[b] = seen[ep[b]] = seen[c] = seen[ep[c]] = True
                 continue
 
-            # find an edge to cross
-            if cols[a] == col:
-                door = a
-            else:
-                door = b
-            door0 = door
+            # find the two edges that can be crossed
+            doors = []
+            for e in (a,b,c):
+                if cols[e] == col:
+                    doors.append(e)
+            door = door0 = doors[0]
 
             cc = []  # cycle to be stored
+            half_turn = False
             cyl = True
             while not seen[door]:
+                print('door = {}'.format(door))
                 seen[door] = seen[ep[door]] = True
                 cc.append(door)
+
+                if door == ep[door]:
+                    print('folded edge')
+                    # folded edges... we can not continue from here, start from
+                    # the other door or stop
+                    if half_turn:
+                        cyl = True
+                        break
+                    half_turn = True
+                    cc = [ep[x] for x in reversed(cc)]
+                    door = doors[1]
+                    continue
 
                 # pass through the door
                 a = ep[door]
@@ -1134,7 +1167,12 @@ class VeeringTriangulation(Triangulation):
                 else:
                     cyl = False
                     break
-            if cyl and door == door0:
+
+            print('cc: {}'.format(cc))
+            print('cyl: {}'.format(cyl))
+            print('half_turn: {}'.format(half_turn))
+
+            if cyl and (door == door0 or half_turn):
                 cylinders.append(cc)
 
         return cylinders
