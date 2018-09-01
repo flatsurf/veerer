@@ -1162,6 +1162,18 @@ class VeeringTriangulation(Triangulation):
             [[6, 7]]
             sage: T.cylinders(RED)
             [[10, 17, 11]]
+
+            sage: fp = '(0,~5,4)(1,~3,2)(3,5,~4)(6,~1,~0)'
+            sage: cols = 'RBBRBRB'
+            sage: T = VeeringTriangulation(fp, cols)
+            sage: T.cylinders(BLUE)
+            [[6, 8, 2]]
+            sage: T.cylinders(RED)
+            []
+
+            sage: T = VeeringTriangulation.from_string("RBRBBBRRBRBR_908274a531b6_ba9385764210")
+            sage: T.cylinders(BLUE)
+            [[5, 4, 3]]
         """
         n = self._n
         fp = self._fp
@@ -1180,8 +1192,9 @@ class VeeringTriangulation(Triangulation):
             c = fp[b]
             if seen[a] or seen[b] or seen[c] or \
                (cols[a] == col) + (cols[b] == col) + (cols[c] == col) != 2:
-                seen[a] = seen[ep[a]] = seen[b] = seen[ep[b]] = seen[c] = seen[ep[c]] = True
+                seen[a] = seen[b] = seen[c] = True
                 continue
+
 
             # find the two edges that can be crossed
             doors = []
