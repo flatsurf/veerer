@@ -16,7 +16,7 @@ cBLUE = 'B'
 cPURPLE = 'P'
 cGREEN = 'G'
 
-COLOURS = [RED, BLUE]
+COLOURS = [RED, BLUE, PURPLE, GREEN]
 
 def colour_from_char(c):
     r"""
