@@ -1,3 +1,21 @@
+2018-08-31
+
+1. Implementation of homology action. The fact that poles are allowed
+to be in middle of edges is really cool for homology computation!
+However, to drastically simplify things in a stratum such as
+Q(1^n, -1^n) one would need to label the folded edges with
+bigger labels than the non-folded ones. More precisely,
+the current computation carries matrices of size num_edges
+but it is possible to carry only num_edges - num_folded_edges.
+Currently, the coefficients of the folded edges are simply
+set to zero. The main issue for now is to build a correct
+good_start because there might not be any non-folded BLUE
+before a red.
+
+2. better javascript code for the automaton! Still the scaling
+is not wonderful and the automorphism group order displayed inside
+the nodes makes it delicate to click on actual node.
+
 2018-08-24
 
 1. Discussed how L^\infty Del triangulations behave under
