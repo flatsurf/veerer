@@ -315,6 +315,48 @@ class FlatVeeringTriangulationLayout:
     def __repr__(self):
         return 'Flat Triangulation made of %s triangles' % self._triangulation.num_faces()
 
+    def _edge_is_boundary(self, e):
+        fp = self._triangulation.face_permutation(copy=False)
+        ep = self._triangulation.edge_permutation(copy=False)
+        pos = self._pos
+        vectors = self._vectors
+        E = ep[e]
+        return pos[fp[e]] is None or pos[E] is None or pos[fp[e]] != pos[E] or vectors[e] != -vectors[E]
+
+    def glue_edge(self, e):
+        r"""
+        Glue the triangle accross the edge ``e`` to ``e``.
+        """
+        if not self._edge_is_boundary(e):
+            return
+
+        pos = self._pos
+        vectors = self._vectors
+        fp = self._triangulation.face_permutation(False)
+        ep = self._triangulation.edge_permutation(False)
+        a = ep[e]
+        b = fp[a]
+        c = fp[b]
+
+        if pos[e] is None:
+            raise RuntimeError
+
+        if a != e and vectors[a] == vectors[e]:
+            vectors[a] *= -1
+            vectors[b] *= -1
+            vectors[c] *= -1
+
+        if a != e:
+            pos[a] = pos[e] + vectors[e]
+        pos[b] = pos[a] + vectors[a]
+        pos[c] = pos[b] + vectors[b]
+        xmin = min(pos[a][0], pos[b][0], pos[c][0])
+        xmax = max(pos[a][0], pos[b][0], pos[c][0])
+        ymin = min(pos[a][1], pos[b][1], pos[c][1])
+        ymax = max(pos[a][1], pos[b][1], pos[c][1])
+
+        return xmin, xmax, ymin, ymax
+
     def set_pos(self, cylinders=None, y_space=0.1):
         r"""
         Set position randomly.
@@ -332,6 +374,11 @@ class FlatVeeringTriangulationLayout:
             sage: F.set_pos(cylinders=T.cylinders(BLUE) + T.cylinders(RED))
             sage: F.plot()
             Graphics object consisting of 13 graphics primitives
+
+        TO be tested
+
+        RBBRBRBRBRBR_791508a432b6_ba2987654310
+        RBBBRBBRBBBR_64a5978301b2_ba9875643210
         """
         n = self._triangulation.num_half_edges()
         half_edge_to_face = [None] * n
@@ -358,26 +405,16 @@ class FlatVeeringTriangulationLayout:
                 a = cyl[0]
                 pos[a] = self._V((0,0))
 
+                if a == ep[a]:
+                    cyl = cyl[:-1]
+
                 for e in cyl:
-                    a = ep[e]
-                    b = fp[a]
-                    c = fp[b]
-                    face_seen[half_edge_to_face[a]] = True
-#                    print(' -- %s --> (%s, %s, %s)' % (edge_label(e), edge_label(a),
-#                         edge_label(b), edge_label(c)))
-
-                    if vectors[a] == vectors[e]:
-                        vectors[a] *= -1
-                        vectors[b] *= -1
-                        vectors[c] *= -1
-
-                    pos[a] = pos[e] + vectors[e]
-                    pos[b] = pos[a] + vectors[a]
-                    pos[c] = pos[b] + vectors[b]
-                    xmin = min(xmin, pos[a][0], pos[b][0], pos[c][0])
-                    xmax = max(xmax, pos[a][0], pos[b][0], pos[c][0])
-                    ymin = min(ymin, pos[a][1], pos[b][1], pos[c][1])
-                    ymax = max(ymax, pos[a][1], pos[b][1], pos[c][1])
+                    x0min, x0max, y0min, y0max = self.glue_edge(e)
+                    face_seen[half_edge_to_face[ep[e]]] = True
+                    xmin = min(xmin, x0min)
+                    xmax = max(xmax, x0max)
+                    ymin = min(ymin, y0min)
+                    ymax = max(ymax, y0max)
 
                 # 2. translate positions according to bounding box
                 #    and the current height position
@@ -406,8 +443,6 @@ class FlatVeeringTriangulationLayout:
             for start in range(nf):
                 if face_seen[start] is False:
                     break
-
-#            print('new root: {}'.format(edge_label(start)))
 
             # sets its position
             a, b, c = faces[start]
@@ -444,38 +479,21 @@ class FlatVeeringTriangulationLayout:
                         q.append(f)
                         wait.append(f)
 
-                        b = fp[a]
-                        c = fp[b]
-#                        print('add edge (%s,%s,%s) -- %s --> (%s,%s,%s)' % (
-#                             edge_label(t_edges[0]),
-#                             edge_label(t_edges[1]),
-#                             edge_label(t_edges[2]),
-#                             edge_label(e),
-#                             edge_label(a), edge_label(b), edge_label(c)))
-                        if vectors[e] == vectors[ep[e]]:
-                            vectors[a] *= -1
-                            vectors[b] *= -1
-                            vectors[c] *= -1
-                        pos[a] = pos[e] + vectors[e]
-                        pos[b] = pos[a] + vectors[a]
-                        pos[c] = pos[b] + vectors[b]
-                        xmin = min(xmin, pos[a][0], pos[b][0], pos[c][0])
-                        xmax = max(xmax, pos[a][0], pos[b][0], pos[c][0])
-                        ymin = min(ymin, pos[a][1], pos[b][1], pos[c][1])
-                        ymax = max(ymax, pos[a][1], pos[b][1], pos[c][1])
-#                        print('pos[%s] = %s  pos[%s] = %s  pos[%s] = %s' % (
-#                            edge_label(a), pos[a], edge_label(b), pos[b],
-#                            edge_label(c), pos[c]))
+                        x0min, x0max, y0min, y0max = self.glue_edge(e)
+                        xmin = min(xmin, x0min)
+                        xmax = max(xmax, x0max)
+                        ymin = min(ymin, y0min)
+                        ymax = max(ymax, y0max)
 
 
             # translate
             t = self._V((-xmin, y-ymin))
             for f in q:
-#                print('translate %s by %s' % (f, t))
                 a,b,c = faces[f]
                 pos[a] += t
                 pos[b] += t
                 pos[c] += t
+
 
             # set new height
             y += ymax - ymin + y_space
@@ -484,42 +502,6 @@ class FlatVeeringTriangulationLayout:
         for e in range(n):
             if self._pos[e] is None:
                 raise RuntimeError('pos[%s] not set properly' % e)
-
-    def _edge_is_boundary(self, e):
-        fp = self._triangulation.face_permutation(copy=False)
-        ep = self._triangulation.edge_permutation(copy=False)
-        pos = self._pos
-        vectors = self._vectors
-        E = ep[e]
-        return pos[fp[e]] != pos[E] or vectors[e] != -vectors[E]
-
-    def glue_side_by_side(self, a):
-        r"""
-        Move the face to which a belongs so that e is in the middle
-        of a quadrilateral.
-        """
-        if not self._edge_is_boundary(a):
-            return
-
-        pos = self._pos
-        vectors = self._vectors
-        fp = self._triangulation.face_permutation(copy=False)
-        ep = self._triangulation.edge_permutation(copy=False)
-        A = ep[a]
-        b = fp[a]
-        c = fp[b]
-        if a == A:
-            return
-
-        if vectors[a] == vectors[A]:
-            vectors[a] *= -1
-            vectors[b] *= -1
-            vectors[c] *= -1
-        pos[a] = pos[A] + vectors[A]
-        pos[b] = pos[a] + vectors[a]
-        pos[c] = pos[b] + vectors[b]
-
-        self._check()
 
     def flip(self, e):
         if not self._triangulation.is_forward_flippable(e):
