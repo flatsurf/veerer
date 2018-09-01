@@ -115,6 +115,12 @@ def has_intersection(triangles, new_triangle, pos):
 # in this class we do not choose the color after a flip.
 # it is entierly determined by the slopes of the vectors.
 
+# compute L^infinity Delaunay: inplace and return the
+# flip sequence given an L^infinity
+
+# given a pseudo-Anosov, generate its L^infinity Delaunay sequence
+# (as well as back and forth with flipper)
+
 class FlatVeeringTriangulationLayout:
     r"""
     A flat triangulation.
@@ -762,7 +768,9 @@ class FlatVeeringTriangulationLayout:
             sage: T = VeeringTriangulation(faces, colours)
             sage: FS = T.flat_structure_min()
             sage: FS.plot(horizontal_train_track=True)
+            Graphics object consisting of 49 graphics primitives
             sage: FS.plot(vertical_train_track=True)
+            Graphics object consisting of 49 graphics primitives
         """
         if self._pos is None:
             self.set_pos()
