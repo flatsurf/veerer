@@ -271,7 +271,8 @@ class Automaton(object):
 
     def geometric_triangulations(self, method=None):
         r"""
-        Return the list of geometric configurations.
+        Return an iterator over the pairs (veering triangulation,
+        geometric polytope) when the triangulation is geometric.
 
         EXAMPLES::
 
@@ -280,19 +281,25 @@ class Automaton(object):
 
             sage: T = VeeringTriangulation.from_stratum(AbelianStratum(2))
             sage: A = Automaton.from_triangulation(T)
-            sage: len(A.geometric_triangulations())
+
+            sage: vt, P = next(A.geometric_triangulations())
+            sage: vt.geometric_polytope() == P
+            True
+            sage: P.affine_dimension() == 8
+            True
+
+            sage: sum(1 for _ in A.geometric_triangulations())
             54
         """
-        geoms = []
         for s in self:
             c = VeeringTriangulation.from_string(s)
+            p = c.geometric_polytope()
             if c.is_geometric(method=method):
-                geoms.append(s)
-        return geoms
+                yield c, p
 
     def cylindrical_triangulations(self):
         r"""
-        Return the list of cylindrical configurations.
+        Return an iterator over cylindrical configurations.
 
         EXAMPLES::
 
@@ -301,15 +308,19 @@ class Automaton(object):
 
             sage: T = VeeringTriangulation.from_stratum(AbelianStratum(2))
             sage: A = Automaton.from_triangulation(T)
-            sage: len(A.cylindrical_triangulations())
+
+            sage: vt = next(A.cylindrical_triangulations())
+            sage: sum(len(u) for u in vt.cylinders(BLUE)) == 6 or \
+            ....: sum(len(u) for u in vt.cylinders(RED)) == 6
+            True
+
+            sage: sum(1 for _ in A.cylindrical_triangulations())
             24
         """
-        cylindricals = []
         for s in self:
             c = VeeringTriangulation.from_string(s)
             if c.is_cylindrical():
-                cylindricals.append(s)
-        return cylindricals
+                yield c
 
     @classmethod
     def from_triangulation(self, T, verbose=0, mode='core', **kwargs):
