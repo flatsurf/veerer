@@ -131,6 +131,7 @@ class VeeringTriangulation(Triangulation):
         Triangulation._check(self, error)
         n = self.num_half_edges()
         ep = self._ep
+        ev = self._vp
         cols = self._colouring
         if not isinstance(cols, array) or \
            len(cols) != n or \
@@ -139,13 +140,31 @@ class VeeringTriangulation(Triangulation):
             raise error('bad colouring attribute')
 
         # no monochromatic face
+        allowed = [set([BLUE,RED]), set([PURPLE,GREEN,BLUE]),
+                   set([PURPLE,GREEN,RED]), set([PURPLE,BLUE,RED]),
+                   set([GREEN,BLUE,RED])]
         for f in self.faces():
-            if len(set(self._colouring[e] for e in f)) != 2:
+            fcols = set(cols[e] for e in f)
+            if not (PURPLE in fcols and GREEN in fcols) and \
+               not (RED in fcols and BLUE in fcols):
                 raise error('monochromatic face {}'.format(f))
+
+        # no purple -> {blue,purple} or green -> {red,green} around a vertex
+        for e in range(n):
+            c0 = cols[e]
+            c1 = cols[ev[e]]
+            if c0 == PURPLE and c1 == PURPLE:
+                raise error('two consecutive purple edges in a vertex at {}'.format(e))
+            if c0 == GREEN and c1 == GREEN:
+                raise error('two consecutive green edges in a vertex at {}'.format(e))
+            if c0 == PURPLE and c1 == BLUE:
+                raise error('blue after purple in a vertex at {}'.format(e))
+            if c0 == GREEN and c1 == RED:
+                raise error('red after green in a vertex at {}'.format(e))
 
         # no monochromatic vertex
         for v in self.vertices():
-            if len(set(self._colouring[e] for e in v)) != 2:
+            if len(set(self._colouring[e] for e in v)) == 1:
                 raise error('monochromatic vertex {}'.format(v))
 
     @classmethod
@@ -1134,16 +1153,15 @@ class VeeringTriangulation(Triangulation):
             sage: T.cylinders(BLUE)
             [[3, 17, 4, 15, 16, 13, 6]]
             sage: T.cylinders(RED)
+            []
 
-            sage: fp = "[(0, 12, 3), (1, 2, 11), (4, 6, 7), (5, ~2, 10), (8, ~5, ~4), (9, ~1, ~0)]"
+            sage: fp = "(0,12,3)(1,2,11)(4,6,7)(5,~2,10)(8,~5,~4)(9,~1,~0)"
             sage: cols = "BBRRRBBBBRRRB"
             sage: T = VeeringTriangulation(fp, cols)
             sage: T.cylinders(BLUE)
             [[6, 7]]
-
             sage: T.cylinders(RED)
-            [[10, 13, 11]]
-
+            [[10, 17, 11]]
         """
         n = self._n
         fp = self._fp
@@ -1176,12 +1194,10 @@ class VeeringTriangulation(Triangulation):
             half_turn = False
             cyl = True
             while not seen[door]:
-                print('door = {}'.format(door))
                 seen[door] = seen[ep[door]] = True
                 cc.append(door)
 
                 if door == ep[door]:
-                    print('folded edge')
                     # folded edges... we can not continue from here, start from
                     # the other door or stop
                     if half_turn:
@@ -1203,10 +1219,6 @@ class VeeringTriangulation(Triangulation):
                 else:
                     cyl = False
                     break
-
-            print('cc: {}'.format(cc))
-            print('cyl: {}'.format(cyl))
-            print('half_turn: {}'.format(half_turn))
 
             if cyl and (door == door0 or half_turn):
                 cylinders.append(cc)
