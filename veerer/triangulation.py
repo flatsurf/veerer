@@ -517,6 +517,64 @@ class Triangulation(object):
                     assert m[e].is_zero()
             assert v.is_zero()
 
+    # TODO: also compute the intersection pairing!
+    def homology_matrix(self):
+        r"""
+        Return a basis of homology as a matrix.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: from surface_dynamics import *
+            sage: T = Triangulation("(1,~0,4)(2,~4,~1)(3,~2,5)(~5,~3,0)")
+            sage: T.homology_matrix()
+            [ 1  0  0]
+            [ 0  1  0]
+            [ 1  0  0]
+            [ 0  0  1]
+            [ 1 -1  0]
+            [ 1  0 -1]
+
+            sage: T = Triangulation("(1,~0,4)(2,~4,~1)(3,~2,5)(~5,6,0)")
+            sage: T.homology_matrix()
+            [ 1  0]
+            [ 0  1]
+            [ 1  0]
+            [ 0  0]
+            [ 1 -1]
+            [ 1  0]
+            [ 0  0]
+        """
+        from sage.matrix.constructor import matrix
+        from sage.rings.integer_ring import ZZ
+
+        ep = self._ep
+        nf = self.num_faces()
+        ne = self.num_edges()
+        nfe = self.num_folded_edges()
+        m = matrix(ZZ, nf + nfe, ne)
+
+        # face equations
+        for i,f in enumerate(self.faces()):
+            for e in f:
+                if ep[e] == e:
+                    continue
+                elif ep[e] < e:
+                    m[i, ep[e]] -= 1
+                else:
+                    m[i, e] += 1
+
+        # force the folded edge to have coefficient zero
+        for e in range(ne):
+            if ep[e] == e:
+                m[i, e] = 1
+                i += 1
+
+        # compute and check
+        h = m.right_kernel_matrix().transpose()
+        self._check_homology_matrix(h)
+        return h
+
     def flip_homological_action(self, e, m):
         r"""
         Multiply the matrix ``m`` on the left by the homology action of
