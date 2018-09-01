@@ -1,0 +1,109 @@
+<!DOCTYPE html> 
+
+<html>
+
+<head>
+<title>The H(2) veering automaton</title>
+<meta charset="utf-8">
+<meta name="author" content="Vincent Delecroix">
+<meta name="language" content="en">
+<link rel="stylesheet" type="text/css" href="style.css">
+
+<style>
+#automaton-frame
+{
+    position: fixed;
+    bottom: 00;
+    left: 0;
+    height: 90%;
+    width: 75%;
+    border: 3px solid #000000;
+}
+#surface-frame
+{
+    position: fixed;
+    bottom: 0;
+    left: 75%;
+    height: 90%;
+    width: 25%;
+    border: 3px solid #000000;
+}
+</style>
+
+</head>
+
+<body>
+<h1>The  H(2) veering automaton</h1>
+
+<div style="position: fixed; right: 1%; top:1%"><span id="surface-name"></span></div>
+
+<div id="automaton-frame">
+<object id="automaton" data="H_2.svg" type="image/svg+xml" style="height: 100%; width: 100%;"> </object>
+</div>
+
+<div id="surface-frame">
+<object id="surface"
+ data="none"
+ type="image/svg+xml"
+ style="height: 100%; width: 100%;">
+</object>
+</div>
+
+<script type="application/javascript">
+// <![CDATA[
+
+function rescaleEllipse(ellipse, factor) {
+  if (ellipse != null) {
+    rx = ellipse.getAttribute("rx");
+    ry = ellipse.getAttribute("ry");
+    ellipse.setAttribute("rx", factor * parseFloat(rx));
+    ellipse.setAttribute("ry", factor * parseFloat(rx));
+  }
+}
+
+function displaySurface(name, ellipse) {
+  var surf1 = document.getElementById("surface");
+  surf1.setAttribute("data", "H_2/" + name + ".svg");
+  var surfTitle = document.getElementById("surface-name");
+  surfTitle.innerHTML = name;
+
+  var t = document.getElementById("automaton").contentDocument;
+}
+
+/* function called when we click on a vertex                */
+/* it changes the surface displayed in the object "surface" */
+/* in the HTML code                                         */
+current_ellipse = null;
+
+function vertexMouseDown(evt) {
+  var ellipse = evt.target;
+  if (ellipse == current_ellipse) return;
+  var g = ellipse.parentElement;
+  title = g.getElementsByTagName("title")[0].textContent;
+  displaySurface(title);
+
+  rescaleEllipse(current_ellipse, 0.8);
+  rescaleEllipse(ellipse, 1.25);
+  current_ellipse = ellipse;
+}
+
+/* 1. run through the vertices and make the ellipse respond to click */
+/* 2. set the first surface                                          */
+window.onload = function() {
+  var t1 = document.getElementById("automaton").contentDocument;
+  var g = t1.getElementsByTagName("g");
+  var i;
+  for (i = 0; i < g.length; i++) {
+    var elt = g[i];
+    var cl = elt.getAttribute("class");
+    if (cl == "node") {
+      var ellipse = elt.getElementsByTagName("ellipse")[0];
+      ellipse.addEventListener("mousedown", vertexMouseDown);
+    }
+  }
+}
+
+// ]]>
+</script>
+
+</body>
