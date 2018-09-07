@@ -1734,7 +1734,7 @@ class VeeringTriangulation(Triangulation):
 
         return self._flat_structure_from_train_track_lengths(VH, VV)
 
-    def flat_structure_geometric_middle(self):
+    def flat_structure_geometric_middle(self, L=None):
         r"""
         Return a geometric flat structure obtained by averaging the
         vertices of the geometric polytope.
@@ -1749,7 +1749,10 @@ class VeeringTriangulation(Triangulation):
         """
         n = self.num_edges()
 
+
         P = self.geometric_polytope()
+        if L is not None:
+            P.intersection_assign(L)
         r = [g.coefficients() for g in P.generators() if g.is_ray()]
         VV = [sum(v[i] for v in r) for i in range(n)]
         VH = [sum(v[n+i] for v in r) for i in range(n)]
@@ -1998,6 +2001,27 @@ class VeeringTriangulation(Triangulation):
     def geometric_neighbours(self, L=None):
         r"""
         Return the geometric neighbours
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: v = VeeringTriangulation("(0,2,1)(3,5,4)(~0,~2,~4)(~3,~5,~1)", "RBBRBB")
+            sage: import ppl
+            sage: X = [ppl.Variable(i) for i in range(6)]
+            sage: Y = [ppl.Variable(6+i) for i in range(6)]
+            sage: x = X[0] + X[1] + 2*X[2] + X[3] + X[4] + 2*X[5]
+            sage: xx = Y[0] - Y[1] - 2*Y[2] + Y[3] - Y[4] - 2*Y[5]
+            sage: y = Y[0] + Y[1] + Y[3] + Y[4]
+            sage: yy = X[0] - X[1] + X[3] - X[4]
+            sage: g = ppl.Generator_System()
+            sage: g.insert(ppl.point())
+            sage: g.insert(ppl.line(x))
+            sage: g.insert(ppl.line(xx))
+            sage: g.insert(ppl.line(y))
+            sage: g.insert(ppl.line(yy))
+            sage: L = ppl.C_Polyhedron(g)
+            sage: v.geometric_neighbours(L)
+            [[(2, 2), (5, 2)], [(2, 1), (5, 1)]]
         """
         require_package('ppl', 'geometric_neighbours')
 
@@ -2007,7 +2031,7 @@ class VeeringTriangulation(Triangulation):
             if P.affine_dimension() != 2 * dim:
                 raise ValueError('not geometric')
         else:
-            P.intersection_update(L)
+            P.intersection_assign(L)
             dim = P.affine_dimension()
             if dim % 2:
                 raise ValueError('dimension would better be even...')
