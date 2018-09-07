@@ -30,6 +30,10 @@ and all faces are either Keane or Delaunay.  Note furthermore that the
 number of faces of any linear subspace intersected with the geometric
 polytope has at most this number of facets as well.
 
+Vincent conjectures that:
+
+# small branches \leq # facets of core + dim - 1
+
 2018-09-04 - or a few days earlier
 
 1. Compute the shape of the octagon surface.  Guess the linear space.
