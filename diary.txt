@@ -1,5 +1,36 @@
 
-2018-09-07 - or a few days earlier
+2018-09-07
+
+Note that there are easy upper bounds on the number of facets
+(codimension one faces) of the core and geometric polytopes.  To see
+this: Cut down the parameter space using the equalities, to get a
+single linear subspace of some dimension.  If the triangulation is
+core then this dimension is already the stratum dimension (as all
+variables can be positive).  Now cut down using the positivity
+constraints - we get at most one facet for every positivity
+constraint.  Thus the number of facets of the core polytope is at most
+twice the number of edges: 12g - 12 + 6p.
+
+[This should be reduced to the number of small branches in the
+vertical track plus the number of small branches in the horizontal
+track, as the positivity of one of these implies positivity of the
+edges "downstream" until the sink.  Experiments show that there can be
+dependencies between small branches, so the number of faces can be
+smaller even smaller... ]
+
+The geometric polytope is the same dimension (by assumption!) so the
+number of additional facets is at most the number of flippable edges
+(forward or backward).  This is at most two-thirds the number of
+edges, so we get 4g - 4 + 2p more giving an upper bound of
+
+16g - 16 + 8p
+
+faces.  Note that the Keane faces where already counted previously,
+and all faces are either Keane or Delaunay.  Note furthermore that the
+number of faces of any linear subspace intersected with the geometric
+polytope has at most this number of facets as well.
+
+2018-09-04 - or a few days earlier
 
 1. Compute the shape of the octagon surface.  Guess the linear space.
 Check it has the correct dimension.  Carry it around and see if the
