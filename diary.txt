@@ -1,3 +1,24 @@
+
+2018-09-07 - or a few days earlier
+
+1. Compute the shape of the octagon surface.  Guess the linear space.
+Check it has the correct dimension.  Carry it around and see if the
+Veech automaton is finite.  (I feel sure that it should be, by Ben
+Dozier has expressed many doubts - why can't h_t orbits cause it to
+crash through the thin part over and over again??? But that seems
+crazy.  Talk to Vincent about this again.)
+
+2. Give an algorithmic answer to Ursula's question (asked by other
+people as well, eg a version asked by Alex Wright): given two
+laminations, decide if they fill, and if so, build the quadratic
+differential.  This is yet another flip algorithm.  Suppose that
+\lambda and \mu are the two measured laminations.  Put them in normal
+position with respect to the triangulation.  Add "punctures" at the
+centers of all triangles.  Now start flipping to "shorten" both
+laminations... Collapsing fake punctures in pairs (or fake punctures
+to real ones) as you go.  At the end we discover that they don't fill
+or we find the L^\infty Delaunay triangulation.
+
 2018-08-31
 
 1. Implementation of homology action. The fact that poles are allowed
