@@ -565,6 +565,69 @@ class VeeringTriangulation(Triangulation):
         colours = self.colours_about_edge(e)
         return all(colours[f] != colours[(f+1) % 4] for f in range(4))
 
+    def branches(self, slope=VERTICAL):
+        r"""
+        Return a 3-uplet made of the lists of respectively the small, mixed
+        and large edges of the underlying train track.
+
+        INPUT:
+
+        - ``slope`` (optional) - either ``HORIZONTAL`` or ``VERTICAL``
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: vt = VeeringTriangulation.from_string('RBBBBRBRBRBBBBRBRBRBBBBR_k509clabdjgfie876m4321nh_nmlkjihgfedcba9876543210')
+            sage: vt.branches()
+            ([0, 1, 5, 7, 9, 10], [2, 3, 8, 11], [4, 6])
+            sage: vt.branches(HORIZONTAL)
+            ([0, 4, 5, 6, 7, 9], [2, 3, 8, 11], [1, 10])
+        """
+        n = self.num_half_edges()
+        ne = self.num_edges()
+        fp = self.face_permutation(copy=False)
+        ep = self.edge_permutation(copy=False)
+        w = [0] * ne
+        seen = [False] * n
+        if slope == VERTICAL:
+            left = BLUE
+            right = RED
+        elif slope == HORIZONTAL:
+            left = RED
+            right = BLUE
+        else:
+            raise ValueError('slope must be HORIZONTAL or VERTICAL')
+        for e in range(n):
+            if seen[e]:
+                continue
+
+            # go to the right transition
+            a = e
+            while self.colour(a) != left or self.colour(fp[a]) != right:
+                a = fp[a]
+            b = fp[a]
+            c = fp[b]
+            w[self._norm(c)] += 1  # half large
+            seen[a] = seen[b] = seen[c] = True
+
+        small = []
+        mixed = []
+        large = []
+        for e in range(ne):
+            if ep[e] == e:  # folded edge
+                w[e] *= 2
+            if w[e] == 0:
+                small.append(e)
+            elif w[e] == 1:
+                mixed.append(e)
+            elif w[e] == 2:
+                large.append(e)
+            else:
+                raise RuntimeError
+
+        return (small, mixed, large)
+
+
     def is_flippable(self, e):
         r"""
         EXAMPLES::
