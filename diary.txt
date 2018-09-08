@@ -32,7 +32,27 @@ polytope has at most this number of facets as well.
 
 Vincent conjectures that:
 
-# small branches \leq # facets of core + dim - 1
+# small branches \leq # facets of core + dim - 2
+
+This is can be checked with the following code
+
+from veerer import *
+from surface_dynamics import *
+
+s = AbelianStratum(2)
+A = Automaton.from_stratum(s)
+m = 0
+for vt in A:
+    P = vt.train_track_polytope(VERTICAL)
+    num_facets = sum(1 for c in P.minimized_constraints() if c.is_inequality())
+    num_small = len(vt.branches(VERTICAL)[0])
+    m = max(m, num_small - num_facets)
+print(m, s.dimension())
+
+which gives (2, 4). Also checked with
+
+H0, H(0^2), H(0^3), H(0^4)
+    
 
 2018-09-04 - or a few days earlier
 
