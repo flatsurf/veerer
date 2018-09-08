@@ -13,6 +13,8 @@ from .env import sage
 
 class Automaton(object):
     r"""
+    Automaton of core veering triangulations.
+
     EXAMPLES::
 
         sage: from veerer import *
@@ -23,25 +25,17 @@ class Automaton(object):
         sage: len(A)
         2
 
-        sage: T = VeeringTriangulation.from_stratum(AbelianStratum(2))
-        sage: A = Automaton.from_triangulation(T)
-        sage: len(A)
-        86
+        sage: Automaton.from_stratum(AbelianStratum(2))
+        Core veering automaton with 86 vertices
 
-        sage: T = VeeringTriangulation.from_stratum(QuadraticStratum(2,-1,-1))
-        sage: A = Automaton.from_triangulation(T)
-        sage: len(A)
-        160
+        sage: Automaton.from_stratum(QuadraticStratum(2,-1,-1))
+        Core veering automaton with 160 vertices
 
-        sage: T = VeeringTriangulation.from_stratum(QuadraticStratum(2,2))
-        sage: A = Automaton.from_triangulation(T)
-        sage: len(A)
-        846
+        sage: Automaton.from_stratum(QuadraticStratum(2,2))
+        Core veering automaton with 846 vertices
 
-        sage: T = VeeringTriangulation.from_stratum(AbelianStratum(1,1))
-        sage: A = Automaton.from_triangulation(T)
-        sage: len(A)
-        876
+        sage: Automaton.from_stratum(AbelianStratum(1,1))
+        Core veering automaton with 876 vertices
 
     Quadratic strata::
 
@@ -64,19 +58,24 @@ class Automaton(object):
         self._iso_sigs = sorted(graph)
         self._index = dict((sig, index) for index, sig in enumerate(self._iso_sigs))
     def __str__(self):
-        return "Core Veering Automaton with %s vertices" % len(self._graph)
+        return "Core veering automaton with %s vertices" % len(self._graph)
     def __repr__(self):
         return str(self)
     def __len__(self):
         return len(self._iso_sigs)
+
+    def one_triangulation(self):
+        return next(iter(self))
+
     def __iter__(self):
-        return iter(self._iso_sigs)
+        for s in self._iso_sigs:
+            yield VeeringTriangulation.from_string(s)
     def __contains__(self, item):
         return item in self._iso_sigs
 
     def to_graph(self, directed=True, multiedges=True, loops=True):
         r"""
-        Return the underlying graph.
+        Return the underlying graph as a Sage graph or digraph.
 
         INPUT:
 
@@ -96,7 +95,7 @@ class Automaton(object):
             sage: T = VeeringTriangulation(fp, cols)
             sage: A = Automaton.from_triangulation(T)
             sage: A
-            Core Veering Automaton with 86 vertices
+            Core veering automaton with 86 vertices
 
             sage: A.to_graph()
             Looped multi-digraph on 86 vertices
@@ -279,9 +278,7 @@ class Automaton(object):
             sage: from veerer import *
             sage: from surface_dynamics import *
 
-            sage: T = VeeringTriangulation.from_stratum(AbelianStratum(2))
-            sage: A = Automaton.from_triangulation(T)
-
+            sage: A = Automaton.from_stratum(AbelianStratum(2))
             sage: vt, P = next(A.geometric_triangulations())
             sage: vt.geometric_polytope() == P
             True
@@ -291,11 +288,11 @@ class Automaton(object):
             sage: sum(1 for _ in A.geometric_triangulations())
             54
         """
-        for s in self:
-            c = VeeringTriangulation.from_string(s)
-            p = c.geometric_polytope()
-            if c.is_geometric(method=method):
-                yield c, p
+        dim = self.one_triangulation().stratum().dimension()
+        for vt in self:
+            p = vt.geometric_polytope()
+            if p.affine_dimension() == 2*dim:
+                yield vt, p
 
     def cylindrical_triangulations(self):
         r"""
@@ -317,10 +314,9 @@ class Automaton(object):
             sage: sum(1 for _ in A.cylindrical_triangulations())
             24
         """
-        for s in self:
-            c = VeeringTriangulation.from_string(s)
-            if c.is_cylindrical():
-                yield c
+        for vt in self:
+            if vt.is_cylindrical():
+                yield vt
 
     @classmethod
     def from_triangulation(self, T, verbose=0, mode='core', **kwargs):
@@ -421,3 +417,15 @@ class Automaton(object):
         if verbose == 1:
             print('\r[automaton] %8d      %8d      %.3f      ' % (len(graph),len(branch),time()-t0))
         return Automaton(graph)
+
+    @classmethod
+    def from_stratum(self, stratum):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: from surface_dynamics import *
+            sage: Automaton.from_stratum(AbelianStratum(2))
+            Core veering automaton with 86 vertices
+        """
+        return self.from_triangulation(VeeringTriangulation.from_stratum(stratum))
