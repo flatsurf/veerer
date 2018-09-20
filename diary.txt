@@ -51,8 +51,7 @@ print(m, s.dimension())
 
 which gives (2, 4). Also checked with
 
-H0, H(0^2), H(0^3), H(0^4)
-    
+H0, H(0^2), H(0^3), H(0^4)    
 
 2018-09-04 - or a few days earlier
 
