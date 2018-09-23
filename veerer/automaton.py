@@ -268,6 +268,23 @@ class Automaton(object):
         if filename is not None:
             f.close()
 
+    def triangulations(self):
+        r"""
+        Return an iterator over the veering triangulations in this automaton.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: from surface_dynamics import *
+
+            sage: A = Automaton.from_stratum(AbelianStratum(2))
+            sage: A.triangulations()
+            <generator object __iter__ at <...>
+            sage: for t in A.triangulations():
+            ....:     assert t.stratum() == AbelianStratum(2)
+        """
+        return iter(self)
+
     def geometric_triangulations(self, method=None):
         r"""
         Return an iterator over the pairs (veering triangulation,
