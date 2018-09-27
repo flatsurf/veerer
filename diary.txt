@@ -57,10 +57,18 @@ H0, H(0^2), H(0^3), H(0^4)
 
 1. Compute the shape of the octagon surface.  Guess the linear space.
 Check it has the correct dimension.  Carry it around and see if the
-Veech automaton is finite.  (I feel sure that it should be, by Ben
+Veech automaton is finite.  (I feel sure that it should be, but Ben
 Dozier has expressed many doubts - why can't h_t orbits cause it to
 crash through the thin part over and over again??? But that seems
 crazy.  Talk to Vincent about this again.)
+
+[2018-09-27 Everybody gets confused by this point.  There is a
+persistent confusion between the core polytope (which the Veech disk
+definitely does meet infinitely many times!) and the geometric
+polytope.  We should think of the core polytope as being an universal
+cover of the complement of some variety inside of the stratum
+component.  So it is very large, and the Veech disk should meet it
+many times.]
 
 2. Give an algorithmic answer to Ursula's question (asked by other
 people as well, eg a version asked by Alex Wright): given two
