@@ -268,6 +268,53 @@ class Automaton(object):
         if filename is not None:
             f.close()
 
+    def triangulations(self):
+        r"""
+        Return an iterator over the veering triangulations in this automaton.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: from surface_dynamics import *
+
+            sage: A = Automaton.from_stratum(AbelianStratum(2))
+            sage: A.triangulations()
+            <generator object __iter__ at <...>
+            sage: for t in A.triangulations():
+            ....:     assert t.stratum() == AbelianStratum(2)
+        """
+        return iter(self)
+
+    def num_triangulations(self):
+        r"""
+        Return the number of triangulations (= states of the automaton).
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: from surface_dynamics import *
+            sage: A = Automaton.from_stratum(AbelianStratum(2))
+            sage: A.num_triangulations()
+            86
+        """
+        return len(self._graph)
+
+    num_states = num_triangulations
+
+    def num_transitions(self):
+        r"""
+        Return the number of transitions of this automaton.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: from surface_dynamics import *
+            sage: A = Automaton.from_stratum(AbelianStratum(2))
+            sage: A.num_transitions()
+            300
+        """
+        return sum(len(flips) for flips in self._graph.values())
+
     def geometric_triangulations(self, method=None):
         r"""
         Return an iterator over the pairs (veering triangulation,
@@ -294,6 +341,20 @@ class Automaton(object):
             if p.affine_dimension() == 2*dim:
                 yield vt, p
 
+    def num_geometric_triangulations(self):
+        r"""
+        Return the number of geometric triangulations (among the states).
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: from surface_dynamics import *
+            sage: A = Automaton.from_stratum(AbelianStratum(2))
+            sage: A.num_geometric_triangulations()
+            54
+        """
+        return sum(vt.is_geometric() for vt in self)
+
     def cylindrical_triangulations(self):
         r"""
         Return an iterator over cylindrical configurations.
@@ -317,6 +378,20 @@ class Automaton(object):
         for vt in self:
             if vt.is_cylindrical():
                 yield vt
+
+    def num_cylindrical_triangulations(self):
+        r"""
+        Return the number of cylindrical triangulations (among the states).
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: from surface_dynamics import *
+            sage: A = Automaton.from_stratum(AbelianStratum(2))
+            sage: A.num_cylindrical_triangulations()
+            24
+        """
+        return sum(vt.is_cylindrical() for vt in self)
 
     @classmethod
     def from_triangulation(self, T, verbose=0, mode='core', **kwargs):
