@@ -43,6 +43,16 @@ Or
 
     $ sage -t --force-lib veerer/my_file.py
 
+Building documentation
+----------------------
+
+Go to the docs repository and then do
+
+    $ sage -sh
+    $ make html
+
+The documentation should be available under docs/build/ as HTML pages.
+
 Authors
 -------
 

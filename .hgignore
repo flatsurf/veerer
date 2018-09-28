@@ -16,3 +16,4 @@ htmlcov/*
 test.py
 
 graphs/
+docs/build
