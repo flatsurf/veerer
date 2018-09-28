@@ -53,6 +53,26 @@ Go to the docs repository and then do
 
 The documentation should be available under docs/build/ as HTML pages.
 
+Typically you might want to use veerer_demo.rst as a Jupyter notebook. In
+order to do the conversion you need to have available on your computer
+
+- rst2latex python-docutils
+- pdflatex 
+- pandoc
+- the Python module rst2ipynb
+- the Python module nbconvert
+
+Then do
+
+    $ export FILE_PREFIX="veerer_demo"
+    $ rst2ipynb --kernel=sagemath veerer_demo.rst veerer_demo.ipynb
+
+If you did install rst2ipynb using the `--user` option of pip the executables
+are possibly installed in $HOME/.local/bin. In which case you should first make
+the system aware of this via
+
+    $ PATH=$PATH:$HOME/.local/bin
+
 Authors
 -------
 
