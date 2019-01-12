@@ -62,6 +62,9 @@ def perm_check(l, n=None):
         sage: perm_check(array('l', [-1, 3, -1, 1]), 4)
         True
 
+        sage: perm_check(array('l', [1,0,-1,-1,-1]), 2)
+        True
+
     Bad permutations::
 
         sage: perm_check(array('l', [1, 0, 3, 2]), 3)
@@ -255,6 +258,74 @@ def perm_random(n):
     shuffle(r)
     return array('l', r)
 
+def perm_random_centralizer(p):
+    r"""
+    Return a random permutation in the centralizer of ``p``.
+
+    EXAMPLES::
+
+        sage: from veerer.permutation import *
+        sage: p = perm_random(10)
+        sage: q = perm_random_centralizer(p)
+        sage: perm_compose(p, q) == perm_compose(q, p)
+        True
+    """
+    if not p:
+        return p
+
+    cyc = perm_cycles(p)
+    cyc.sort(key = lambda c: len(c))
+    i = 0
+    ans = array('l', [-1] * len(p))
+    while i < len(cyc):
+        j = i + 1
+        s = len(cyc[i])
+        while j < len(cyc) and len(cyc[j]) == s:
+            j += 1
+
+        # permutation of the cycles i, i+1, ..., j-1
+        m = perm_random(j - i)
+
+        for ii in range(i, j):
+            jj = i + m[ii - i]
+            shift = randint(0, s - 1)  # random shift
+            for k in range(len(cyc[i])):
+                ans[cyc[ii][k]] = cyc[jj][(k + shift) % s]
+
+        # next round
+        i = j
+
+    return ans
+
+def perm_random_conjugacy_class(c):
+    r"""
+    Return a random permutation with given conjugacy class ``c``.
+
+    EXAMPLES::
+
+        sage: from veerer.permutation import *
+
+        sage: p = perm_random_conjugacy_class([5,2])
+        sage: perm_cycle_type(p)
+        [5, 2]
+
+        sage: p = perm_random_conjugacy_class([7,3,3,1])
+        sage: perm_cycle_type(p)
+        [7, 3, 3, 1]
+    """
+    n = sum(c)
+    r = list(range(n))
+    shuffle(r)
+    p = array('l', [-1]*n)
+    i = 0
+    for k in c:
+        # add a k-cycle following the list r
+        for j in range(i, i+k-1):
+            p[r[j]] = r[j+1]
+        p[r[i+k-1]] = r[i]
+        i += k
+    return p
+
 #####################################################################
 # Serialization
 #####################################################################
@@ -354,7 +425,39 @@ def perm_from_base64_str(s, n):
 # Cycles and action
 #####################################################################
 
-def perm_cycles(p, singletons=True):
+def perm_dense_cycles(p, n=None):
+    r"""
+    EXAMPLES::
+
+        sage: from veerer.permutation import perm_dense_cycles
+
+        sage: perm_dense_cycles([1,2,0])
+        ([0, 0, 0], [3])
+
+        sage: perm_dense_cycles([0,2,1])
+        ([0, 1, 1], [1, 2])
+
+        sage: perm_dense_cycles([2,1,0])
+        ([0, 1, 0], [2, 1])
+    """
+    if n is None:
+        n = len(p)
+    deg = []
+    res = [-1] * n
+    k = 0
+    for i in range(n):
+        if res[i] != -1:
+            continue
+        d = 0
+        while res[i] == -1:
+            res[i] = k
+            i = p[i]
+            d += 1
+        k += 1
+        deg.append(d)
+    return res, deg
+
+def perm_cycles(p, singletons=True, n=None):
     r"""
     Return the cycle decomposition of ``p`` as a list of lists.
 
@@ -363,6 +466,8 @@ def perm_cycles(p, singletons=True):
     - ``p`` -- the permutation
 
     - ``singletons`` -- bool (default: ``True``) - return or not the singletons
+
+    - ``n`` -- (optional) only use the first ``n`` elements of the permutation ``p``
 
     EXAMPLES::
 
@@ -375,11 +480,16 @@ def perm_cycles(p, singletons=True):
 
         sage: perm_cycles([2,-1,0])
         [[0, 2]]
+
+        sage: perm_cycles([2,0,1,None,None], n=3)
+        [[0, 2, 1]]
     """
-    seen = [False] * len(p)
+    if n is None:
+        n = len(p)
+    seen = [False] * n
     res = []
 
-    for i in range(len(p)):
+    for i in range(n):
         if seen[i] or p[i] == -1:
             continue
         if p[i] == i and not singletons:
@@ -394,7 +504,75 @@ def perm_cycles(p, singletons=True):
 
     return res
 
-def perm_cycle_string(p, singletons=True):
+def perm_num_cycles(p, n=None):
+    r"""
+    Return the number of cycles of the permutation ``p``.
+
+    EXAMPLES::
+
+        sage: from veerer.permutation import perm_num_cycles
+        sage: perm_num_cycles([1,2,3,0])
+        1
+        sage: perm_num_cycles([0,2,3,1])
+        2
+        sage: perm_num_cycles([3,2,1,0])
+        2
+        sage: perm_num_cycles([3,1,2,0])
+        3
+        sage: perm_num_cycles([0,1,2,3])
+        4
+    """
+    if n is None:
+        n = len(p)
+    seen = [False] * n
+    ans = 0
+    for i in range(n):
+        if seen[i] or p[i] == -1:
+            continue
+        ans += 1
+        j = i
+        while not seen[j]:
+            seen[j] = True
+            j = p[j]
+    return ans
+
+def perm_cycle_type(p, n=None):
+    r"""
+    Return the lengths of the cycles of the permutation ``p`` in size of
+    decreasing order.
+
+    EXAMPLES::
+
+        sage: from veerer.permutation import perm_cycle_type
+        sage: perm_cycle_type([1,2,3,0])
+        [4]
+        sage: perm_cycle_type([0,2,3,1])
+        [3, 1]
+        sage: perm_cycle_type([3,2,1,0])
+        [2, 2]
+        sage: perm_cycle_type([3,1,2,0])
+        [2, 1, 1]
+        sage: perm_cycle_type([0,1,2,3])
+        [1, 1, 1, 1]
+    """
+    if n is None:
+        n = len(p)
+    seen = [False] * n
+    c = []
+    for i in range(n):
+        if seen[i] or p[i] == -1:
+            continue
+        k = 0
+        j = i
+        while not seen[j]:
+            seen[j] = True
+            k += 1
+            j = p[j]
+        c.append(k)
+    c.sort(reverse=True)
+    return c
+
+def perm_cycle_string(p, singletons=True, n=None):
     r"""
     Returns a string representing the cycle decomposition of `p`
 
@@ -407,7 +585,7 @@ def perm_cycle_string(p, singletons=True):
         '(1,2)'
     """
     return ''.join(map(lambda x: '('+','.join(map(str, x))+')',
-                       perm_cycles(p, singletons)))
+                       perm_cycles(p, singletons, n)))
 
 def perm_orbit(p, i):
     r"""
@@ -425,7 +603,6 @@ def perm_orbit(p, i):
         res.append(j)
         j = p[j]
     return res
-
 
 def perm_on_list(p, t):
     r"""
@@ -486,12 +663,11 @@ def perm_on_cyclic_list(p, t):
             res = rr
     return res
 
-
 #####################################################################
 # Group operations
 #####################################################################
 
-def perm_invert(l):
+def perm_invert(l, n=None):
     r"""
     Returns the inverse of the permutation ``l``.
 
@@ -517,19 +693,21 @@ def perm_invert(l):
         True
 
     """
-    res = array('l', [0]*len(l))
-    for i in range(len(l)):
+    if n is None:
+        n = len(l)
+    res = array('l', [0]*n)
+    for i in range(n):
         if l[i] == -1:
             res[i] = -1
         else:
             res[l[i]] = i
     return res
 
-def perm_compose(p1, p2):
+def perm_compose(p1, p2, n=None):
     r"""
     Returns the product ``p1 p2``.
 
-    In the notation ``p1 p2`` we use the left action, in other words
+    In the notation ``p1 p2`` we use the right action, in other words
     ``p1`` is applied first.
 
     EXAMPLES::
@@ -540,14 +718,94 @@ def perm_compose(p1, p2):
         array('l', [0, 1, 2])
         sage: perm_compose([-1,2,3,1],[-1,2,1,3])
         array('l', [-1, 1, 3, 2])
+
+        sage: perm_compose([1,0,2,None,None], [2,1,0,None], 3)
+        array('l', [1, 2, 0])
     """
-    r = array('l', [-1] * len(p1))
-    for i in range(len(p1)):
-        if p1[i] != -1 and p1[i] < len(p2):
+    if n is None:
+        n = len(p1)
+    r = array('l', [-1] * n)
+    for i in range(n):
+        if p1[i] != -1:
             r[i] = p2[p1[i]]
     return r
 
-def perm_conjugate(p1, p2):
+perm_compose_00 = perm_compose
+
+def perm_compose_10(p1, p2, n=None):
+    r"""
+    Return the product ``p1^(-1) p2``
+
+    EXAMPLES::
+
+        sage: from veerer.permutation import perm_compose, perm_invert, perm_compose_10
+        sage: p1 = [0,5,2,1,3,4]
+        sage: p2 = [3,1,5,4,2,0]
+        sage: perm_compose_10(p1, p2) == perm_compose(perm_invert(p1), p2)
+        True
+        sage: shuffle(p1)
+        sage: shuffle(p2)
+        sage: perm_compose_10(p1, p2) == perm_compose(perm_invert(p1), p2)
+        True
+    """
+    if n is None:
+        n = len(p1)
+    r = array('l', [-1] * n)
+    for i in range(n):
+        r[p1[i]] = p2[i]
+    return r
+
+def perm_compose_01(p1, p2, n=None):
+    r"""
+    Return the product ``p1 p2^(-1)``
+
+    EXAMPLES::
+
+        sage: from veerer.permutation import perm_compose, perm_invert, perm_compose_01
+        sage: p1 = [0,5,2,1,3,4]
+        sage: p2 = [3,1,5,4,2,0]
+        sage: perm_compose_01(p1, p2) == perm_compose(p1, perm_invert(p2)) # not tested
+        True
+        sage: shuffle(p1)
+        sage: shuffle(p2)
+        sage: perm_compose_01(p1, p2) == perm_compose(p1, perm_invert(p2)) # not tested
+        True
+    """
+    raise NotImplementedError
+
+def perm_compose_11(p1, p2, n=None):
+    r"""
+    Return the product ``p1^(-1) p2^(-1)
+
+    EXAMPLES::
+
+        sage: from veerer.permutation import perm_compose, perm_invert, perm_compose_11
+        sage: p1 = [0,5,2,1,3,4]
+        sage: p2 = [3,1,5,4,2,0]
+        sage: perm_compose_11(p1, p2) == perm_compose(perm_invert(p1), perm_invert(p2))
+        True
+        sage: shuffle(p1)
+        sage: shuffle(p2)
+        sage: perm_compose_11(p1, p2) == perm_compose(perm_invert(p1), perm_invert(p2))
+        True
+
+    TESTS::
+
+        sage: from veerer.permutation import perm_invert, perm_compose
+        sage: from itertools import permutations
+
+        sage: for p1 in permutations(range(4)):
+        ....:     for p2 in permutations(range(4)):
+        ....:         assert perm_compose_11(p1, p2) == perm_compose(perm_invert(p1), perm_invert(p2))
+    """
+    if n is None:
+        n = len(p1)
+    r = array('l', [-1] * n)
+    for i in range(n):
+        r[p1[p2[i]]] = i
+    return r
+
+def perm_conjugate(p1, p2, n=None):
     r"""
     Conjugate ``p1`` by ``p2``.
 
@@ -567,43 +825,18 @@ def perm_conjugate(p1, p2):
         sage: res[p2[19]] == p2[p1[19]]
         True
     """
-    n = len(p1)
+    if n is None:
+        n = len(p1)
     res = array('l', [-1] * n)
     for i in range(n):
         res[p2[i]] = p2[p1[i]]
-    return res
-
-def perm_compose_i(p1, p2):
-    r"""
-    Returns the product ``p1^{-1} p2^{-1}``.
-
-    EXAMPLES::
-
-        sage: from veerer.permutation import perm_compose_i
-
-        sage: perm_compose_i([0,1,2],[1,2,0])
-        array('l', [2, 0, 1])
-
-    TESTS::
-
-        sage: from veerer.permutation import perm_invert, perm_compose
-        sage: from itertools import permutations
-
-        sage: for p1 in permutations(range(4)):
-        ....:     for p2 in permutations(range(4)):
-        ....:         assert perm_compose_i(p1, p2) == perm_compose(perm_invert(p1), perm_invert(p2))
-    """
-    res = array('l', [-1]*len(p1))
-    for i in range(len(p1)):
-        res[p1[p2[i]]] = i
-
     return res
 
 #####################################################################
 # Transitivity test
 #####################################################################
 
-def perms_transitive_components(p):
+def perms_transitive_components(p, n=None):
     r"""
     Return the list of transitive components of the subgroup generated by the
     permutations ``p``.
@@ -625,7 +858,8 @@ def perms_transitive_components(p):
         sage: perms_transitive_components([[3,1,2,0], [0,3,2,1], [0,1,3,2]])
         [(0, 1, 2, 3)]
     """
-    n = len(p[0])
+    if n is None:
+        n = len(p[0])
     seen = [-1] * n
     cc_num = 0
     for i in range(n):
@@ -646,7 +880,7 @@ def perms_transitive_components(p):
     return [tuple(i for i in range(n) if seen[i] == j) for j in range(cc_num)]
 
 
-def perms_are_transitive(p):
+def perms_are_transitive(p, n=None):
     """
     Test whether the group generated by the permutations in ``p`` is transitive.
 
@@ -679,7 +913,8 @@ def perms_are_transitive(p):
         raise ValueError("empty list")
 
     p0 = p[0]
-    n = len(p[0])
+    if n is None:
+        n = len(p0)
 
     # compute the connected component of 0
     cc0 = [True if j == -1 else False for j in p0]
