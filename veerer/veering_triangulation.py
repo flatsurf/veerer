@@ -464,7 +464,7 @@ class VeeringTriangulation(Triangulation):
 
         return angles + [1] * self.num_folded_edges()
 
-    def is_abelian(self):
+    def is_abelian(self, certificate=False):
         r"""
         Return whether this coloured triangulation is Abelian.
 
@@ -480,6 +480,9 @@ class VeeringTriangulation(Triangulation):
             ....:       [RED, RED, BLUE, BLUE, BLUE, BLUE])
             sage: T.is_abelian()
             True
+            sage: T.is_abelian(certificate=True)
+            (True, [True, True, True, True, True, True, False, False, False, False, False, False]
+)
 
             sage: T = VeeringTriangulation([(-12, 4, -4), (-11, -1, 11), (-10, 0, 10),
             ....:      (-9, 9, 1), (-8, 8, -2), (-7, 7, 2), (-6, 6, -3), (-5, 5, 3)],
@@ -513,10 +516,10 @@ class VeeringTriangulation(Triangulation):
                     q.append(ep[f])
                     oris[ep[f]]= not o
                 elif oris[ep[f]] == oris[f]:
-                    return False
+                    return (False, None) if certificate else False
                 e,f = f, vp[f]
 
-        return True
+        return (True, oris) if certificate else True
 
     def stratum(self):
         r"""
