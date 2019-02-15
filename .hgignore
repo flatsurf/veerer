@@ -1,4 +1,3 @@
-
 syntax:glob
 build/*
 dist/*
@@ -9,11 +8,9 @@ experiments/*
 *.bat
 *.swp
 *.orig
-lint.html
 .coverage
 .DS_Store
-htmlcov/*
 test.py
-
 graphs/
 docs/build
+docs/source/veerer_demo.ipynb
