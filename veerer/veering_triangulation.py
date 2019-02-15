@@ -3,7 +3,8 @@ Veering triangulations of surfaces.
 """
 from __future__ import print_function, absolute_import
 
-from math import log
+import numbers
+
 from collections import deque
 from itertools import product
 
@@ -18,18 +19,6 @@ if sage is not None:
     from sage.misc.prandom import choice, shuffle
 else:
     from random import choice, shuffle
-
-
-def dot(A, B):
-    return sum(a*b for a, b in zip(A, B))
-
-def best_rotation(X):
-    return min(X[i:] + X[:i] for i in range(len(X)))
-
-# To be deleted.
-
-def edge_label(e):
-    raise ValueError
 
 def ppl_cone_to_hashable(P):
     r"""
@@ -82,17 +71,17 @@ class VeeringTriangulation(Triangulation):
     Built from an explicit triangulation (in cycle or list form) and a list of colors::
 
         sage: VeeringTriangulation("(0,1,2)(~0,~1,~2)", [RED, RED, BLUE])
-        [(0, 1, 2), (~2, ~0, ~1)], 'RRB'
+        VeeringTriangulation("(0,1,2)(~2,~0,~1)", "RRB")
 
     From a stratum::
 
         sage: from surface_dynamics import *
 
         sage: VeeringTriangulation.from_stratum(AbelianStratum(2))
-        [(0, 6, ~5), (1, 8, ~7), (2, 7, ~6), (3, ~1, ~8), (4, ~2, ~3), (5, ~0, ~4)], 'RRRBBBBBB'
+        VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
 
         sage: VeeringTriangulation.from_stratum(QuadraticStratum({1:4}))
-        [(0, 12, ~11), (1, 13, ~12), ..., (16, ~15, ~1)], 'RRRRRRBBBBBBBBBBBB'
+        VeeringTriangulation("(0,12,~11)(1,13,~12)...(16,~15,~1)", "RRRRRRBBBBBBBBBBBB")
 
     From a flipper pseudo-Anosov map::
 
@@ -103,7 +92,7 @@ class VeeringTriangulation(Triangulation):
         sage: h.is_pseudo_anosov()
         True
         sage: VeeringTriangulation.from_pseudo_anosov(h)
-        [(0, ~3, ~1), (1, 2, 14), ..., (~2, ~9, ~4)], 'RBRBRRBRBBBBRBR'
+        VeeringTriangulation("(0,~3,~1)...(12,~14,~10)(~2,~9,~4)", "RBRBRRBRBBBBRBR")
     """
     __slots__ = ['_colouring']
 
@@ -182,7 +171,7 @@ class VeeringTriangulation(Triangulation):
             sage: h.is_pseudo_anosov()
             True
             sage: VeeringTriangulation.from_pseudo_anosov(h)
-            [(0, 3, ~2), (1, ~0, ~4), (2, 5, 4), (~1, ~5, ~3)], 'BBBRRB'
+            VeeringTriangulation("(0,3,~2)(1,~0,~4)(2,5,4)(~1,~5,~3)", "BBBRRB")
         """
         FS = h.flat_structure()
         n = FS.triangulation.zeta
@@ -207,7 +196,7 @@ class VeeringTriangulation(Triangulation):
 
             sage: T = VeeringTriangulation.from_stratum(AbelianStratum(2))
             sage: T
-            [(0, 6, ~5), (1, 8, ~7), ..., (5, ~0, ~4)], 'RRRBBBBBB'
+            VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
             sage: T.stratum()
             H_2(2)
 
@@ -224,21 +213,24 @@ class VeeringTriangulation(Triangulation):
 
             sage: c = QuadraticCylinderDiagram('(0)-(0)')
             sage: VeeringTriangulation.from_stratum(c)
-            [(0, 2, ~1), (1, ~0, ~2)], 'RBB'
+            VeeringTriangulation("(0,2,~1)(1,~0,~2)", "RBB")
 
             sage: c = QuadraticCylinderDiagram('(0,0)-(1,1,2,2,3,3)')
             sage: VeeringTriangulation.from_stratum(c)
-            [(0, 10, ~9), (1, ~8, 9), ..., (11, ~10, ~0)], 'RRRRBBBBBBBB'
+            VeeringTriangulation("(0,10,~9)(1,~8,9)(2,~6,7)(3,~4,5)(4,~3,~11)(6,~2,~5)(8,~1,~7)(11,~10,~0)", "RRRRBBBBBBBB")
 
             sage: c = CylinderDiagram('(0,6,4,5)-(3,6,5) (1,3,2)-(0,1,4,2)')
             sage: CT = VeeringTriangulation.from_stratum(c)
             sage: CT.stratum()
             H_4(6)
         """
+        require_package('surface_dynamics', 'from_stratum')
+
         # TODO: for now there is no account of possible folded edges
         # in the cylinder diagram. This has to be changed in
         # surface_dynamics...
-        require_package('surface_dynamics', 'from_stratum')
+        if folded_edges:
+            raise NotImplementedError
 
         from surface_dynamics.flat_surfaces.strata import Stratum, StratumComponent
         from surface_dynamics.flat_surfaces.separatrix_diagram import \
@@ -394,8 +386,11 @@ class VeeringTriangulation(Triangulation):
             sage: from veerer import *
 
             sage: VeeringTriangulation("(0,1,2)", [RED, RED, BLUE])
-            [(0, 1, 2)], 'RRB'
+            VeeringTriangulation("(0,1,2)", "RRB")
         """
+        faces = self.faces()
+        faces_str = ''.join('(' + ','.join(self._edge_rep(e) for e in f) + ')' for f in faces)
+
         n = self.num_half_edges()
         ep = self.edge_permutation(copy=False)
         col_str = ''
@@ -404,7 +399,8 @@ class VeeringTriangulation(Triangulation):
                 continue
             col_str += colour_to_char(self._colouring[e])
 
-        return Triangulation.__str__(self) + ', ' + repr(col_str)
+        return "VeeringTriangulation(\"{}\", \"{}\")".format(
+                faces_str, col_str)
 
     def __repr__(self):
         return str(self)
@@ -481,8 +477,7 @@ class VeeringTriangulation(Triangulation):
             sage: T.is_abelian()
             True
             sage: T.is_abelian(certificate=True)
-            (True, [True, True, True, True, True, True, False, False, False, False, False, False]
-)
+            (True, [True, True, True, True, True, True, False, False, False, False, False, False])
 
             sage: T = VeeringTriangulation([(-12, 4, -4), (-11, -1, 11), (-10, 0, 10),
             ....:      (-9, 9, 1), (-8, 8, -2), (-7, 7, 2), (-6, 6, -3), (-5, 5, 3)],
@@ -765,7 +760,7 @@ class VeeringTriangulation(Triangulation):
             sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", [RED, BLUE, BLUE])
             sage: T.relabel([0,1,3,2,5,4])
             sage: T
-            [(0, 1, ~2), (2, ~0, ~1)], 'RBB'
+            VeeringTriangulation("(0,1,~2)(2,~0,~1)", "RBB")
             sage: T._check()
 
         TESTS:
@@ -976,7 +971,7 @@ class VeeringTriangulation(Triangulation):
             sage: T = VeeringTriangulation(faces, cols)
             sage: T.rotate()
             sage: T
-            [(0, 1, 2), (3, 4, 5), (~5, ~3, ~1), (~2, ~0, ~4)], 'RBBRBB'
+            VeeringTriangulation("(0,1,2)(3,4,5)(~5,~3,~1)(~2,~0,~4)", "RBBRBB")
             sage: T._check()
 
             sage: from surface_dynamics import *
@@ -1005,7 +1000,7 @@ class VeeringTriangulation(Triangulation):
             sage: T = VeeringTriangulation(faces, cols)
             sage: T.conjugate()
             sage: T
-            [(0, 2, 4), (1, 3, 5), (~5, ~4, ~3), (~1, ~0, ~2)], 'RBBRBB'
+            VeeringTriangulation("(0,2,4)(1,3,5)(~5,~4,~3)(~1,~0,~2)", "RBBRBB")
             sage: T._check()
         """
         Triangulation.conjugate(self)
@@ -1165,14 +1160,14 @@ class VeeringTriangulation(Triangulation):
 
             sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
             sage: T.flip(1, RED); T
-            [(0, ~2, 1), (2, ~1, ~0)], 'RRB'
+            VeeringTriangulation("(0,~2,1)(2,~1,~0)", "RRB")
             sage: T.flip(0, RED); T
-            [(0, 1, 2), (~2, ~0, ~1)], 'RRB'
+            VeeringTriangulation("(0,1,2)(~2,~0,~1)", "RRB")
 
             sage: T.flip(1, BLUE); T
-            [(0, ~2, 1), (2, ~1, ~0)], 'RBB'
+            VeeringTriangulation("(0,~2,1)(2,~1,~0)", "RBB")
             sage: T.flip(2, BLUE); T
-            [(0, ~1, ~2), (1, 2, ~0)], 'RBB'
+            VeeringTriangulation("(0,~1,~2)(1,2,~0)", "RBB")
         """
         e = int(e)
         assert(self.is_flippable(e))
@@ -1371,9 +1366,9 @@ class VeeringTriangulation(Triangulation):
         - ``insert`` - a function to be called for each equation or inequation
 
         - ``x`` - variable factory (the variable for edge ``e`` is constructed
-          via ``x[e]``
+          via ``x[e]``)
 
-        - ``slope`` - the slope of the train-track
+        - ``slope`` - the slope of the train-track ``HORIZONTAL`` or ``VERTICAL``
 
         - ``low_bound`` - boolean - whether to set lower bounds to 0 or 1
 
@@ -1731,9 +1726,11 @@ class VeeringTriangulation(Triangulation):
         assert VV.is_point()
 
         from sage.rings.rational import Rational
-        D = VH.divisor()
-        VH = [Rational((c,D)) for c in VH.coefficients()]
-        VV = [Rational((c,D)) for c in VV.coefficients()]
+        assert VH.divisor() == 1
+        VH = [Rational(c) for c in VH.coefficients()]
+
+        assert VV.divisor() == 1
+        VV = [Rational(c) for c in VV.coefficients()]
 
         return self._flat_structure_from_train_track_lengths(VH, VV)
 
