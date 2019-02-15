@@ -8,7 +8,9 @@ from __future__ import absolute_import
 
 from .constants import RED, BLUE, HORIZONTAL, VERTICAL
 from .triangulation import Triangulation
-from .veering_triangulation import VeeringTriangulation
+from .cover import TriangulationCover
+from .veering_triangulation import VeeringTriangulation, VeeringTriangulations
+from .measured_train_track import MeasuredTrainTrack
 from .automaton import Automaton
 
 from .env import sage

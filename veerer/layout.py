@@ -9,6 +9,7 @@ Note:
 """
 
 import math
+import itertools
 
 from sage.structure.sequence import Sequence
 
@@ -164,16 +165,13 @@ class FlatVeeringTriangulationLayout:
 
         - ``blue_cylinders`` and ``red_cylinders`` - optional list of edges
         """
-        if isinstance(triangles, Triangulation):
-            self._triangulation = triangles.copy()
-        else:
-            self._triangulation = Triangulation(triangles)
+        self._triangulation = Triangulation(triangles)
 
         n = self._triangulation.num_half_edges()
         m = self._triangulation.num_edges()
 
         if len(vectors) == m:
-            ep = self._triangulation._ep
+            ep = self._triangulation.edge_permutation(copy=False)
             for e in range(m):
                 E = ep[e]
                 if e != E and E < m:
@@ -215,15 +213,16 @@ class FlatVeeringTriangulationLayout:
         self._triangulation._check()
 
         n = self._triangulation.num_half_edges()
-        ep = self._triangulation._ep
+        ep = self._triangulation.edge_permutation(copy=False)
+        vectors = self._vectors
+
         for a in range(n):
             A = ep[a]
-            u = self._vectors[a]
-            v = self._vectors[A]
+            u = vectors[a]
+            v = vectors[A]
             if u != v and u != -v:
                 raise ValueError('ep[%s] = %s but vec[%s] = %s' % (a, u, A, v))
 
-        vectors = self._vectors
         for a,b,c in self._triangulation.faces():
             va = vectors[a]
             vb = vectors[b]
@@ -780,4 +779,63 @@ class FlatVeeringTriangulationLayout:
 
         G.set_aspect_ratio(1)
         G.axes(False)
+        return G
+
+    def train_track(self, slope=VERTICAL):
+        r"""
+        Return the measured train-track corresponding to the vertical
+        (or horizontal) direction.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: T = VeeringTriangulation("(0,1,2)(~0,~1,3)", "BRRR")
+            sage: F = T.flat_structure_min()
+            sage: F.train_track()
+            MeasuredTrainTrack(Triangulation("(0,1,2)(3,~0,~1)"), (1, 1, 2, 2, 1, 1))
+            sage: F.train_track(HORIZONTAL)
+            MeasuredTrainTrack(Triangulation("(0,1,2)(3,~0,~1)"), (1, 2, 1, 1, 2, 1))
+        """
+
+        from .measured_train_track import MeasuredTrainTrack
+        if slope == VERTICAL:
+            return MeasuredTrainTrack(self._triangulation, [x.abs() for x,y in self._vectors])
+        elif slope == HORIZONTAL:
+            return MeasuredTrainTrack(self._triangulation, [y.abs() for x,y in self._vectors])
+
+    def plot_orbit(self, p, n, slope=VERTICAL, **kwds):
+        r"""
+        Plot a piece of orbit of the vertical flow.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: T = VeeringTriangulation("(0,1,2)(~0,~1,3)", "BRRR")
+            sage: F = T.flat_structure_min()
+            sage: F.plot() + F.plot_orbit((0,1/4),4)
+            Graphics object consisting of 19 graphics primitives
+        """
+        G = Graphics()
+
+        if slope == HORIZONTAL:
+            raise NotImplementedError
+
+        tt = self.train_track(slope)
+        L = tt.lengths()
+        V = self._vectors
+
+        O = [q for q in itertools.islice(tt.orbit(p), 2*n)]
+
+        if self._pos is None:
+            self.set_pos()
+
+        for i in range(n):
+            i1, x1 = O[2*i]
+            i2, x2 = O[2*i+1]
+
+            p1 = self._pos[i1]
+            p2 = self._pos[i2]
+
+            G += line2d([p1 + x1 / L[i1] * V[i1], p2 + x2 / L[i2] * V[i2]], **kwds)
+
         return G

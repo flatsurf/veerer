@@ -184,7 +184,7 @@ class VeeringTriangulation(Triangulation):
         return VeeringTriangulation(triangles, colours)
 
     @classmethod
-    def from_stratum(cls, c):
+    def from_stratum(cls, c, folded_edges=False):
         r"""
         Return a Veering triangulation from either a stratum, a component
         of stratum or a cylinder diagram.
@@ -252,34 +252,46 @@ class VeeringTriangulation(Triangulation):
         triangles = []
 
         m = c.nseps()  # current counter
+        nfolded = 0
 
         for bot,top in c.cylinders():
             # len(bot) + len(top)
             l = m + len(top) - 1
+            oldi = None
             for i in bot:
                 assert isinstance(i,int)
+                if oldi == i and folded_edges:
+                    nfolded += 1
+                    continue
                 if seen[i]:
                     i = ~i
                 else:
                     seen[i] = True
                 triangles.append((i,l+1,~l))
                 l += 1
+                oldi = i
             l = m + len(top) - 1
             for i in top:
                 assert isinstance(i,int)
+                if oldi == i and folded_edges:
+                    nfolded += 1
+                    continue
                 if seen[i]:
                     i = ~i
                 else:
                     seen[i] = True
                 triangles.append((i,~(l-1),l))
                 l -= 1
+                oldi = i
             # last one got wrong
             i, j, k = triangles.pop()
             triangles.append((i,~(k+len(bot)+len(top)-1),k))
 
             m += len(bot) + len(top)
 
-        colors = [RED] * c.nseps() + [BLUE] * (2*c.nseps())
+        nseps = c.nseps()
+
+        colors = [RED] * nseps + [BLUE] * (2*nseps)
         return VeeringTriangulation(triangles, colors)
 
     @classmethod
@@ -1176,6 +1188,57 @@ class VeeringTriangulation(Triangulation):
         Triangulation.flip(self, e)
         self._colouring[e] = self._colouring[E] = col
 
+    def flip_action(self, e, col, X):
+        r"""
+        Modify the generator matrix ``X`` according to the flip move ``(e, col)``.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T, s, t = VeeringTriangulations.L_shaped_surface(1, 1, 1, 1)
+            sage: Gx = matrix(ZZ, [s, t])
+            sage: T.flip_action(3, 2, Gx)
+            sage: T.flip_action(4, 2, Gx)
+            sage: T.flip_action(5, 2, Gx)
+            sage: T.flip(3, 2)
+            sage: T.flip(4, 2)
+            sage: T.flip(5, 2)
+            sage: T._set_switch_conditions(T._tt_check, Gx.row(0), VERTICAL)
+            sage: T._set_switch_conditions(T._tt_check, Gx.row(1), VERTICAL)
+
+            sage: T, s, t = VeeringTriangulations.L_shaped_surface(2, 3, 4, 5, 1, 2)
+            sage: Gx = matrix(ZZ, [s, t])
+            sage: flip_sequence = [(3, 2), (4, 1), (5, 2), (6 , 2), (5, 1), (1, 1), (5, 1)]
+            sage: for e, col in flip_sequence:
+            ....:     T.flip_action(e, col, Gx)
+            ....:     T.flip(e, col)
+            ....:     T._set_switch_conditions(T._tt_check, Gx.row(0), VERTICAL)
+            ....:     T._set_switch_conditions(T._tt_check, Gx.row(1), VERTICAL)
+        """
+        a, b, c, d = self.square_about_edge(e)
+        e = self._norm(e)
+        a = self._norm(a)
+        d = self._norm(d)
+
+        # little check
+        b = self._norm(b)
+        c = self._norm(c)
+        assert X.column(e) == X.column(a) + X.column(b) == X.column(c) + X.column(d)
+        if col == RED:
+            # ve <- vd - va
+            # e-th column becomes d-th column minus a-th column
+            X.add_multiple_of_column(e, e, -1)
+            X.add_multiple_of_column(e, d, +1)
+            X.add_multiple_of_column(e, a, -1)
+        elif col == BLUE:
+             # ve <- va - vd
+            X.add_multiple_of_column(e, e, -1)
+            X.add_multiple_of_column(e, d, -1)
+            X.add_multiple_of_column(e, a, +1)
+        else:
+            raise ValueError("invalid color")
+
     def cylinders(self, col):
         r"""
         Return the cylinders of color ``col``.
@@ -1357,6 +1420,56 @@ class VeeringTriangulation(Triangulation):
         Triangulation.flip_back(self, e)
         self._colouring[e] = self._colouring[E] = col
 
+    def _set_switch_conditions(self, insert, x, slope=VERTICAL):
+        r"""
+        These are the linear parts of the train-track equations
+
+        INPUT:
+
+        - ``insert`` - a function to be called for each equation
+
+        - ``x`` - variable factory (the variable for edge ``e`` is constructed
+          via ``x[e]``)
+
+        - ``slope`` - (default ``VERTICAL``) the slope of the train-track
+          ``HORIZONTAL`` or ``VERTICAL``
+        """
+        if slope == VERTICAL:
+            POS = BLUE
+            NEG = RED
+        elif slope == HORIZONTAL:
+            POS = RED
+            NEG = BLUE
+        else:
+            raise ValueError('bad slope parameter')
+
+        for (i,j,k) in self.faces():
+            # find the large edge
+            # if horizontal, this is the one opposite to the RED/BLUE transition
+            # if vertical this is the one opposite to the BLUE/RED transition
+            i = self._norm(i)
+            j = self._norm(j)
+            k = self._norm(k)
+            if self._colouring[i] == POS and self._colouring[j] == NEG:
+                # k is large
+                l,s1,s2 = k,i,j
+            elif self._colouring[j] == POS and self._colouring[k] == NEG:
+                # i is large
+                l,s1,s2 = i,j,k
+            elif self._colouring[k] == POS and self._colouring[i] == NEG:
+                # j is large
+                l,s1,s2 = j,k,i
+            else:
+                raise ValueError('can not determine the big edge on triangle (%s, %s, %s)' %
+                                 (self_.edge_rep(i), self._edge_rep(j), self._edge_rep(k)))
+
+            insert(x[self._norm(l)] == x[self._norm(s1)] + x[self._norm(s2)])
+
+    @staticmethod
+    def _tt_check(x):
+        if not x:
+            raise AssertionError("does not satisfy train-track contraints".format(x))
+
     def _set_train_track_constraints(self, insert, x, slope, low_bound, allow_degenerations):
         r"""
         Sets the equation and inequations for train tracks.
@@ -1385,37 +1498,40 @@ class VeeringTriangulation(Triangulation):
             sage: x = [SR.var("x0"), SR.var("x1"), SR.var("x2")]
             sage: T._set_train_track_constraints(l.append, x, HORIZONTAL, 0, False)
             sage: l
-            [x0 >= 0, x1 >= 0, x2 >= 0, x0 == x1 + x2, x0 == x1 + x2]
+            [x0 == x1 + x2, x0 == x1 + x2, x0 >= 0, x1 >= 0, x2 >= 0]
 
             sage: l = []
             sage: x = [SR.var("x0"), SR.var("x1"), SR.var("x2")]
             sage: T._set_train_track_constraints(l.append, x, HORIZONTAL, 1, False)
             sage: l
-            [x0 >= 1, x1 >= 1, x2 >= 1, x0 == x1 + x2, x0 == x1 + x2]
+            [x0 == x1 + x2, x0 == x1 + x2, x0 >= 1, x1 >= 1, x2 >= 1]
 
             sage: l = []
             sage: x = [SR.var("x0"), SR.var("x1"), SR.var("x2")]
             sage: T._set_train_track_constraints(l.append, x, HORIZONTAL, 3, False)
             sage: l
-            [x0 >= 3, x1 >= 3, x2 >= 3, x0 == x1 + x2, x0 == x1 + x2]
+            [x0 == x1 + x2, x0 == x1 + x2, x0 >= 3, x1 >= 3, x2 >= 3]
 
             sage: l = []
             sage: x = [SR.var("x0"), SR.var("x1"), SR.var("x2")]
             sage: T._set_train_track_constraints(l.append, x, HORIZONTAL, 2, True)
             sage: l
-            [x0 >= 2, x1 >= 0, x2 >= 2, x0 == x1 + x2, x0 == x1 + x2]
+            [x0 == x1 + x2, x0 == x1 + x2, x0 >= 2, x1 >= 0, x2 >= 2]
 
         This can also be used to check that a given vector satisfies the train-track
         equations::
 
-            sage: def check(x):
-            ....:     if not x:
-            ....:         raise AssertionError
-            sage: T._set_train_track_constraints(check, [2,1,1], HORIZONTAL, False, False)
-            sage: T._set_train_track_constraints(check, [1,1,1], HORIZONTAL, False, False)
+            sage: T._set_train_track_constraints(T._tt_check, [2,1,1], HORIZONTAL, False, False)
+            sage: T._set_train_track_constraints(T._tt_check, [1,1,1], HORIZONTAL, False, False)
             Traceback (most recent call last):
             ...
-            AssertionError
+            AssertionError: does not satisfy train-track contraints
+
+        Check equations with folded edges (that are "counted twice")::
+
+            sage: T = VeeringTriangulation("(0,2,3)(~0,1,4)(~1,5,6)", [BLUE, RED, RED, BLUE, BLUE, BLUE, BLUE])
+            sage: T._set_train_track_constraints(T._tt_check, [0,1,1,1,1,1,0], VERTICAL, False, False)
+            sage: T._set_train_track_constraints(T._tt_check, [1,2,3,4,3,7,5], VERTICAL, False, False)
         """
         if slope == VERTICAL:
             POS = BLUE
@@ -1430,6 +1546,9 @@ class VeeringTriangulation(Triangulation):
         ne = self.num_edges()
         ep = self._ep
 
+        # switch
+        self._set_switch_conditions(insert, x, slope)
+
         # non-negativity
         for e in range(ne):
             if ep[e] != e and ep[e] < ne:
@@ -1442,28 +1561,6 @@ class VeeringTriangulation(Triangulation):
             else:
                 insert(x[e] >= low_bound)
 
-        # switches relation
-        for (i,j,k) in self.faces():
-            # find the large edge
-            # if horizontal, this is the one opposite to the RED/BLUE transition
-            # if vertical this is the one opposite to the BLUE/RED transition
-            i = self._norm(i)
-            j = self._norm(j)
-            k = self._norm(k)
-            if self._colouring[i] == POS and self._colouring[j] == NEG:
-                # k is large
-                l,s1,s2 = k,i,j
-            elif self._colouring[j] == POS and self._colouring[k] == NEG:
-                # i is large
-                l,s1,s2 = i,j,k
-            elif self._colouring[k] == POS and self._colouring[i] == NEG:
-                # j is large
-                l,s1,s2 = j,k,i
-            else:
-                raise ValueError('can not determine the big edge on triangle (%s, %s, %s)' %
-                                 (self_.edge_rep(i), self._edge_rep(j), self._edge_rep(k)))
-
-            insert(x[self._norm(l)] == x[self._norm(s1)] + x[self._norm(s2)])
 
     def _set_geometric_constraints(self, insert, x, y, hw_bound=0):
         r"""
@@ -1497,6 +1594,42 @@ class VeeringTriangulation(Triangulation):
         for e in self.backward_flippable_edges():
             a, b, c, d = self.square_about_edge(e)
             insert(y[self._norm(e)] <= x[self._norm(a)] + x[self._norm(d)] - hw_bound)
+
+    def GL2R_span(self, lx, ly):
+        require_package('ppl', 'GL2R_span')
+
+        ne = self.num_edges()
+
+        x = [ppl.Variable(i) for i in range(ne)]
+        y = [ppl.Variable(ne+i) for i in range(ne)]
+
+        gs = ppl.Generator_System()
+        gs.insert(ppl.point())
+
+        return ppl.C_Polyhedron(gs)
+
+    def train_track_linear_space(self, slope=VERTICAL):
+        r"""
+        Return the polytope determined by the switch equations (a linear subspace)
+
+        INPUT:
+
+        - ``slope`` - the slope for the train track (``HORIZONTAL`` or ``VERTICAL``)
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: T = VeeringTriangulation("(0,1,2)(~2,~0,~1)", "RRB")
+            sage: T.train_track_linear_space()
+            A 2-dimensional polyhedron in QQ^3 defined as the convex hull of 1 point, 2 lines
+        """
+        require_package('ppl', 'train_track_linear_space')
+
+        cs = ppl.Constraint_System()
+        ne = self.num_edges()
+        x = [ppl.Variable(e) for e in range(ne)]
+        self._set_switch_conditions(cs.insert, x, slope)
+        return ppl.C_Polyhedron(cs)
 
     def train_track_polytope(self, slope=VERTICAL, low_bound=0):
         r"""
@@ -1570,9 +1703,12 @@ class VeeringTriangulation(Triangulation):
         self._set_train_track_constraints(M.add_constraint, x, slope, 1, allow_degenerations)
         return M.optimizing_point()
 
-    def geometric_polytope(self, x_low_bound=0, y_low_bound=0, hw_bound=0):
+    def geometric_polytope(self, Lx=None, Gx=None, x_low_bound=0, y_low_bound=0, hw_bound=0):
         r"""
         Return the geometric polytope of this veering triangulation.
+
+        The geometric polytope is the polytope of length and heights data that
+        corresponds to L-infinity Delaunay triangulations.
 
         EXAMPLES::
 
@@ -1581,7 +1717,7 @@ class VeeringTriangulation(Triangulation):
             sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
             sage: T.geometric_polytope()
             A 4-dimensional polyhedron in QQ^6 defined as the convex hull of 1 point, 7 rays
-            sage: T.geometric_polytope(1, 1, 1)
+            sage: T.geometric_polytope(x_low_bound=1, y_low_bound=1, hw_bound=1)
             A 4-dimensional polyhedron in QQ^6 defined as the convex hull of 1 point, 7 rays
 
         TESTS::
@@ -1593,29 +1729,148 @@ class VeeringTriangulation(Triangulation):
             sage: for _ in range(100):
             ....:     T.random_forward_flip()
             ....:     test1 = T.geometric_polytope().affine_dimension() == 10
-            ....:     test2 = not T.geometric_polytope(1,1,1).is_empty()
+            ....:     test2 = not T.geometric_polytope(x_low_bound=1,y_low_bound=1,hw_bound=1).is_empty()
             ....:     assert test1 == test2, T.to_string()
 
             sage: T = VeeringTriangulation.from_stratum(QuadraticStratum(1,1,1,1))
             sage: for _ in range(100):
             ....:     T.random_forward_flip()
             ....:     test1 = T.geometric_polytope().affine_dimension() == 12
-            ....:     test2 = not T.geometric_polytope(1,1,1).is_empty()
+            ....:     test2 = not T.geometric_polytope(x_low_bound=1,y_low_bound=1,hw_bound=1).is_empty()
             ....:     assert test1 == test2, T.to_string()
         """
         require_package('ppl', 'geometric_polytope')
 
+        ne = self.num_edges()
+        x = [ppl.Variable(e) for e in range(ne)]
+        y = [ppl.Variable(ne+e) for e in range(ne)]
+
         # 1. train-track conditions
-        P = self.train_track_polytope(VERTICAL, low_bound=x_low_bound)
-        P.concatenate_assign(self.train_track_polytope(HORIZONTAL, low_bound=y_low_bound))
+        if Lx is None and Gx is None:
+            P = self.train_track_polytope(VERTICAL, low_bound=x_low_bound)
+            P.concatenate_assign(self.train_track_polytope(HORIZONTAL, low_bound=y_low_bound))
+        else:
+            if Lx is None:
+                # construct linear equations from given generators
+                Gy = self._complexify_generators(Gx)
+                gs = ppl.Generator_System()
+                gs.insert(ppl.point())
+                for g in Gx:
+                    g = sum(coeff * x[e] for e,coeff in enumerate(g))
+                    gs.insert(ppl.line(g))
+                for g in Gy:
+                    g = sum(coeff * y[e] for e,coeff in enumerate(g))
+                    gs.insert(ppl.line(g))
+                P = ppl.C_Polyhedron(gs)
 
-        n = self.num_edges()
-        x = [ppl.Variable(e) for e in range(n)]
-        y = [ppl.Variable(n+e) for e in range(n)]
+            elif Gx is None:
+                # construct linear equations from given equations
+                Ly = self._complexify_equations(Lx)
+                cs = ppl.Constraint_System()
+                for l in Lx:
+                    l *= l.denominator()
+                    l = sum(coeff * x[e] for e,coeff in enumerate(l))
+                    cs.insert(l == 0)
+                for l in Ly:
+                    l *= l.denominator()
+                    l = sum(coeff * y[e] for e,coeff in enumerate(l))
+                    cs.insert(l == 0)
+                P = ppl.C_Polyhedron(cs)
 
+            else:
+                raise ValueError("only one of Gx or Lx can be used")
+
+            # non-negativity
+            for e in range(ne):
+                P.add_constraint(x[e] >= x_low_bound)
+                P.add_constraint(y[e] >= y_low_bound)
+
+        # geometric constraints
         self._set_geometric_constraints(P.add_constraint, x, y, hw_bound=hw_bound)
 
         return P
+
+    def _complexify_generators(self, Gx):
+        r"""
+        Given ``Gx`` a matrix whose rows are admissible lengths return the
+        corresponding admissible heights.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T, s, t = VeeringTriangulations.L_shaped_surface(1, 1, 1, 1)
+            sage: Gx = matrix(QQ, 2, [s, t])
+            sage: Gy = T._complexify_generators(Gx)
+            sage: T._set_switch_conditions(T._tt_check, Gx.row(0), VERTICAL)
+            sage: T._set_switch_conditions(T._tt_check, Gx.row(1), VERTICAL)
+            sage: T._set_switch_conditions(T._tt_check, Gy.row(0), HORIZONTAL)
+            sage: T._set_switch_conditions(T._tt_check, Gy.row(1), HORIZONTAL)
+
+            sage: T, s, t = VeeringTriangulations.L_shaped_surface(2, 3, 4, 5, 1, 2)
+            sage: Gx = matrix(QQ, 2, [s, t])
+            sage: Gy = T._complexify_generators(Gx)
+            sage: T._set_switch_conditions(T._tt_check, Gx.row(0), VERTICAL)
+            sage: T._set_switch_conditions(T._tt_check, Gx.row(1), VERTICAL)
+            sage: T._set_switch_conditions(T._tt_check, Gy.row(0), HORIZONTAL)
+            sage: T._set_switch_conditions(T._tt_check, Gy.row(1), HORIZONTAL)
+        """
+        require_package('sage', '_complexify_generators')
+
+        ne = self.num_edges()
+        ep = self._ep
+        if Gx.ncols() != ne:
+            raise ValueError
+        Gy = Gx.__copy__()
+        for j in range(ne):
+            if ep[j] < j:
+                raise ValueError("triangulation not in standard form")
+            if self._colouring[j] == BLUE:
+                for i in range(Gy.nrows()):
+                    Gy[i,j] *= -1
+        return Gy
+
+    def _complexify_equations(self, Lx):
+        r"""
+        Given ``Lx`` a matrix whose right kernel is some subspace of
+        admissible lengths, return the admissible heights.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: V = VectorSpace(QQ, 7)
+
+            sage: T, s, t = VeeringTriangulations.L_shaped_surface(1, 1, 1, 1)
+            sage: Gx = matrix(QQ, 2, [s, t])
+            sage: Gy = T._complexify_generators(Gx)
+            sage: Lx = Gx.right_kernel_matrix()
+            sage: V1 = V.subspace(T._complexify_equations(Lx))
+            sage: V2 = V.subspace(Gy.right_kernel_matrix())
+            sage: assert V1 == V2
+
+            sage: T, s, t = VeeringTriangulations.L_shaped_surface(2, 3, 4, 5, 1, 2)
+            sage: Gx = matrix(QQ, 2, [s, t])
+            sage: Gy = T._complexify_generators(Gx)
+            sage: Lx = Gx.right_kernel_matrix()
+            sage: V1 = V.subspace(T._complexify_equations(Lx))
+            sage: V2 = V.subspace(Gy.right_kernel_matrix())
+            sage: assert V1 == V2
+        """
+        require_package('sage', '_complexify_equations')
+
+        ne = self.num_edges()
+        ep = self._ep
+        if Lx.ncols() != ne:
+            raise ValueError
+        Ly = Lx.__copy__()
+        for j in range(ne):
+            if ep[j] < j:
+                raise ValueError("triangulation not in standard form")
+            if self._colouring[j] == BLUE:
+                for i in range(Ly.nrows()):
+                    Ly[i,j] *= -1
+        return Ly
 
     def _flat_structure_from_train_track_lengths(self, VH, VV, base_ring=None):
         r"""
@@ -1855,7 +2110,7 @@ class VeeringTriangulation(Triangulation):
             d = self.stratum().dimension()
             return self.geometric_polytope().affine_dimension() == 2*d
         elif method == 'polytope2':
-            return not self.geometric_polytope(1,1,1).is_empty()
+            return not self.geometric_polytope(x_low_bound=1,y_low_bound=1,hw_bound=1).is_empty()
         elif method == 'LP':
             require_package('ppl', 'is_geometric')
 
@@ -1998,50 +2253,76 @@ class VeeringTriangulation(Triangulation):
 
         return False
 
-    def geometric_neighbours(self, L=None):
+    def geometric_flips(self, Lx=None, Gx=None):
         r"""
-        Return the geometric neighbours
+        Return the list of geometric neighbours.
 
-        EXAMPLES::
+        INPUT:
+
+        - ``Lx`` - (optional) a matrix whose rowse are the linear equations
+          for admissible train-track lengths (the right kernel is the space
+          of admissible lengths). It is assumed that the linear equations
+          contains the switch (or triangle) equations.
+
+        - ``Gx`` - (optional) a matrix whose rows are admissible train-track
+          lengths
+
+        OUTPUT: a list of pairs (edge number, new color)
+
+        EXAMPLES:
+
+        L-shaped square tiled surface with 3 squares (given as a sphere with
+        3 triangles). It has two geometric neighbors corresponding to simultaneous
+        flipping of the diagonals 3, 4 and 5::
 
             sage: from veerer import *
-            sage: v = VeeringTriangulation("(0,2,1)(3,5,4)(~0,~2,~4)(~3,~5,~1)", "RBBRBB")
-            sage: import ppl
-            sage: X = [ppl.Variable(i) for i in range(6)]
-            sage: Y = [ppl.Variable(6+i) for i in range(6)]
-            sage: x = X[0] + X[1] + 2*X[2] + X[3] + X[4] + 2*X[5]
-            sage: xx = Y[0] - Y[1] - 2*Y[2] + Y[3] - Y[4] - 2*Y[5]
-            sage: y = Y[0] + Y[1] + Y[3] + Y[4]
-            sage: yy = X[0] - X[1] + X[3] - X[4]
-            sage: g = ppl.Generator_System()
-            sage: g.insert(ppl.point())
-            sage: g.insert(ppl.line(x))
-            sage: g.insert(ppl.line(xx))
-            sage: g.insert(ppl.line(y))
-            sage: g.insert(ppl.line(yy))
-            sage: L = ppl.C_Polyhedron(g)
-            sage: v.geometric_neighbours(L)
-            [[(2, 2), (5, 2)], [(2, 1), (5, 1)]]
+            sage: T, s, t = VeeringTriangulations.L_shaped_surface(1,1,1,1)
+            sage: Gx = matrix(QQ, [s, t])
+            sage: T.geometric_flips(Gx=Gx)
+            [[(3, 2), (4, 2), (5, 2)], [(3, 1), (4, 1), (5, 1)]]
+
+        To be compared with the geometric flips in the ambient stratum::
+
+            sage: T.geometric_flips()
+            [[(3, 2)], [(3, 1)], [(4, 2)], [(4, 1)], [(5, 2)], [(5, 1)]]
+
+        Alternatively, instead of the generators ``Gx`` one can use the
+        defining equations::
+
+            sage: Lx = Gx.right_kernel_matrix()
+            sage: T.geometric_flips(Lx=Lx)
+            [[(3, 2), (4, 2), (5, 2)], [(3, 1), (4, 1), (5, 1)]]
+
+        A more complicated example::
+
+            sage: T, s, t = VeeringTriangulations.L_shaped_surface(2,3,5,2,1,1)
+            sage: Gx = matrix(QQ, [s, t])
+            sage: T.geometric_flips(Gx=Gx)
+            [[(5, 2)], [(5, 1)], [(4, 2)]]
+            sage: Lx = Gx.right_kernel_matrix()
+            sage: T.geometric_flips(Lx=Lx)
+            [[(5, 2)], [(5, 1)], [(4, 2)]]
         """
         require_package('ppl', 'geometric_neighbours')
-
-        P = self.geometric_polytope()
-        if L is None:
-            dim = self.stratum().dimension()
-            if P.affine_dimension() != 2 * dim:
-                raise ValueError('not geometric')
-        else:
-            P.intersection_assign(L)
-            dim = P.affine_dimension()
-            if dim % 2:
-                raise ValueError('dimension would better be even...')
-            dim = dim // 2
 
         ne = self.num_edges()
         x = [ppl.Variable(e) for e in range(ne)]
         y = [ppl.Variable(ne+e) for e in range(ne)]
 
+        # construct the linear invariant subspace we are interested in
+        if Lx:
+            dim = ne - Lx.nrows()
+        elif Gx:
+            dim = Gx.nrows()
+        else:
+            dim = self.stratum().dimension()
+
+        P = self.geometric_polytope(Gx=Gx, Lx=Lx)
+        if P.affine_dimension() != 2 * dim:
+            raise ValueError('not geometric or invalid constraints')
+
         # constructing the Delaunay facets
+        # (this is only a subset of the facets)
         delaunay_facets = {}
         for e in self.forward_flippable_edges():
             a,b,c,d = self.square_about_edge(e)
@@ -2116,15 +2397,88 @@ class VeeringTriangulation(Triangulation):
                 else:
                     self.flip_back(e, old_col)
 
-def ngon(n):
-    n = int(n)
-    assert(n > 4 and n % 2 == 0)
-    m = (n - 2) // 2
-    T = [(i, 2*m+i, ~(i+1)) for i in range(m)] + \
-        [(~0, ~(2*m), ~(m+1))] + \
-        [(m+i, ~(2*m+i), ~(m+i+1)) for i in range(1, m-1)] + \
-        [(2*m-1, ~(3*m-1), m)]
-    colouring = [RED] * (2*m) + [BLUE] * m
-    return VeeringTriangulation(T, colouring)
+class VeeringTriangulations(object):
+    @staticmethod
+    def L_shaped_surface(a1, a2, b1, b2, t1=0, t2=0):
+        r"""
+        EXAMPLES::
 
+            sage: from veerer import *
+            sage: T, s, t = VeeringTriangulations.L_shaped_surface(1, 1, 1, 1)
+            sage: T
+            VeeringTriangulation("(0,2,3)(1,4,~0)(5,6,~1)", "BRRBBBB")
+            sage: s
+            (0, 1, 1, 1, 1, 1, 0)
+            sage: t
+            (1, 0, 0, 1, 1, 1, 1)
+            sage: T._set_switch_conditions(T._tt_check, s, VERTICAL)
+            sage: T._set_switch_conditions(T._tt_check, t, VERTICAL)
+
+            sage: T, s, t = VeeringTriangulations.L_shaped_surface(2, 3, 4, 5, 1, 2)
+            sage: T._set_switch_conditions(T._tt_check, s, VERTICAL)
+            sage: T._set_switch_conditions(T._tt_check, t, VERTICAL)
+        """
+        # Return the (quotient by the hyperelliptic involution of the) L-shaped surface
+        # together with the equations of the GL2R deformation
+        #
+
+        #       +----+
+        #    ^  |    |
+        #    |   |    |
+        # b2 |    |    |
+        #    |     |    |
+        #    v      |    |
+        #            +    +---------+
+        #    ^       |              |
+        #    |       |              |
+        # b1 |       |              |
+        #    |        |              |
+        #    v        |              |
+        #             +----+---------+
+        #             <---> <------->
+        #               a1      a2
+        #
+        #     <----><->
+        #       t2  t1
+
+        if not isinstance(a1, numbers.Integral) or \
+           not isinstance(a2, numbers.Integral) or \
+           not isinstance(b1, numbers.Integral) or \
+           not isinstance(b2, numbers.Integral) or \
+           not isinstance(t1, numbers.Integral) or \
+           not isinstance(t2, numbers.Integral):
+               raise TypeError("a1, a2, b1, b2, t1, t2 must be integers")
+        a1 = int(a1)
+        a2 = int(a2)
+        b1 = int(b1)
+        b2 = int(b2)
+        if a1 <= 0 or a2 <= 0 or b1 <= 0 or b2 <= 0 or t1 < 0 or t2 < 0:
+            raise ValueError("a1, a2, b1, b2 must be positive and t1, t2 non-negative")
+
+        T = VeeringTriangulation("(0,2,3)(~0,1,4)(~1,5,6)", [BLUE, RED, RED, BLUE, BLUE, BLUE, BLUE])
+        s = (t1, a1, a2, a2 + t1, a1 + t1, a1 + t2, t2)
+        t = (b1, 0, 0, b1, b1, b2, b2)
+
+        return T, s, t
+
+    @staticmethod
+    def H11_rank1_locus():
+        # return a surface in the McMullen discriminant locus in H(1,1)
+        # for square discriminants it is defined over Q while for primitive ones
+        # it is over a quadratic number field
+        raise NotImplemented
+
+    @staticmethod
+    def ngon(n):
+        #TODO: here we should include the Teichmueller curve constraints
+        # (over the real part of cyclotomic fields)
+        n = int(n)
+        assert(n > 4 and n % 2 == 0)
+        m = (n - 2) // 2
+        T = [(i, 2*m+i, ~(i+1)) for i in range(m)] + \
+            [(~0, ~(2*m), ~(m+1))] + \
+            [(m+i, ~(2*m+i), ~(m+i+1)) for i in range(1, m-1)] + \
+            [(2*m-1, ~(3*m-1), m)]
+        colouring = [RED] * (2*m) + [BLUE] * m
+        return VeeringTriangulation(T, colouring)
 

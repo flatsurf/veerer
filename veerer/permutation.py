@@ -1056,4 +1056,3 @@ def perms_canonical_labels(p, e=None):
             m_win = m_test
 
     return c_win, m_win
-

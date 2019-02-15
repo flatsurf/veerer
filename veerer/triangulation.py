@@ -63,7 +63,7 @@ def face_edge_perms_init(data):
 
 # NOTE: we don't really care that we have a triangulation here. When
 # there is no restriction on the cycle decomposition of _fp we got
-# a coding for any cell decomposition (modulo possible folded edges).
+# a coding for any cell decomposition (with possibly folded edges).
 # flipping here still makes sense
 #
 #  +                 +                 +               _ +
@@ -75,12 +75,12 @@ def face_edge_perms_init(data):
 #  +                 +                 +/                +
 #
 # and we have operations that consist in removing/adding edges.
-# For that purpose, we need to deal with partial permutations of
-# {0, 1, ..., n-1}.
+# For that purpose, it would be convenient to allow partial
+# permutations of {0, 1, ..., n-1}.
 #
 # TODO: implement: is_removable(), remove(), add()
 #
-# Though, many of it is already done in the flatsurf package
+# NOTE: Many of the above is already done in the flatsurf package
 # with a quite different encoding
 #
 #    https://github.com/videlec/sage-flatsurf
@@ -134,13 +134,13 @@ class Triangulation(object):
         sage: T.num_vertices()
         1
         sage: T.flip(0); T
-        [(0, ~1, ~2), (1, 2, ~0)]
+        Triangulation("(0,~1,~2)(1,2,~0)")
         sage: T.flip(0); T
-        [(0, ~2, 1), (2, ~1, ~0)]
+        Triangulation("(0,~2,1)(2,~1,~0)")
         sage: T.flip(0); T
-        [(0, 1, 2), (~1, ~2, ~0)]
+        Triangulation("(0,1,2)(~1,~2,~0)")
         sage: T.flip(0); T
-        [(0, 2, ~1), (1, ~0, ~2)]
+        Triangulation("(0,2,~1)(1,~0,~2)")
 
     The surface must be connected::
 
@@ -202,7 +202,7 @@ class Triangulation(object):
             sage: ep = array('l', [8, 7, 2, 3, 4, 5, 6, 1, 0])
             sage: vp = array('l', [2, 8, 7, 0, 3, 1, 5, 6, 4])
             sage: Triangulation.from_face_edge_perms(fp, ep, vp)
-            [(0, 1, 2), (3, 4, ~0), (5, 6, ~1)]
+            Triangulation("(0,1,2)(3,4,~0)(5,6,~1)")
         """
         T = Triangulation.__new__(Triangulation)
         n = T._n = len(fp)
@@ -279,7 +279,7 @@ class Triangulation(object):
         n = self._n
 
         if not perm_check(self._fp, n):
-            raise error('fp is not a permtation')
+            raise error('fp is not a permutation')
         if not perm_check(self._ep, n):
             raise error('ep is not permutation')
         if not perm_check(self._vp, n):
@@ -293,6 +293,8 @@ class Triangulation(object):
         # \infty) into the symmetric group on the half edges.
 
         for i in range(n):
+            # NOTE: this first test is relevant only if we enforce triangulations
+            # when we generalize to CW complex we can simply remove it
             if self._fp[i] == i or self._fp[self._fp[self._fp[i]]] != i:
                 raise error('broken face permutation')
             if self._ep[self._ep[i]] != i:
@@ -407,7 +409,7 @@ class Triangulation(object):
         return f if f < e else e
 
     def num_faces(self):
-        return self._n / 3
+        return perm_num_cycles(self._fp)
 
     def faces(self):
         r"""
@@ -452,9 +454,34 @@ class Triangulation(object):
         return perm_cycles(self._vp)
 
     def num_vertices(self):
-        return len(self.vertices())
+        return perm_num_cycles(self._vp)
 
     def euler_characteristic(self):
+        r"""
+        Return the Euler characteristic of this triangulation.
+
+        EXAMPLES::
+
+            sage: from veerer import Triangulation
+
+        A sphere::
+
+            sage: T = Triangulation("(0,1,2)")
+            sage: T.euler_characteristic()
+            2
+
+        A torus::
+
+            sage: T = Triangulation("(0,1,2)(~0,~1,~2)")
+            sage: T.euler_characteristic()
+            0
+
+        A genus 2 surface::
+
+            sage: T = Triangulation("(0,1,2)(~2,3,4)(~4,5,6)(~6,~0,7)(~7,~1,8)(~8,~3,~5)")
+            sage: T.euler_characteristic()
+            -2
+        """
         return self.num_faces() - self.num_edges() + (self.num_vertices() + self.num_folded_edges())
 
     def genus(self):
@@ -473,12 +500,20 @@ class Triangulation(object):
             sage: T.genus()
             1
         """
-        # 2 - 2g = \chi so
-        return (2 - self.euler_characteristic()) / 2
+        # chi = 2 - 2g
+        return (2 - self.euler_characteristic()) // 2
 
     def __str__(self):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: T = Triangulation("(0,1,2)(~0,~1,~2)")
+            sage: str(T)
+            'Triangulation("(0,1,2)(~2,~0,~1)")'
+        """
         faces = self.faces()
-        return '[' + ', '.join('(' + ', '.join(self._edge_rep(e) for e in f) + ')' for f in faces) + ']'
+        return 'Triangulation("' + ''.join('(' + ','.join(self._edge_rep(e) for e in f) + ')' for f in faces) + '")'
 
     def __repr__(self):
         return str(self)
@@ -843,7 +878,7 @@ class Triangulation(object):
             sage: T = Triangulation("(0,1,~2)(2,~0,~1)")
             sage: T.relabel("(0,~0)(1,~1)")
             sage: T
-            [(0, 1, 2), (~1, ~2, ~0)]
+            Triangulation("(0,1,2)(~1,~2,~0)")
 
             sage: T0 = Triangulation("(1,~0,4)(2,~4,~1)(3,~2,5)(~5,~3,0)")
             sage: T = T0.copy()
@@ -877,11 +912,11 @@ class Triangulation(object):
 
             sage: T = Triangulation("(0,1,2)")
             sage: T
-            [(0, 1, 2)]
+            Triangulation("(0,1,2)")
             sage: T.flip(0); T
-            [(0, 2, 1)]
+            Triangulation("(0,2,1)")
             sage: T.flip(0); T
-            [(0, 1, 2)]
+            Triangulation("(0,1,2)")
 
             sage: T == Triangulation("(0,1,2)")
             True
@@ -906,7 +941,7 @@ class Triangulation(object):
         a = self._fp[e]
         b = self._fp[a]
         if a == E or b == E:
-            raise ValueError('edge %s is not flippable' % edge_label(e))
+            raise ValueError('edge %s is not flippable' % self._norm(e))
         c = self._fp[E]
         d = self._fp[c]
 
@@ -986,7 +1021,7 @@ class Triangulation(object):
         a = self._fp[e]
         b = self._fp[a]
         if a == E or b == E:
-            raise ValueError('edge %s is not flippable' % edge_label(e))
+            raise ValueError('edge %s is not flippable' % self._norm(e))
         c = self._fp[E]
         d = self._fp[c]
 
@@ -1057,7 +1092,7 @@ class Triangulation(object):
             sage: T = Triangulation("(0,1,2)(~0,~4,~2)(3,4,5)(~3,~1,~5)")
             sage: T.conjugate()
             sage: T
-            [(0, 2, 4), (1, 3, 5), (~5, ~4, ~3), (~1, ~0, ~2)]
+            Triangulation("(0,2,4)(1,3,5)(~5,~4,~3)(~1,~0,~2)")
         """
         # for reference
         #
@@ -1163,8 +1198,47 @@ class Triangulation(object):
         return relabelling
 
     def _automorphism_good_starts(self):
-        # TODO: for now this is a very naive
-        return range(self._n)
+        # we discriminate based on the lengths of cycles in
+        #   vp, ep, fp and vp[ep[fp]]
+        n = self._n
+
+        lv = [-1] * n
+        for c in perm_cycles(self._vp):
+            m = len(c)
+            for i in c:
+                lv[i] = m
+
+        le = [-1] * n
+        for c in perm_cycles(self._ep):
+            m = len(c)
+            for i in c:
+                le[i] = m
+
+        lf = [-1] * n
+        for c in perm_cycles(self._fp):
+            m = len(c)
+            for i in c:
+                lf[i] = m
+
+        lvef = [-1] * n
+        vef = perm_compose(perm_compose(self._fp, self._ep), self._vp)
+        for c in perm_cycles(vef):
+            m = len(c)
+            for i in c:
+                lvef[i] = m
+
+        d = {}
+        for i in range(n):
+            s = (lv[i], le[i], lf[i], lvef[i])
+            if s in d:
+                d[s].append(i)
+            else:
+                d[s] = [i]
+        m = min(len(x) for x in d.values())
+        candidates = [s for s,v in d.items() if len(v) == m]
+        winner = min(candidates)
+
+        return d[winner]
 
     def automorphisms(self):
         r"""
@@ -1214,3 +1288,70 @@ class Triangulation(object):
 
         p0 = perm_invert(best_relabellings[0])
         return [perm_compose(p, p0) for p in best_relabellings]
+
+    def best_relabelling(self):
+        n = self._n
+        fp = self._fp
+        ep = self._ep
+
+        best = None
+
+        for start_edge in self._automorphism_good_starts():
+            relabelling = self._relabelling_from(start_edge)
+
+            fp_new = perm_conjugate(fp, relabelling)
+            ep_new = perm_conjugate(ep, relabelling)
+
+            T = (fp_new, ep_new)
+            if best is None or T < best:
+                best_relabelling = relabelling
+                best = T
+
+        return best_relabelling, best
+
+    def iso_sig(self):
+        r"""
+        Return a canonical signature for this triangulation.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: T = Triangulation("(0,3,1)(~0,4,2)(~1,~2,~4)")
+            sage: T.iso_sig()
+            '9_345876210_087654321'
+            sage: TT = Triangulation.from_string(T.iso_sig())
+            sage: TT
+            Triangulation("(0,3,~1)(1,4,~2)(2,~4,~3)")
+            sage: TT.iso_sig() == T.iso_sig()
+            True
+        """
+        n = self._n
+        _, (fp, ep) = self.best_relabelling()
+
+        fp = perm_base64_str(fp)
+        ep = perm_base64_str(ep)
+
+        return str(n) + '_' + fp + '_' + ep
+
+    def is_isomorphic_to(self, other):
+        r"""
+        Check wheter ``self`` is isomorphic to ``other``.
+
+        TESTS::
+
+            sage: from veerer import Triangulation
+            sage: from veerer.permutation import perm_random_centralizer
+            sage: T = Triangulation("(0,5,1)(~0,4,2)(~1,~2,~4)(3,6,~5)")
+            sage: TT = T.copy()
+            sage: for _ in range(10):
+            ....:     rel = perm_random_centralizer(TT.edge_permutation(False))
+            ....:     TT.relabel(rel)
+            ....:     assert T.is_isomorphic_to(TT)
+        """
+        if type(self) is not type(other):
+            raise TypeError("can only check isomorphisms between two triangulations")
+        return self.iso_sig() == other.iso_sig()
+
+    def cover(self, c):
+        from .cover import TriangulationCover
+        return TriangulationCover(self, c)
