@@ -1444,7 +1444,7 @@ class VeeringTriangulation(Triangulation):
         for e in range(n):
             if not self.is_forward_flippable(e):
                 continue
-            
+
             k += 1 if ep[e] == e else 2
 
         return k == self.num_faces()
@@ -1504,7 +1504,7 @@ class VeeringTriangulation(Triangulation):
                 continue
             if self._colouring[e] != col:
                 return False
-            
+
             k += 1 if ep[e] == e else 2
 
         return k == self.num_faces()
@@ -2315,7 +2315,7 @@ class VeeringTriangulation(Triangulation):
 
     def is_balanced(self, slope=VERTICAL):
         r"""
-        Check whether 
+        Check balanceness
 
         EXAMPLES::
 
