@@ -6,17 +6,109 @@ EXAMPLES::
     sage: from veerer.constants import RED, BLUE, PURPLE, GREEN
 """
 
-RED    = 1
-BLUE   = 2
-PURPLE = 4
-GREEN  = 8
+NONE = 0
 
-cRED = 'R'
-cBLUE = 'B'
+# edge colors
+RED    = 1<<0   # positive slope
+BLUE   = 1<<1   # negative slope
+PURPLE = 1<<2   # horizontal
+GREEN  = 1<<3   # vertical
+
+cRED    = 'R'
+cBLUE   = 'B'
 cPURPLE = 'P'
-cGREEN = 'G'
+cGREEN  = 'G'
 
 COLOURS = [RED, BLUE, PURPLE, GREEN]
+
+# additional veering triangulation properties
+SQUARETILED    = 1 << 2
+QUADRANGULABLE = 1 << 3
+CYLINDRICAL    = RED | BLUE
+GEOMETRIC      = 1 << 4
+VBALANCED      = 1 << 5
+HBALANCED      = 1 << 6
+
+ST = SQUARETILED | GEOMETRIC | VBALANCED | HBALANCED
+
+PROPERTIES_COLOURS = {
+    NONE : '#FFFFFF',  # white
+    RED  : '#8B0000',               # dark red
+    RED | ST : '#FF0000', # red
+    BLUE : '#00008B',              # dark blue
+    BLUE | ST : '#0000FF',# blue
+    GEOMETRIC       : '#00AA00',   # green
+    GEOMETRIC | RED : '#FAAA00',
+    GEOMETRIC | BLUE: '#00AAFF'
+    }
+
+def key_property(p):
+    return -((1<<8) * bool(p & BLUE) | \
+           (1<<7) * bool(p & RED) | \
+           (1<<6) * bool(p & SQUARETILED) | \
+           (1<<5) * bool(p & GEOMETRIC) | \
+           (1<<4) * bool(p & VBALANCED) | \
+           (1<<3) * bool(p & HBALANCED))
+
+def properties_to_string(p):
+    r"""
+    EXAMPLES::
+
+        sage: from veerer import VeeringTriangulation
+        sage: from veerer.constants import *
+        sage: T = VeeringTriangulation("(0,1,8)(2,~7,~1)(3,~0,~2)(4,~5,~3)(5,6,~4)(7,~8,~6)", "BRRRRBRBR")
+        sage: properties_to_string(T.properties_code())
+        'red geometric h-balanced'
+
+        sage: properties_to_string(ST|BLUE)
+        'blue square-tiled'
+        sage: properties_to_string(ST|RED)
+        'red square-tiled'
+    """
+    s = []
+
+    if p & RED and p & BLUE:
+        raise ValueError("bicolored!")
+
+    if p & SQUARETILED:
+        if p & ST != ST:
+            raise ValueError("square-tiled implies GQHV")
+        if p & RED:
+            return 'red square-tiled'
+        elif p & BLUE:
+            return 'blue square-tiled'
+        else:
+            raise ValueError("square-tiled must be cylindrical")
+    elif p & RED:
+        s.append('red')
+    elif p & BLUE:
+        s.append('blue')
+    elif p & QUADRANGULABLE:
+        s.append('quadrangulable')
+
+    if p & QUADRANGULABLE and p & CYLINDRICAL and not p & SQUARETILED:
+        raise RuntimeError
+
+    if p & GEOMETRIC:
+        s.append('geometric')
+
+    if p & VBALANCED and p & HBALANCED:
+        s.append('hv-balanced')
+    elif p & HBALANCED:
+        s.append('h-balanced')
+    elif p & VBALANCED:
+        s.append('v-balanced')
+
+    if s:
+        return ' '.join(s)
+    else:
+        return 'none'
+
+# slopes
+HORIZONTAL = 1
+VERTICAL   = 2
+
+SLOPES = [HORIZONTAL, VERTICAL]
 
 def colour_from_char(c):
     r"""
@@ -36,6 +128,10 @@ def colour_from_char(c):
         return RED
     elif c == cBLUE:
         return BLUE
+    elif c == cPURPLE:
+        return PURPLE
+    elif c == cGREEN:
+        return GREEN
     else:
         raise ValueError("unknown color '%s'" % c)
 
@@ -44,24 +140,12 @@ def colour_to_char(col):
         return 'R'
     elif col == BLUE:
         return 'B'
+    elif col == PURPLE:
+        return 'P'
+    elif col == GREEN:
+        return 'G'
     else:
-        raise ValueError("unknown color code '%d'" % d)
+        raise ValueError("unknown color %s" % col)
 
-########
-# SLOPES
-########
-HORIZONTAL, VERTICAL = 'Horizontal', 'Vertical'
 
-SLOPES = [HORIZONTAL, VERTICAL]
-
-CORE = 0
-GEOMETRIC = 1
-CYLINDRICAL = 1 << 2
-
-TYPE_COLOURS = {
-    CORE: '#BFBFBF',          # light gray
-    GEOMETRIC: '#50AA50',     # green
-    CYLINDRICAL: '#FFA500',   # orange
-    GEOMETRIC | CYLINDRICAL: '#FA8072' # salmon
-    }
 

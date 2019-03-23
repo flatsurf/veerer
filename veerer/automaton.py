@@ -248,12 +248,8 @@ class Automaton(object):
                 F.set_pos(cylinders=T.cylinders(BLUE) + T.cylinders(RED))
                 F.plot().save(t_filename)
 
-            typ = 0
-            if T.is_geometric():
-                typ |= GEOMETRIC
-            if T.is_cylindrical():
-                typ |= CYLINDRICAL
-            colour = TYPE_COLOURS[typ]
+            typ = T.properties_code()
+            colour = PROPERTIES_COLOURS.get(typ, '#000000')
 
             aut_size = len(T.automorphisms())
             if triangulations:
@@ -279,7 +275,7 @@ class Automaton(object):
 
             sage: A = Automaton.from_stratum(AbelianStratum(2))
             sage: A.triangulations()
-            <generator object __iter__ at <...>
+            <generator object __iter__ at ...>
             sage: for t in A.triangulations():
             ....:     assert t.stratum() == AbelianStratum(2)
         """
@@ -314,6 +310,35 @@ class Automaton(object):
             300
         """
         return sum(len(flips) for flips in self._graph.values())
+
+    def statistics(self):
+        r"""
+        Return detailed statistics about the properties of the veering
+        triangulations.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: from surface_dynamics import *
+            sage: A = Automaton.from_stratum(AbelianStratum(2))
+            sage: A.statistics()
+            {0: 24,
+             1: 4,
+             2: 4,
+             48: 2,
+             80: 2,
+             112: 24,
+             113: 5,
+             114: 5,
+             120: 10,
+             125: 3,
+             126: 3}
+        """
+        from collections import defaultdict
+        d = defaultdict(int)
+        for vt in self:
+            d[vt.properties_code()] += 1
+        return dict(d)
 
     def geometric_triangulations(self, method=None):
         r"""
