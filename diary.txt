@@ -1,3 +1,22 @@
+2019-03-23
+
+Some more properties of veering triangulations
+
+ is_quadrangulable
+ is_square_tiled
+ is_balanced
+
+... it is not yet clear what are the implications between the
+properties.
+
+2019-02-21
+
+What should be the answer of the functions is_flippable, is_forward_flippable
+and is_backward_flippable when we have GREEN/PURPLE edges?
+
+What are exactly PURPLE/GREEN edges? edges that are restricted to
+be horizontal/vertical or edges that can be both BLUE/RED in
+a neighborhood of horizontal/vertical?
 
 2018-09-07
 
