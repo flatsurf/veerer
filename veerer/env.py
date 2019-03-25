@@ -48,4 +48,4 @@ missing_mods = {
 # https://docs.python.org/2/library/traceback.html#traceback-examples
 def require_package(mod_name, caller):
     if missing_mods[mod_name]:
-        raise ValueError(error_msg.format(caller))
+        raise ValueError(error_msg[mod_name].format(caller))

@@ -10,11 +10,11 @@ from .constants import RED, BLUE, HORIZONTAL, VERTICAL
 from .triangulation import Triangulation
 from .cover import TriangulationCover
 from .veering_triangulation import VeeringTriangulation, VeeringTriangulations
-from .measured_train_track import MeasuredTrainTrack
 from .automaton import Automaton
 
 from .env import sage
 if sage is not None:
     from .layout import FlatVeeringTriangulationLayout
+    from .measured_train_track import MeasuredTrainTrack
 
 del sage, absolute_import

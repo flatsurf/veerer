@@ -48,7 +48,8 @@ def ppl_cone_to_hashable(P):
     ieqs.sort()
     return (P.space_dimension(), tuple(eqns), tuple(ieqs))
 
-def ppl_cone_from_hashable((d, eqns, ieqs)):
+def ppl_cone_from_hashable(args):
+    d, eqns, ieqs = args
     P = ppl.C_Polyhedron(d)
     for constraint in eqns:
         P.add_constraint(sum(coeff * ppl.Variable(i) for i,coeff in enumerate(constraint)) == 0)
@@ -1184,20 +1185,21 @@ class VeeringTriangulation(Triangulation):
             ....:     T.relabel(p)
             ....:     assert T.iso_sig() == iso_sig
         """
+        n = self._n
+        r, (cols, fp, ep) = self.best_relabelling()
+
         if Lx:
             raise NotImplementedError("not implemented for linear equations")
         if Gx:
             raise NotImplementedError("not implemented for generators")
+        else:
 
-        n = self._n
-        _, (cols, fp, ep) = self.best_relabelling()
+            cols = ''.join(colour_to_char(col) for col in cols)
 
-        cols = ''.join(colour_to_char(col) for col in cols)
+            fp = perm_base64_str(fp)
+            ep = perm_base64_str(ep)
 
-        fp = perm_base64_str(fp)
-        ep = perm_base64_str(ep)
-
-        return cols + '_' + fp + '_' + ep
+            return cols + '_' + fp + '_' + ep
 
     def canonical(self):
         r"""
@@ -1257,7 +1259,7 @@ class VeeringTriangulation(Triangulation):
             ....:     T._set_switch_conditions(T._tt_check, Gx.row(1), VERTICAL)
         """
         if Lx:
-            raise ValueError("not implemented for linear equations")
+            raise NotImplementedError("not implemented for linear equations")
         if Gx:
             a, b, c, d = self.square_about_edge(e)
             e = self._norm(e)

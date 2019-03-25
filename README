@@ -17,14 +17,17 @@ The installation is done via pip.
 Example
 -------
 
-    >>> from veerer import 
-    >>> T = ColouredTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
+    >>> from veerer import *
+    >>> T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
     >>> T.is_core()
     True
 
-If you are in SageMath you can obtain flat structures and plots
+Computing an associated flat structure:
 
-    >>> F = T.flat_structure()
+    >>> F = T.flat_structure_middle()
+
+And if you are in SageMath you can plot it:
+
     >>> F.plot(vertical_train_track=True)
     >>> F.plot(horizontal_train_track=True)
 
