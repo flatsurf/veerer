@@ -1128,9 +1128,17 @@ class VeeringTriangulation(Triangulation):
         ep = perm_base64_str(self._ep)
         return colours + '_' + fp + '_' + ep
 
-    def iso_sig(self):
+    def iso_sig(self, Lx=None, Gx=None):
         r"""
         Return a canonical string ("isomorphism signature").
+
+        INPUT:
+
+        - ``Lx`` - (optional) a matrix whose rows are the linear equations
+          for the admissible train-track lengths.
+
+        - ``Gx`` - (optional) a matrix whose rows are the generators of admissible
+          train-track lengths
 
         EXAMPLES::
 
@@ -1176,6 +1184,11 @@ class VeeringTriangulation(Triangulation):
             ....:     T.relabel(p)
             ....:     assert T.iso_sig() == iso_sig
         """
+        if Lx:
+            raise NotImplementedError("not implemented for linear equations")
+        if Gx:
+            raise NotImplementedError("not implemented for generators")
+
         n = self._n
         _, (cols, fp, ep) = self.best_relabelling()
 
@@ -1206,7 +1219,7 @@ class VeeringTriangulation(Triangulation):
 #    def self_isometries(self):
 #        return self.isometries_to(self)
 
-    def flip(self, e, col):
+    def flip(self, e, col, Lx=None, Gx=None):
         r"""
         Flip an edge inplace.
 
@@ -1224,30 +1237,14 @@ class VeeringTriangulation(Triangulation):
             VeeringTriangulation("(0,~2,1)(2,~1,~0)", "RBB")
             sage: T.flip(2, BLUE); T
             VeeringTriangulation("(0,~1,~2)(1,2,~0)", "RBB")
-        """
-        e = int(e)
-        assert(self.is_flippable(e))
-        E = self._ep[e]
 
-        Triangulation.flip(self, e)
-        self._colouring[e] = self._colouring[E] = col
-
-    def flip_action(self, e, col, X):
-        r"""
-        Modify the generator matrix ``X`` according to the flip move ``(e, col)``.
-
-        EXAMPLES::
-
-            sage: from veerer import *
+        Some examples involving linear subspaces::
 
             sage: T, s, t = VeeringTriangulations.L_shaped_surface(1, 1, 1, 1)
             sage: Gx = matrix(ZZ, [s, t])
-            sage: T.flip_action(3, 2, Gx)
-            sage: T.flip_action(4, 2, Gx)
-            sage: T.flip_action(5, 2, Gx)
-            sage: T.flip(3, 2)
-            sage: T.flip(4, 2)
-            sage: T.flip(5, 2)
+            sage: T.flip(3, 2, Gx=Gx)
+            sage: T.flip(4, 2, Gx=Gx)
+            sage: T.flip(5, 2, Gx=Gx)
             sage: T._set_switch_conditions(T._tt_check, Gx.row(0), VERTICAL)
             sage: T._set_switch_conditions(T._tt_check, Gx.row(1), VERTICAL)
 
@@ -1255,33 +1252,43 @@ class VeeringTriangulation(Triangulation):
             sage: Gx = matrix(ZZ, [s, t])
             sage: flip_sequence = [(3, 2), (4, 1), (5, 2), (6 , 2), (5, 1), (1, 1), (5, 1)]
             sage: for e, col in flip_sequence:
-            ....:     T.flip_action(e, col, Gx)
-            ....:     T.flip(e, col)
+            ....:     T.flip(e, col, Gx=Gx)
             ....:     T._set_switch_conditions(T._tt_check, Gx.row(0), VERTICAL)
             ....:     T._set_switch_conditions(T._tt_check, Gx.row(1), VERTICAL)
         """
-        a, b, c, d = self.square_about_edge(e)
-        e = self._norm(e)
-        a = self._norm(a)
-        d = self._norm(d)
+        if Lx:
+            raise ValueError("not implemented for linear equations")
+        if Gx:
+            a, b, c, d = self.square_about_edge(e)
+            e = self._norm(e)
+            a = self._norm(a)
+            d = self._norm(d)
 
-        # little check
-        b = self._norm(b)
-        c = self._norm(c)
-        assert X.column(e) == X.column(a) + X.column(b) == X.column(c) + X.column(d)
-        if col == RED:
-            # ve <- vd - va
-            # e-th column becomes d-th column minus a-th column
-            X.add_multiple_of_column(e, e, -1)
-            X.add_multiple_of_column(e, d, +1)
-            X.add_multiple_of_column(e, a, -1)
-        elif col == BLUE:
-             # ve <- va - vd
-            X.add_multiple_of_column(e, e, -1)
-            X.add_multiple_of_column(e, d, -1)
-            X.add_multiple_of_column(e, a, +1)
-        else:
-            raise ValueError("invalid color")
+            # little check
+            b = self._norm(b)
+            c = self._norm(c)
+            assert Gx.column(e) == Gx.column(a) + Gx.column(b) == Gx.column(c) + Gx.column(d)
+            if col == RED:
+                # ve <- vd - va
+                # e-th column becomes d-th column minus a-th column
+                Gx.add_multiple_of_column(e, e, -1)
+                Gx.add_multiple_of_column(e, d, +1)
+                Gx.add_multiple_of_column(e, a, -1)
+            elif col == BLUE:
+                # ve <- va - vd
+                Gx.add_multiple_of_column(e, e, -1)
+                Gx.add_multiple_of_column(e, d, -1)
+                Gx.add_multiple_of_column(e, a, +1)
+            else:
+                raise ValueError("invalid color")
+
+        # topological flip
+        e = int(e)
+        assert(self.is_flippable(e))
+        E = self._ep[e]
+
+        Triangulation.flip(self, e)
+        self._colouring[e] = self._colouring[E] = col
 
     def cylinders(self, col):
         r"""
@@ -2476,7 +2483,7 @@ class VeeringTriangulation(Triangulation):
 
         INPUT:
 
-        - ``Lx`` - (optional) a matrix whose rowse are the linear equations
+        - ``Lx`` - (optional) a matrix whose rows are the linear equations
           for admissible train-track lengths (the right kernel is the space
           of admissible lengths). It is assumed that the linear equations
           contains the switch (or triangle) equations.
