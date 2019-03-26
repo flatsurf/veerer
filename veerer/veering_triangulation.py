@@ -805,7 +805,7 @@ class VeeringTriangulation(Triangulation):
         else:
             raise ValueError
 
-    def relabel(self, p):
+    def relabel(self, p, Lx=None, Gx=None):
         r"""
         Relabel inplace this veering triangulation according to the permutation ``p``.
 
@@ -818,6 +818,31 @@ class VeeringTriangulation(Triangulation):
             sage: T
             VeeringTriangulation("(0,1,~2)(2,~0,~1)", "RBB")
             sage: T._check()
+
+        Relabeling the subspace as well::
+
+            sage: from veerer.permutation import perm_random_centralizer
+            sage: T, s, t = VeeringTriangulations.L_shaped_surface(2, 3, 4, 5, 1, 2)
+            sage: Gx = matrix(ZZ, [s, t])
+            sage: for _ in range(10):
+            ....:     p = perm_random_centralizer(T.edge_permutation(copy=False))
+            ....:     T.relabel(p, Gx=Gx)
+            ....:     T._set_switch_conditions(T._tt_check, Gx.row(0), VERTICAL)
+            ....:     T._set_switch_conditions(T._tt_check, Gx.row(1), VERTICAL)
+
+        Composing relabelings and permutation composition::
+
+            sage: from veerer.permutation import perm_compose
+            sage: from surface_dynamics import *
+            sage: T0 = VeeringTriangulation.from_stratum(AbelianStratum(1,1,1,1))
+            sage: for _ in range(10):
+            ....:     p1 = perm_random_centralizer(T0.edge_permutation(copy=False))
+            ....:     p2 = perm_random_centralizer(T0.edge_permutation(copy=False))
+            ....:     T1 = T0.copy()
+            ....:     T1.relabel(p1); T1.relabel(p2)
+            ....:     T2 = T0.copy()
+            ....:     T2.relabel(perm_compose(p1, p2))
+            ....:     assert T1  == T2
 
         TESTS:
 
@@ -844,6 +869,20 @@ class VeeringTriangulation(Triangulation):
             p = perm_init(p)
             if not perm_check(p, n):
                 raise ValueError('invalid relabeling permutation')
+
+        if Lx:
+            raise NotImplementedError
+        if Gx:
+            seen = [False] * self.num_edges()
+            for c in perm_cycles(p):
+                c0 = self._norm(c[0])
+                seen[c0] = True
+                for i in range(1,len(c)):
+                    ci = self._norm(c[i])
+                    if seen[ci]:
+                        break
+                    seen[ci] = True
+                    Gx.swap_columns(c0, ci)
 
         Triangulation.relabel(self, p)
         self._colouring = perm_on_array(p, self._colouring)
@@ -997,8 +1036,12 @@ class VeeringTriangulation(Triangulation):
     def edge_colour(self, e):
         return self._colouring[e]
 
-    def best_relabelling(self):
+    def best_relabelling(self, all=False):
+        r"""
+        """
         best = None
+        if all:
+            relabellings = []
         for start_edge in self._automorphism_good_starts():
             relabelling = self._relabelling_from(start_edge)
 
@@ -1011,8 +1054,13 @@ class VeeringTriangulation(Triangulation):
             if best is None or T < best:
                 best = T
                 best_relabelling = relabelling
+                if all:
+                    del relabellings[:]
+                    relabellings.append(relabelling)
+            elif all and T == best:
+                relabellings.append(relabelling)
 
-        return best_relabelling, best
+        return (relabellings, best) if all else (best_relabelling, best)
 
     def rotate(self):
         r"""
@@ -1186,14 +1234,14 @@ class VeeringTriangulation(Triangulation):
             ....:     assert T.iso_sig() == iso_sig
         """
         n = self._n
-        r, (cols, fp, ep) = self.best_relabelling()
 
         if Lx:
+            R, (cols, fp, ep) = self.best_relabelling(True)
             raise NotImplementedError("not implemented for linear equations")
         if Gx:
             raise NotImplementedError("not implemented for generators")
         else:
-
+            r, (cols, fp, ep) = self.best_relabelling()
             cols = ''.join(colour_to_char(col) for col in cols)
 
             fp = perm_base64_str(fp)
@@ -1201,11 +1249,44 @@ class VeeringTriangulation(Triangulation):
 
             return cols + '_' + fp + '_' + ep
 
+    def set_canonical_labels(self, Lx=None, Gx=None):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: t = [(-12, 4, -4), (-11, -1, 11), (-10, 0, 10), (-9, 9, 1),
+            ....:      (-8, 8, -2), (-7, 7, 2), (-6, 6, -3), (-5, 5, 3)]
+            sage: cols = [RED, RED, RED, RED, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE]
+            sage: T = VeeringTriangulation(t, cols)
+            sage: T.set_canonical_labels()
+            sage: s0 = T.to_string()
+            sage: T.set_canonical_labels()
+            sage: assert s0 == T.to_string()
+            sage: from veerer.permutation import perm_random_centralizer
+            sage: for _ in range(10):
+            ....:     p = perm_random_centralizer(T.edge_permutation(copy=False))
+            ....:     T.relabel(p)
+            ....:     T.set_canonical_labels()
+            ....:     assert s0 == T.to_string()
+        """
+        if Lx:
+            raise NotImplementedError
+        elif Gx:
+            R, (cols, fp, ep) = self.best_relabelling(all=True)
+            self.relabel(R[0], Gx=Gx)
+            if len(R) == 1:
+                return
+            for i in range(2, len(R)):
+                pass
+        else:
+            r, (cols, fp, ep) = self.best_relabelling()
+            self.relabel(r)
+
     def canonical(self):
         r"""
         Return a canonically labeled isomorphic coloured triangulation.
         """
-        return VeeringTriangulation.from_iso_sig(self.iso_sig())
+        raise ValueError
 
     def is_isomorphic_to(self, other):
         r"""
@@ -1224,6 +1305,18 @@ class VeeringTriangulation(Triangulation):
     def flip(self, e, col, Lx=None, Gx=None):
         r"""
         Flip an edge inplace.
+
+        INPUT:
+
+        - ``e`` - edge number
+
+        - ``col`` - color of the edge after the flip (ie either ``RED`` or ``BLUE``)
+
+        - ``Lx`` - (optional) - matrix whose rows are equations in a linear subspace
+          that has to be carried around
+
+        - ``Gx`` - (optional) - matrix whose rows are generators of a linear subspace
+          that has to be carried around
 
         EXAMPLES::
 
@@ -1266,7 +1359,6 @@ class VeeringTriangulation(Triangulation):
             a = self._norm(a)
             d = self._norm(d)
 
-            # little check
             b = self._norm(b)
             c = self._norm(c)
             assert Gx.column(e) == Gx.column(a) + Gx.column(b) == Gx.column(c) + Gx.column(d)
