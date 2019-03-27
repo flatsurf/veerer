@@ -3,7 +3,6 @@ build/*
 dist/*
 packages/*
 __pycache__/*
-experiments/*
 *.pyc
 *.bat
 *.swp
