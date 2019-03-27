@@ -744,6 +744,28 @@ class VeeringTriangulation(Triangulation):
             print("Warning: alternating_square is not carefullly defined with GREEN/PURPLE edges")
         return all(colours[f] != colours[(f+1) % 4] for f in range(4))
 
+
+    def vertex_cycles(self, slope=VERTICAL):
+        r"""
+        Return the vertex cycles as curves on the (curver) triangulation.
+
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation, HORIZONTAL, VERTICAL
+            sage: V = VeeringTriangulation([(0,1,2), (-1,-2,-3)], "RRB")
+            sage: V.vertex_cycles()
+            [Curve([(~2, ~0, ~1), (0, 1, 2)], [1, 1, 0]),
+             Curve([(~2, ~0, ~1), (0, 1, 2)], [0, 1, 1])]
+            sage: V.vertex_cycles(HORIZONTAL)
+            [Curve([(~2, ~0, ~1), (0, 1, 2)], [1, 0, 1]),
+             Curve([(~2, ~0, ~1), (0, 1, 2)], [1, 1, 0])]
+        """
+        require_package('curver', 'vertex_cycles')
+        polytope = self.train_track_polytope(slope=slope)
+        rays = [gen for gen in polytope.generators() if gen.is_ray()]
+        T = self.to_curver()
+        return [T.lamination([int(x) for x in ray.coefficients()]) for ray in rays]
+
     def branches(self, slope=VERTICAL):
         r"""
         Return a 3-uplet made of the lists of respectively the small, mixed
