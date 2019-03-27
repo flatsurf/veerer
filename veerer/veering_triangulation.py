@@ -350,6 +350,33 @@ class VeeringTriangulation(Triangulation):
         cols = array('l', [colour_from_char(c) for c in cols])
         return VeeringTriangulation.from_face_edge_perms(cols, fp, ep, check=check)
 
+    def to_flipper(self):
+        r"""
+        Return the corresponding flipper triangulation
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", [RED, RED, BLUE])
+            sage: T.to_flipper()
+            [(~2, ~0, ~1), (0, 1, 2)]
+        """
+        require_package('flipper', 'to_flipper')
+        ep = self._ep
+        F = []
+        for f in self.faces():
+            face = []
+            for e in f:
+                if ep[e] == e:
+                    raise ValueError("flipper do not accept folded edges")
+                if ep[e] < e:
+                    face.append(~int(ep[e]))
+                else:
+                    face.append(int(e))
+            F.append(tuple(face))
+
+        return flipper.create_triangulation(F)
+
     def __eq__(self, other):
         if type(self) != type(other):
             raise TypeError
