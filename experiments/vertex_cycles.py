@@ -66,7 +66,30 @@ def test(T, edge, colour):
                     depths[key] = [s] + depths[convert(current_lam_mat)]
                     to_do.put(next_lam_mat)
                     if len(depths) % 10000 == 0: print('expanding seen past {}'.format(len(depths)))
-        print('{:s} decomposes as: {}'.format(cycle, '.'.join(depths[twist_key])))
+        print('{:s} decomposes as: {}'.format(list(cycle), '.'.join(depths[twist_key])))
+
+def test_conjugators(T, edge, colour):
+    ''' Test whether the vertex cycles of T can be written as conjugate of a product of twists in the vertex cycles of T after the given edge has been split. '''
+    current, future = current_future_vertex_cycles(T, edge, colour)
+    twists = [((index+1) * (+1 if k == 1 else -1), curve.encode_twist(power=k)) for index, curve in enumerate(future) for k in [-1, +1]]
+    
+    to_do = Queue()
+    names = dict()
+    for s, t in twists:
+        to_do.put((t, [s]))
+        names[t] = [s]
+    
+    for cycle in current:
+        twist = cycle.encode_twist()
+        while twist not in names:
+            current_t, current_s = to_do.get()
+            for s, t in twists:
+                adjacent = ~t * current_t * t
+                if adjacent not in names:
+                    names[adjacent] = [s] + current_s + [-s]
+                    to_do.put((adjacent, names[adjacent]))
+                    if len(names) % 10000 == 0: print('expanding seen past {}'.format(len(names)))
+        print('{:s} decomposes as: {}'.format(list(cycle), '.'.join(map(str, names[twist]))))
 
 def test_all_in(stratum):
     for T in Automaton.from_stratum(stratum):
@@ -74,7 +97,7 @@ def test_all_in(stratum):
         assert T.is_core()
         for edge, colour in core_flips(T):
             print(T, edge, colour)
-            test(T, edge, colour)
+            test_conjugators(T, edge, colour)
 
 def intersection_matrix(T):
     ''' Return the matrix of intersection number of vertex cycles of T. '''
