@@ -82,7 +82,7 @@ def test(T, edge, colour):
         while twist_key not in depths:
             current_lam_mat = to_do.get()
             lam, mat = current_lam_mat
-            for curve, k, t, M in twists.items():
+            for curve, k, t, M in twists:
                 next_lam_mat = (t(lam), M.dot(mat))
                 key = convert(next_lam_mat)
                 if key not in depths:

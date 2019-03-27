@@ -1,0 +1,101 @@
+Metadata-Version: 1.1
+Name: veerer
+Version: 0.1b0
+Summary: A Python module to manipulate Veering triangulations and their associated flat structures
+Home-page: https://framagit.org/saulsch/Veerer
+Author: Mark Bell, Vincent Delecroix and Saul Schleimer
+Author-email: vincent.delecroix@u-bordeaux.fr
+License: UNKNOWN
+Description: Veerer
+        ======
+        
+        veerer is a Python module to deal with Veering triangulations and their
+        associated flat structures.
+        
+        To install the module you need Python (version 2 or 3).
+        
+        Computations involving polytopes are only available if the Python module
+        pplpy is available (see https://gitlab.com/videlec/pplpy).
+        
+        Additional features are available if this module is used inside SageMath
+        (http://www.sagemath.org/).
+        
+        The installation is done via pip.
+        
+        Example
+        -------
+        
+            >>> from veerer import *
+            >>> T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
+            >>> T.is_core()
+            True
+        
+        Computing an associated flat structure:
+        
+            >>> F = T.flat_structure_middle()
+        
+        And if you are in SageMath you can plot it:
+        
+            >>> F.plot(vertical_train_track=True)
+            >>> F.plot(horizontal_train_track=True)
+        
+        Testing
+        -------
+        
+        To run the SageMath doctests, install the module with pip, typically
+        
+            $ sage -pip install . --user --force-reinstall
+        
+        and then run
+        
+            $ sage -t --force-lib veerer/
+        
+        Or
+        
+            $ sage -t --force-lib veerer/my_file.py
+        
+        Building documentation
+        ----------------------
+        
+        Go to the docs repository and then do
+        
+            $ sage -sh
+            $ make html
+        
+        The documentation should be available under docs/build/ as HTML pages.
+        
+        Typically you might want to use veerer_demo.rst as a Jupyter notebook. In
+        order to do the conversion you need to have available on your computer
+        
+        - rst2latex python-docutils
+        - pdflatex 
+        - pandoc
+        - the Python module rst2ipynb
+        - the Python module nbconvert
+        
+        Then do
+        
+            $ export FILE_PREFIX="veerer_demo"
+            $ rst2ipynb --kernel=sagemath veerer_demo.rst veerer_demo.ipynb
+        
+        If you did install rst2ipynb using the `--user` option of pip the executables
+        are possibly installed in $HOME/.local/bin. In which case you should first make
+        the system aware of this via
+        
+            $ PATH=$PATH:$HOME/.local/bin
+        
+        Authors
+        -------
+        
+        - Mark Bell
+        - Vincent Delecroix
+        - Saul Schleimer
+        
+Platform: UNKNOWN
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: GNU General Public License v3 (GPLv3)
+Classifier: Natural Language :: English
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Topic :: Scientific/Engineering :: Mathematics
