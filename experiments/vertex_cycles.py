@@ -84,5 +84,6 @@ def intersection_matrix(T):
 if __name__ == '__main__':
     # T = VeeringTriangulation("(0,~2,1)(2,4,~3)(3,~5,~4)(5,~1,~0)", "RBBRBB")
     # test(T, 2, BLUE)
-    test_all_in(AbelianStratum(0, 0, 0))
+    test_all_in(QuadraticStratum(1, 1, -1, -1))
+    # test_all_in(AbelianStratum(0, 0, 0))
 

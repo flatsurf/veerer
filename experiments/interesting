@@ -1,3 +1,9 @@
+%%%
+
+(VeeringTriangulation("(0,6,10)(1,~8,~2)(2,7,~3)(3,~9,~4)(4,8,~5)(5,~7,~6)(9,~11,~10)(11,~1,~0)", "RBBBBBBRRRBB"), 11, 1)
+
+This did not finish.
+
 %%% 
 
 (VeeringTriangulation("(0,~3,2)(1,7,~2)(3,6,~4)(4,8,~5)(5,~7,~6)(~8,~1,~0)", "RBBBRBBRB"), 8, 2)
