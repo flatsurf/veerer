@@ -13,12 +13,9 @@ from .permutation import *
 from .misc import det2
 from .triangulation import Triangulation
 
-from .env import curver, sage, surface_dynamics, ppl, flipper, require_package
+from .env import curver, sage, surface_dynamics, ppl, flipper, random, require_package
 
-if sage is not None:
-    from sage.misc.prandom import choice, shuffle
-else:
-    from random import choice, shuffle
+from random import choice, shuffle
 
 def ppl_cone_to_hashable(P):
     r"""
@@ -185,6 +182,80 @@ class VeeringTriangulation(Triangulation):
         triangles = [[x.label for x in t] for t in FS.triangulation]
         colours = [RED if X[e]*Y[e] > 0 else BLUE for e in range(n)]
         return VeeringTriangulation(triangles, colours)
+
+    @classmethod
+    def from_square_tiled(cls, s, col=RED):
+        r"""
+        Build a veering triangulation from a square-tiled surface (or origami).
+
+        INPUT:
+
+        - ``s`` - a square-tiled surface
+
+        - ``col`` - either ``RED`` or ``BLUE``
+
+        EXAMPLES::
+
+            sage: from surface_dynamics import Origami
+            sage: from veerer import VeeringTriangulation
+
+            sage: o = Origami('(1,2)', '(1,3)')
+            sage: T = VeeringTriangulation.from_square_tiled(o)
+            sage: T
+            VeeringTriangulation("(0,1,2)(3,4,5)(6,7,8)(~8,~0,~7)(~6,~1,~5)(~4,~2,~3)", "RBBRBBRBB")
+            sage: o.stratum()
+            H_2(2)
+            sage: T.stratum()
+            H_2(2)
+
+        A one cylinder example in the odd component of H(4)::
+
+            sage: o = Origami('(1,2,3,4,5)', '(1,4,3,5,2)')
+            sage: T = VeeringTriangulation.from_square_tiled(o)
+            sage: o.stratum()
+            H_3(4)
+            sage: T.stratum()
+            H_3(4)
+        """
+        require_package('surface_dynamics', 'from_square_tiled')
+        from surface_dynamics.flat_surfaces.origamis.origami_dense import Origami_dense_pyx
+
+        if col not in [BLUE, RED]:
+            raise ValueError("col must be BLUE or RED")
+
+        if not isinstance(s, Origami_dense_pyx):
+            raise ValueError("input must be an origami")
+
+        faces = []
+        n = s.nb_squares()  # so 3n edges in the veering triangulation
+                            # (6n half edges)
+        r = s.r_tuple()
+        u = s.u_tuple()
+        ep = list(range(6*n-1, -1,- 1))
+        fp = [None] * (6*n)
+        N = 6*n - 1
+        for i in range(0, n):
+            ii = 3*i
+            fp[ii] = ii+1
+            fp[ii+1] = ii+2
+            fp[ii+2] = ii
+
+            j = N - (3*r[i] + 2)
+            k = N - (3*u[i])
+            l = N - (3*i+1)
+            fp[j] = k
+            fp[k] = l
+            fp[l] = j
+
+        colouring = [None] * (3*n)
+        colouring[::3] = [RED]*n
+        colouring[2::3] = [BLUE]*n
+        colouring[1::3] = [col]*n
+        colouring.extend(colouring[::-1])
+
+        return cls.from_face_edge_perms(array('l', colouring),
+                                        array('l', fp),
+                                        array('l', ep))
 
     @classmethod
     def from_stratum(cls, c, folded_edges=False):
