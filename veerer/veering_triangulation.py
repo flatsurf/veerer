@@ -13,7 +13,7 @@ from .permutation import *
 from .misc import det2
 from .triangulation import Triangulation
 
-from .env import sage, surface_dynamics, ppl, flipper, require_package
+from .env import curver, sage, surface_dynamics, ppl, flipper, require_package
 
 if sage is not None:
     from sage.misc.prandom import choice, shuffle
@@ -376,6 +376,33 @@ class VeeringTriangulation(Triangulation):
             F.append(tuple(face))
 
         return flipper.create_triangulation(F)
+
+    def to_curver(self):
+        r"""
+        Return the corresponding curver triangulation
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", [RED, RED, BLUE])
+            sage: T.to_curver()
+            [(~2, ~0, ~1), (0, 1, 2)]
+        """
+        require_package('curver', 'to_curver')
+        ep = self._ep
+        F = []
+        for f in self.faces():
+            face = []
+            for e in f:
+                if ep[e] == e:
+                    raise ValueError("curver do not accept folded edges")
+                if ep[e] < e:
+                    face.append(~int(ep[e]))
+                else:
+                    face.append(int(e))
+            F.append(tuple(face))
+
+        return curver.create_triangulation(F)
 
     def __eq__(self, other):
         if type(self) != type(other):

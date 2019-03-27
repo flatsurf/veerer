@@ -23,11 +23,18 @@ except ImportError:
     flipper = None
 
 try:
+    import curver
+except ImportError:
+    curver = None
+
+try:
     import ppl
 except ImportError:
     ppl = None
 
 error_msg = {
+    'curver': 'the function {} can only be called when the package curver is installed.',
+
     'sage': 'the function {} can only be called when running inside of Sage. See http://www.sagemath.org/',
 
     'surface_dynamics': 'the function {} only works when the package surface_dynamics is installed. See https://pypi.org/project/surface_dynamics/ for instructions.',
@@ -38,6 +45,7 @@ error_msg = {
     }
 
 missing_mods = {
+    'curver': curver is None,
     'sage': sage is None,
     'flipper': flipper is None,
     'ppl': ppl is None,
