@@ -43,32 +43,9 @@ def core_flips(T):
 
 def test(T, edge, colour):
     ''' Test whether the vertex cycles of T can be written as a product of twists in the vertex cycles of T after the given edge has been split. '''
-    current, future = current_future_vertex_cycles(T, edge, colour)
-    future_twists = set(curve.encode_twist(power=k) for curve in future for k in [-1, 1])
-    
-    
-    to_do = Queue()
-    to_do.put(T.to_curver().id_encoding())
-    seen = {T.to_curver().id_encoding(): 0}
-    
-    for cycle in current:
-        if cycle in future: continue
-        
-        twist = cycle.encode_twist()
-        while twist not in seen:
-            g = to_do.get()
-            for h in future_twists:
-                f = g * h
-                if f not in seen:
-                    seen[f] = seen[g] + 1
-                    to_do.put(f)
-                    print(seen[f], str(f.self_image()))
-                    if len(seen) % 100 == 0: print('expanding seen past {}'.format(len(seen)))
-
-def test(T, edge, colour):
     convert = lambda X: (X[0], tuple(X[1].flatten()))  # Since numpy.ndarrays are not hashable we need a converter.
     current, future = current_future_vertex_cycles(T, edge, colour)
-    twists = [(curve, k, curve.encode_twist(power=k), curve.encode_twist(power=k).homology_matrix()) for curve in future for k in [-1, +1]]
+    twists = [(('' if k == 1 else '~') + str(index), curve.encode_twist(power=k), curve.encode_twist(power=k).homology_matrix()) for index, curve in enumerate(future) for k in [-1, +1]]
     
     identity = T.to_curver().id_encoding()
     identity_lam_mat = (identity.self_image(), identity.homology_matrix())
@@ -82,16 +59,14 @@ def test(T, edge, colour):
         while twist_key not in depths:
             current_lam_mat = to_do.get()
             lam, mat = current_lam_mat
-            for curve, k, t, M in twists:
+            for s, t, M in twists:
                 next_lam_mat = (t(lam), M.dot(mat))
                 key = convert(next_lam_mat)
                 if key not in depths:
-                    depths[key] = [(curve, k)] + depths[convert(current_lam_mat)]
+                    depths[key] = [s] + depths[convert(current_lam_mat)]
                     to_do.put(next_lam_mat)
                     if len(depths) % 10000 == 0: print('expanding seen past {}'.format(len(depths)))
-        print(depths[twist_key])
-
-
+        print('{:s} decomposes as: {}'.format(cycle, '.'.join(depths[twist_key])))
 
 def test_all_in(stratum):
     for T in Automaton.from_stratum(stratum):
