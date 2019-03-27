@@ -13,3 +13,4 @@ test.py
 graphs/
 docs/build
 docs/source/veerer_demo.ipynb
+veerer.egg-info/*
