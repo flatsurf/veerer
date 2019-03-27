@@ -11,6 +11,9 @@ try:
     import sage
 except ImportError:
     sage = None
+    import random
+else:
+    import sage.misc.prandom as random
 
 try:
     import surface_dynamics
