@@ -92,7 +92,7 @@ class VeeringTriangulation(Triangulation):
         sage: VeeringTriangulation.from_pseudo_anosov(h)
         VeeringTriangulation("(0,~3,~1)...(12,~14,~10)(~2,~9,~4)", "RBRBRRBRBBBBRBR")
     """
-    __slots__ = ['_colouring']
+    __slots__ = ['_colouring', '__curver']
 
     def __init__(self, triangulation,  colouring, check=True):
         Triangulation.__init__(self, triangulation, check=False)
@@ -459,6 +459,10 @@ class VeeringTriangulation(Triangulation):
             sage: T.to_curver()
             [(~2, ~0, ~1), (0, 1, 2)]
         """
+        try:
+            return self.__curver
+        except AttributeError:
+            pass
         require_package('curver', 'to_curver')
         ep = self._ep
         F = []
