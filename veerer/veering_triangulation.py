@@ -54,6 +54,26 @@ def ppl_cone_from_hashable(args):
         P.add_constraint(sum(coeff * ppl.Variable(i) for i,coeff in enumerate(constraint)) >= 0)
     return P
 
+def relabel_on_edges(ep, r, n, m):
+    r"""
+    - ep - edge permutation
+
+    - r - relabelling permutation
+
+    - n - num half edges
+
+    - m - num edges
+    """
+    rr = [-1] * m
+    for i in range(m):
+        j = r[i]
+        k = r[ep[i]]
+        if j < k:
+            rr[i] = j
+        else:
+            rr[i] = k
+    return rr
+
 class VeeringTriangulation(Triangulation):
     r"""
     Veering triangulation.
@@ -202,7 +222,7 @@ class VeeringTriangulation(Triangulation):
             sage: o = Origami('(1,2)', '(1,3)')
             sage: T = VeeringTriangulation.from_square_tiled(o)
             sage: T
-            VeeringTriangulation("(0,1,2)(3,4,5)(6,7,8)(~8,~0,~7)(~6,~1,~5)(~4,~2,~3)", "RBBRBBRBB")
+            VeeringTriangulation("(0,1,2)(3,4,5)(6,7,8)(~8,~0,~7)(~6,~1,~5)(~4,~2,~3)", "RRBRRBRRB")
             sage: o.stratum()
             H_2(2)
             sage: T.stratum()
@@ -976,10 +996,15 @@ class VeeringTriangulation(Triangulation):
             sage: T, s, t = VeeringTriangulations.L_shaped_surface(2, 3, 4, 5, 1, 2)
             sage: Gx = matrix(ZZ, [s, t])
             sage: for _ in range(10):
-            ....:     p = perm_random_centralizer(T.edge_permutation(copy=False))
+            ....:     p = T._relabelling_from(choice(range(9)))
             ....:     T.relabel(p, Gx=Gx)
             ....:     T._set_switch_conditions(T._tt_check, Gx.row(0), VERTICAL)
             ....:     T._set_switch_conditions(T._tt_check, Gx.row(1), VERTICAL)
+
+            sage: from veerer.permutation import perm_random_centralizer
+            sage: T, s, t = VeeringTriangulations.L_shaped_surface(2, 3, 4, 5, 1, 2)
+            sage: Gx = matrix(ZZ, [s, t])
+            sage: p = [8, 7, 0, 6, 2, 5, 4, 3, 1]
 
         Composing relabelings and permutation composition::
 
@@ -1014,6 +1039,9 @@ class VeeringTriangulation(Triangulation):
             ....:     T.relabel(r)
             ....:     T._check()
         """
+        # reset cached attribute
+        del self.__curver
+
         n = self._n
         ep = self._ep
         if not perm_check(p, n):
@@ -1024,19 +1052,13 @@ class VeeringTriangulation(Triangulation):
         if Lx:
             raise NotImplementedError
         if Gx:
-            seen = [False] * self.num_edges()
-            for c in perm_cycles(p):
-                c0 = self._norm(c[0])
-                seen[c0] = True
-                for i in range(1,len(c)):
-                    ci = self._norm(c[i])
-                    if seen[ci]:
-                        break
-                    seen[ci] = True
-                    Gx.swap_columns(c0, ci)
-
+            m = self.num_edges()
+            rr = relabel_on_edges(self._ep, p, self._n, m)
+            for c in perm_cycles(rr, False, m):
+                for i in range(1, len(c)):
+                    Gx.swap_columns(c[0], c[i])
         Triangulation.relabel(self, p)
-        self._colouring = perm_on_array(p, self._colouring)
+        perm_on_list(p, self._colouring)
 
     def _automorphism_good_starts(self):
         r"""
@@ -1170,7 +1192,8 @@ class VeeringTriangulation(Triangulation):
 
             fp = perm_conjugate(self._fp, relabelling)
             ep = perm_conjugate(self._ep, relabelling)
-            cols = perm_on_array(relabelling, self._colouring)
+            cols = self._colouring[:]
+            perm_on_list(relabelling, cols)
 
             T = (cols, fp, ep)
             if best is None or T == best:
@@ -1189,6 +1212,31 @@ class VeeringTriangulation(Triangulation):
 
     def best_relabelling(self, all=False):
         r"""
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: T, s, t = VeeringTriangulations.L_shaped_surface(2, 3, 4, 5, 1, 2)
+            sage: Gx = matrix(ZZ, [s,t])
+            sage: Gx.echelonize()
+            sage: for i in range(9):
+            ....:     p = T._relabelling_from(i)
+            ....:     S = T.copy()
+            ....:     S.relabel(p)
+            ....:     S._check()
+
+        TESTS::
+
+            sage: from veerer import *
+            sage: from veerer.permutation import *
+            sage: T, s, t = VeeringTriangulations.L_shaped_surface(2, 3, 4, 5, 1, 2)
+            sage: Gx = matrix(ZZ, [s,t])
+            sage: Gx.echelonize()
+            sage: T._set_switch_conditions(T._tt_check, Gx.row(0), VERTICAL)
+            sage: T._set_switch_conditions(T._tt_check, Gx.row(1), VERTICAL)
+            sage: p = T._relabelling_from(8)
+            sage: T.relabel(p, Gx=Gx)
+            sage: T._set_switch_conditions(T._tt_check, Gx.row(0), VERTICAL)
+            sage: T._set_switch_conditions(T._tt_check, Gx.row(1), VERTICAL)
         """
         best = None
         if all:
@@ -1199,7 +1247,8 @@ class VeeringTriangulation(Triangulation):
             # relabelled data
             fp = perm_conjugate(self._fp, relabelling)
             ep = perm_conjugate(self._ep, relabelling)
-            cols = perm_on_array(relabelling, self._colouring)
+            cols = self._colouring[:]
+            perm_on_list(relabelling, cols)
 
             T = (cols, fp, ep)
             if best is None or T < best:
@@ -1419,16 +1468,39 @@ class VeeringTriangulation(Triangulation):
             ....:     T.relabel(p)
             ....:     T.set_canonical_labels()
             ....:     assert s0 == T.to_string()
+
+        When a linear space is passed, it is also set in canonical form::
+
+            sage: T, s, t = VeeringTriangulations.L_shaped_surface(2, 3, 4, 5, 1, 2)
+            sage: Gx = matrix(ZZ, [s, t])
+            sage: T.set_canonical_labels(Gx=Gx)
+            sage: T._set_switch_conditions(T._tt_check, Gx.row(0), VERTICAL)
+            sage: T._set_switch_conditions(T._tt_check, Gx.row(1), VERTICAL)
+
         """
+        # reset cached attribute
+        del self.__curver
+
         if Lx:
             raise NotImplementedError
         elif Gx:
+            Gx.echelonize()
             R, (cols, fp, ep) = self.best_relabelling(all=True)
             self.relabel(R[0], Gx=Gx)
             if len(R) == 1:
                 return
+            rbest = perm_invert(R[0])
+            ibest = 0
+            Gbest = Gx.__copy__()
+            Gtmp = Gx
             for i in range(2, len(R)):
-                pass
+                self.relabel(perm_compose_10(R[i-1], R[i]), Gx=Gtmp)
+                Gtmp.echelonize()
+                if Gtmp < Gbest:
+                    ibest = i
+                    Gtmp, Gbest = Gbest, Gtmp
+            if ibest != len(R) - 1:
+                Gx.relabel(perm_invert(R[-1]), rbest)
         else:
             r, (cols, fp, ep) = self.best_relabelling()
             self.relabel(r)
@@ -1502,6 +1574,9 @@ class VeeringTriangulation(Triangulation):
             ....:     T._set_switch_conditions(T._tt_check, Gx.row(0), VERTICAL)
             ....:     T._set_switch_conditions(T._tt_check, Gx.row(1), VERTICAL)
         """
+        # reset cached attribute
+        del self.__curver
+
         if Lx:
             raise NotImplementedError("not implemented for linear equations")
         if Gx:

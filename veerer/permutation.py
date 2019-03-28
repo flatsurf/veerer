@@ -604,25 +604,61 @@ def perm_orbit(p, i):
         j = p[j]
     return res
 
-def perm_on_list(p, t):
+def perm_on_list(p, a, n=None, swap=None):
     r"""
-    Action of the permutation ``p`` on the list ``t``.
+    Inplace action of permutation on list-like objects.
+
+    INPUT:
+
+    - ``p`` - permutation
+
+    - ``a`` - list, array
+
+    - ``n`` - (optional) size of permutation
+
+    - ``swap`` - (optional) a swap function
 
     EXAMPLES::
 
-        sage: from veerer.permutation import perm_on_list
-        sage: perm_on_list([2,1,3,0], [2,1,2,0])
-        [3, 1, 3, 2]
+        sage: from veerer.permutation import *
+        sage: l = [0,1,2,3,4]
+        sage: p = [4,2,3,0,1]
+        sage: perm_on_list(p,l)
+        sage: l
+        [3, 4, 1, 2, 0]
+
+    Permutation action on matrix rows::
+
+        sage: m1 = matrix(ZZ, 5, 5, 1)
+        sage: m2 = matrix(ZZ, 5, 5, 1)
+        sage: m = matrix(ZZ, 5, 5, 1)
+        sage: p1 = perm_init([4,1,3,2,0])
+        sage: p2 = perm_init([1,0,3,4,2])
+        sage: perm_on_list(p1, m1, swap=sage.matrix.matrix0.Matrix.swap_rows)
+        sage: perm_on_list(p2, m2, swap=sage.matrix.matrix0.Matrix.swap_rows)
+        sage: perm_on_list(perm_compose(p1, p2), m, swap=sage.matrix.matrix0.Matrix.swap_rows)
+        sage: m == m2 * m1
+        True
     """
-    return [p[i] for i in t]
-
-def perm_on_array(p, a):
-    n = len(p)
-    b = array('l', [-1]*n)
+    if n is None:
+        n = len(p)
+    seen = [False] * n
     for i in range(n):
-        b[p[i]] = a[i]
-    return b
+        if seen[i]:
+            continue
+        seen[i] = True
+        j = p[i]
+        while seen[j] is False:
+            if swap:
+                swap(a, i, j)
+            else:
+                tmp = a[i]
+                a[i] = a[j]
+                a[j] = tmp
+            seen[j] = True
+            j = p[j]
 
+# WARNING: this is NOT inplace
 def perm_on_cyclic_list(p, t):
     r"""
     Action of the permutation ``p`` on the list ``t`` up to cyclic order.
