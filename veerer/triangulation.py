@@ -1145,7 +1145,7 @@ class Triangulation(object):
             ....:     S.relabel(p)
             ....:     assert S == T
 
-    The sphere example (3 symmetries)::
+        The sphere example (3 symmetries)::
 
             sage: fp = array('l', [1, 2, 0])
             sage: ep = array('l', [0, 1, 2])
@@ -1160,12 +1160,24 @@ class Triangulation(object):
             ....:     S = T.copy()
             ....:     S.relabel(p)
             ....:     assert S == T
+
+        An example with no automorphism::
+
+            sage: T = Triangulation("(0,1,2)(3,4,5)(~0,~3,6)")
+            sage: p = T._relabelling_from(0)
+            sage: T.relabel(p)
+            sage: for i in range(1, 9):
+            ....:     p = T._relabelling_from(i)
+            ....:     S = T.copy()
+            ....:     S.relabel(p)
+            ....:     S._check()
+            ....:     assert S != T
         """
         n = self._n
         ep = self._ep
         vp = self._vp
 
-        k = 0 # current available label at the front.
+        k = 0     # current available label at the front.
         m = n - 1 # current available label at the back.
         relabelling = array('l', [-1] * n)
         relabelling[start_edge] = 0

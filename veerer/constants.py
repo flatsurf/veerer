@@ -26,10 +26,8 @@ SQUARETILED    = 1 << 2
 QUADRANGULABLE = 1 << 3
 CYLINDRICAL    = RED | BLUE
 GEOMETRIC      = 1 << 4
-VBALANCED      = 1 << 5
-HBALANCED      = 1 << 6
 
-ST = SQUARETILED | GEOMETRIC | VBALANCED | HBALANCED
+ST = SQUARETILED | GEOMETRIC
 
 PROPERTIES_COLOURS = {
     NONE : '#FFFFFF',  # white
@@ -43,12 +41,10 @@ PROPERTIES_COLOURS = {
     }
 
 def key_property(p):
-    return -((1<<8) * bool(p & BLUE) | \
-           (1<<7) * bool(p & RED) | \
-           (1<<6) * bool(p & SQUARETILED) | \
-           (1<<5) * bool(p & GEOMETRIC) | \
-           (1<<4) * bool(p & VBALANCED) | \
-           (1<<3) * bool(p & HBALANCED))
+    return -((1<<4) * bool(p & BLUE) | \
+           (1<<3) * bool(p & RED) | \
+           (1<<2) * bool(p & SQUARETILED) | \
+           (1<<1) * bool(p & GEOMETRIC))
 
 def properties_to_string(p):
     r"""
@@ -58,7 +54,7 @@ def properties_to_string(p):
         sage: from veerer.constants import *
         sage: T = VeeringTriangulation("(0,1,8)(2,~7,~1)(3,~0,~2)(4,~5,~3)(5,6,~4)(7,~8,~6)", "BRRRRBRBR")
         sage: properties_to_string(T.properties_code())
-        'red geometric h-balanced'
+        'red geometric'
 
         sage: properties_to_string(ST|BLUE)
         'blue square-tiled'
@@ -91,13 +87,6 @@ def properties_to_string(p):
 
     if p & GEOMETRIC:
         s.append('geometric')
-
-    if p & VBALANCED and p & HBALANCED:
-        s.append('hv-balanced')
-    elif p & HBALANCED:
-        s.append('h-balanced')
-    elif p & VBALANCED:
-        s.append('v-balanced')
 
     if s:
         return ' '.join(s)

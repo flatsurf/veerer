@@ -322,17 +322,7 @@ class Automaton(object):
             sage: from surface_dynamics import *
             sage: A = Automaton.from_stratum(AbelianStratum(2))
             sage: A.statistics()
-            {0: 24,
-             1: 4,
-             2: 4,
-             48: 2,
-             80: 2,
-             112: 24,
-             113: 5,
-             114: 5,
-             120: 10,
-             125: 3,
-             126: 3}
+            {0: 24, 1: 4, 2: 4, 16: 28, 17: 5, 18: 5, 24: 10, 29: 3, 30: 3}
         """
         from collections import defaultdict
         d = defaultdict(int)
