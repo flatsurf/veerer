@@ -13,6 +13,35 @@ Curve [1, 0, 0, 1, 1, 0, 0, 0, 1] on 9_eJYds2lu decomposes as: 1.0.3.~1.~0
 Curve [0, 1, 1, 1, 0, 1, 1, 0, 1] on 9_eJYds2lu decomposes as: 3
 Curve [0, 0, 1, 1, 0, 0, 1, 1, 0] on 9_eJYds2lu decomposes as: 2
 
-Does 0 and 1 commute?
+Q: Do 0 and 1 commute? A: Yes.
 
 %%%
+
+(VeeringTriangulation("(0,4,~5)(1,3,~2)(2,5,~3)(~4,~1,~0)", "RBRRRB"), 4, 1)
+New vertex cycles:
+1: [1, 0, 0, 0, 1, 0]
+2: [0, 0, 1, 1, 0, 0]
+3: [1, 1, 1, 0, 2, 1]
+
+[1, 0, 0, 0, 1, 0] is already carried
+[0, 1, 1, 0, 1, 1] became carried after applying 1
+[0, 0, 1, 1, 0, 0] is already carried
+
+Q: Do old and new intersect once? A: Yes.
+
+%%%
+
+(VeeringTriangulation("(0,~3,2)(1,4,~2)(3,5,~4)(~5,~1,~0)", "RRBBRB"), 3, 1)
+New vertex cycles:
+1: [1, 1, 0, 1, 1, 0]
+2: [0, 0, 1, 1, 1, 0]
+3: [1, 0, 0, 1, 0, 1]
+
+[1, 1, 0, 1, 1, 0] is already carried
+[1, 0, 0, 1, 0, 1] became carried after applying -3.-1
+[0, 0, 1, 1, 1, 0] became carried after applying -2.-1
+
+Q: What is the picture here?
+
+%%%
+
