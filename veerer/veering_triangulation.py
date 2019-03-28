@@ -1772,12 +1772,11 @@ class VeeringTriangulation(Triangulation):
             sage: from veerer.constants import properties_to_string
             sage: T = VeeringTriangulation("(0,1,8)(2,~7,~1)(3,~0,~2)(4,~5,~3)(5,6,~4)(7,~8,~6)", "BRRRRBRBR")
             sage: T.properties_code()
-            81
+            17
             sage: properties_to_string(81)
-            'red geometric h-balanced'
+            'red geometric'
         """
-        from .constants import (BLUE, RED, SQUARETILED, SQUARETILED, QUADRANGULABLE,
-            GEOMETRIC, VBALANCED, HBALANCED)
+        from .constants import BLUE, RED, SQUARETILED, QUADRANGULABLE, GEOMETRIC
 
         code = 0
         if self.is_square_tiled(RED):
@@ -1794,22 +1793,14 @@ class VeeringTriangulation(Triangulation):
             code |= BLUE
         if self.is_geometric():
             code |= GEOMETRIC
-        if self.is_balanced(VERTICAL):
-            code |= VBALANCED
-        if self.is_balanced(HORIZONTAL):
-            code |= HBALANCED
 
         if code & BLUE and code & RED:
             raise RuntimeError("found a blue and red triangulations!")
         if code & SQUARETILED:
             if not code & BLUE and not code & RED:
-                raise RuntimeError("square-tiled should be colored")
+                raise RuntimeError("square-tiled should be coloured")
             if not code & GEOMETRIC:
                 raise RuntimeError("square-tiled should be geometric")
-            if not code & VBALANCED:
-                raise RuntimeError("square-tiled should be v-balanced")
-            if not code & HBALANCED:
-                raise RuntimeError("square-tiled should be h-balanced")
 
         return code
 
