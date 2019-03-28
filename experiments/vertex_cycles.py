@@ -4,6 +4,8 @@ from veerer import *
 from surface_dynamics import *
 from queue import Queue
 
+import ppl
+
 def compose(P):
     assert P
     h = None
@@ -91,6 +93,44 @@ def test_conjugators(T, edge, colour):
                     if len(names) % 10000 == 0: print('expanding seen past {}'.format(len(names)))
         print('{:s} decomposes as: {}'.format(list(cycle), '.'.join(map(str, names[twist]))))
 
+def test_conjugators(T, edge, colour):
+    ''' Test whether new twists can be applied to the vertex cycles of T to make them carried after the split.
+    
+    This is the same as seeing whether the twists about the vertex cycles of T can be written as conjugate of a product of twists in the vertex cycles of T'. '''
+    current, future = current_future_vertex_cycles(T, edge, colour)
+    future = list(future)
+    T2 = T.copy()
+    T2.flip(edge, colour)
+    polytope = T2.train_track_polytope()
+    twists = [((index+1) * (+1 if k == 1 else -1), curve.encode_twist(power=k)) for index, curve in enumerate(future) for k in [-1, +1]]
+    print('New vertex cycles:')
+    for index, curve in enumerate(future):
+        print('{}: {}'.format(index+1, list(curve)))
+    print('')
+    
+    for cycle in current:
+        if polytope.contains(ppl.polyhedron.C_Polyhedron(ppl.point(ppl.Linear_Expression(list(cycle), 0)))):
+            print('{} is already carried'.format(list(cycle)))
+            continue
+        
+        names = {cycle: tuple()}
+        to_do = Queue()
+        to_do.put(cycle)
+        found = False
+        while not found:
+            current = to_do.get()
+            for symbol, twist in twists:
+                new = twist(current)
+                if new not in names:
+                    names[new] = (symbol,) + names[current]
+                    to_do.put(new)
+                    if len(names) % 10000 == 0: print('expanding seen past {}'.format(len(names)))
+                    
+                    if polytope.contains(ppl.polyhedron.C_Polyhedron(ppl.point(ppl.Linear_Expression(list(new), 0)))):
+                        print('{} became carried after applying {}'.format(list(cycle), '.'.join(map(str, names[new]))))
+                        found = True
+                        break
+
 def test_all_in(stratum):
     for T in Automaton.from_stratum(stratum):
         print(T)
@@ -107,6 +147,6 @@ def intersection_matrix(T):
 if __name__ == '__main__':
     # T = VeeringTriangulation("(0,~2,1)(2,4,~3)(3,~5,~4)(5,~1,~0)", "RBBRBB")
     # test(T, 2, BLUE)
-    test_all_in(QuadraticStratum(1, 1, -1, -1))
-    # test_all_in(AbelianStratum(0, 0, 0))
+    # test_all_in(QuadraticStratum(1, 1, -1, -1))
+    test_all_in(AbelianStratum(0, 0, 0))
 
