@@ -28,8 +28,8 @@ def current_future_vertex_cycles(T1, edge, colour):
     T1_flipper = T1.to_curver()
     flip = T1_flipper.encode_flip(~edge)
     
-    current = vertex_cycles(T1)
-    future = set(flip.inverse()(curve) for curve in vertex_cycles(T2))
+    current = set(flip(curve) for curve in vertex_cycles(T1))
+    future = vertex_cycles(T2)
     return current, future
 
 def core_flips(T):
@@ -47,6 +47,7 @@ def test(T, edge, colour):
     ''' Test whether the vertex cycles of T can be written as a product of twists in the vertex cycles of T after the given edge has been split. '''
     convert = lambda X: (X[0], tuple(X[1].flatten()))  # Since numpy.ndarrays are not hashable we need a converter.
     current, future = current_future_vertex_cycles(T, edge, colour)
+    assert False
     twists = [(('' if k == 1 else '~') + str(index), curve.encode_twist(power=k), curve.encode_twist(power=k).homology_matrix()) for index, curve in enumerate(future) for k in [-1, +1]]
     
     identity = T.to_curver().id_encoding()
@@ -125,5 +126,6 @@ if __name__ == '__main__':
     # T = VeeringTriangulation("(0,~2,1)(2,4,~3)(3,~5,~4)(5,~1,~0)", "RBBRBB")
     # test(T, 2, BLUE)
     # test_all_in(QuadraticStratum(1, 1, -1, -1))
-    test_all_in(AbelianStratum(0, 0))
+    test_all_in(QuadraticStratum(1, 1, -1, -1))
+    # test_all_in(AbelianStratum(0, 0, 0))
 
