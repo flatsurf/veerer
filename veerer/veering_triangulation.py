@@ -112,7 +112,7 @@ class VeeringTriangulation(Triangulation):
         sage: VeeringTriangulation.from_pseudo_anosov(h)
         VeeringTriangulation("(0,~3,~1)...(12,~14,~10)(~2,~9,~4)", "RBRBRRBRBBBBRBR")
     """
-    __slots__ = ['_colouring', '__curver']
+    __slots__ = ['_colouring']
 
     def __init__(self, triangulation,  colouring, check=True):
         Triangulation.__init__(self, triangulation, check=False)
@@ -479,10 +479,6 @@ class VeeringTriangulation(Triangulation):
             sage: T.to_curver()
             [(~2, ~0, ~1), (0, 1, 2)]
         """
-        try:
-            return self.__curver
-        except AttributeError:
-            pass
         require_package('curver', 'to_curver')
         ep = self._ep
         F = []
@@ -768,7 +764,6 @@ class VeeringTriangulation(Triangulation):
             print("Warning: alternating_square is not carefullly defined with GREEN/PURPLE edges")
         return all(colours[f] != colours[(f+1) % 4] for f in range(4))
 
-
     def vertex_cycles(self, slope=VERTICAL):
         r"""
         Return the vertex cycles as curves on the (curver) triangulation.
@@ -786,7 +781,7 @@ class VeeringTriangulation(Triangulation):
         """
         require_package('curver', 'vertex_cycles')
         polytope = self.train_track_polytope(slope=slope)
-        rays = [gen for gen in polytope.generators() if gen.is_ray()]
+        rays = [g for g in polytope.generators() if g.is_ray()]
         T = self.to_curver()
         return [T.lamination([int(x) for x in ray.coefficients()]) for ray in rays]
 
@@ -1039,9 +1034,6 @@ class VeeringTriangulation(Triangulation):
             ....:     T.relabel(r)
             ....:     T._check()
         """
-        # reset cached attribute
-        del self.__curver
-
         n = self._n
         ep = self._ep
         if not perm_check(p, n):
@@ -1478,9 +1470,6 @@ class VeeringTriangulation(Triangulation):
             sage: T._set_switch_conditions(T._tt_check, Gx.row(1), VERTICAL)
 
         """
-        # reset cached attribute
-        del self.__curver
-
         if Lx:
             raise NotImplementedError
         elif Gx:
@@ -1574,9 +1563,6 @@ class VeeringTriangulation(Triangulation):
             ....:     T._set_switch_conditions(T._tt_check, Gx.row(0), VERTICAL)
             ....:     T._set_switch_conditions(T._tt_check, Gx.row(1), VERTICAL)
         """
-        # reset cached attribute
-        del self.__curver
-
         if Lx:
             raise NotImplementedError("not implemented for linear equations")
         if Gx:
