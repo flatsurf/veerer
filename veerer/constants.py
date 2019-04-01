@@ -41,10 +41,11 @@ PROPERTIES_COLOURS = {
     }
 
 def key_property(p):
-    return -((1<<4) * bool(p & BLUE) | \
-           (1<<3) * bool(p & RED) | \
-           (1<<2) * bool(p & SQUARETILED) | \
-           (1<<1) * bool(p & GEOMETRIC))
+    return -((1<<4) * bool(p & SQUARETILED) | \
+           (1<<3) * bool(p & GEOMETRIC) | \
+           (1<<2) * bool(p & QUADRANGULABLE) | \
+           (1<<1) * bool(p & RED) | \
+           (1<<0) * bool(p & BLUE))
 
 def properties_to_string(p):
     r"""

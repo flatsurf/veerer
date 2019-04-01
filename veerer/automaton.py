@@ -316,12 +316,17 @@ class Automaton(object):
         Return detailed statistics about the properties of the veering
         triangulations.
 
+        .. SEEALSO::
+
+            :meth:`print_statistics`
+
         EXAMPLES::
 
             sage: from veerer import *
             sage: from surface_dynamics import *
             sage: A = Automaton.from_stratum(AbelianStratum(2))
-            sage: A.statistics()
+            sage: st = A.statistics()
+            sage: st
             {0: 24, 1: 4, 2: 4, 16: 28, 17: 5, 18: 5, 24: 10, 29: 3, 30: 3}
         """
         from collections import defaultdict
@@ -329,6 +334,33 @@ class Automaton(object):
         for vt in self:
             d[vt.properties_code()] += 1
         return dict(d)
+
+    def print_statistics(self, f=None):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: from surface_dynamics import *
+            sage: A = Automaton.from_stratum(AbelianStratum(2))
+            sage: A.print_statistics()
+                    red square-tiled 3
+                   blue square-tiled 3
+            quadrangulable geometric 10
+                       red geometric 5
+                      blue geometric 5
+                           geometric 28
+                                 red 4
+                                blue 4
+                                none 24
+        """
+        if f is None:
+            from sys import stdout
+            f = stdout
+        from veerer.constants import properties_to_string, key_property
+        st = self.statistics()
+        for k in sorted(st, key=key_property):
+            v = st[k]
+            f.write("%24s %d\n" % (properties_to_string(k), v))
 
     def geometric_triangulations(self, method=None):
         r"""
