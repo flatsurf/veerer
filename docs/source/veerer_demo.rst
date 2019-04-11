@@ -1,5 +1,9 @@
+.. -*- coding: utf-8 -*-
+.. linkall
+
 Veering triangulation demo
 ==========================
+
 
 :Authors:
     - Vincent Delecroix
@@ -128,12 +132,12 @@ train-tracks.
 ::
 
     sage: VeeringTriangulation.from_stratum(Qreg)
-    [(0, 19, ~18), (1, 20, ~19), (2, 21, ~20), (3, 22, ~21), (4, 23, ~22), (5, 25, ~24), (6, 27, ~26), (7, 28, ~27), (8, 29, ~28), (9, ~15, 16), (10, ~6, ~29), (11, ~1, ~10), (12, ~9, ~11), (13, ~7, ~12), (14, ~2, ~13), (15, ~0, ~14), (17, ~8, ~16), (18, ~5, ~17), (24, ~23, ~3), (26, ~25, ~4)], 'RRRRRRRRRRBBBBBBBBBBBBBBBBBBBB'
+    VeeringTriangulation("(0,19,~18)(1,20,~19)(2,21,~20)(3,22,~21)(4,23,~22)(5,25,~24)(6,27,~26)(7,28,~27)(8,29,~28)(9,~16,17)(10,~5,~29)(11,~6,~10)(12,~1,~11)(13,~9,~12)(14,~7,~13)(15,~2,~14)(16,~0,~15)(18,~8,~17)(24,~23,~3)(26,~25,~4)", "RRRRRRRRRRBBBBBBBBBBBBBBBBBBBB")
 
 ::
 
     sage: VeeringTriangulation.from_stratum(Qirr)
-    [(0, 21, ~20), (1, 22, ~21), (2, 23, ~22), (3, 24, ~23), (4, 25, ~24), (5, 26, ~25), (6, 28, ~27), (7, 29, ~28), (8, ~15, 16), (9, ~13, 14), (10, ~1, ~29), (11, ~6, ~10), (12, ~9, ~11), (13, ~8, ~12), (15, ~4, ~14), (17, ~5, ~16), (18, ~3, ~17), (19, ~7, ~18), (20, ~2, ~19), (27, ~26, ~0)], 'RRRRRRRRRRBBBBBBBBBBBBBBBBBBBB'
+    VeeringTriangulation("(0,21,~20)(1,22,~21)(2,23,~22)(3,24,~23)(4,25,~24)(5,26,~25)(6,28,~27)(7,29,~28)(8,~16,17)(9,~14,15)(10,~2,~29)(11,~1,~10)(12,~6,~11)(13,~9,~12)(14,~8,~13)(16,~4,~15)(18,~5,~17)(19,~3,~18)(20,~7,~19)(27,~26,~0)", "RRRRRRRRRRBBBBBBBBBBBBBBBBBBBB")
 
 ::
 
@@ -141,14 +145,13 @@ train-tracks.
     sage: import flipper
     sage: S_2_1 = flipper.load('S_2_1')
     sage: h = S_2_1.mapping_class('abcD')
-    sage: print h.nielsen_thurston_type()
+    sage: print(h.nielsen_thurston_type())
     Pseudo-Anosov
 
 ::
 
     sage: VeeringTriangulation.from_pseudo_anosov(h)
-    [(0, ~3, ~1), (1, 2, 14), (3, ~5, ~13), (4, ~12, ~8), (5, 6, ~11), (7, 8, 13), (9, ~6, ~7), (10, ~0, 11), (12, ~14, ~10), (~2, ~9, ~4)], 'RBRBRRBRBBBBRBR'
-
+    VeeringTriangulation("(0,~3,~1)(1,2,14)(3,~5,~13)(4,~12,~8)(5,6,~11)(7,8,13)(9,~6,~7)(10,~0,11)(12,~14,~10)(~2,~9,~4)", "RBRBRRBRBBBBRBR")
 
 Core vs not core
 ----------------
@@ -190,6 +193,7 @@ Core vs not core
 
     sage: FS = S.flat_structure_min()
     sage: FS.plot()
+    Graphics object consisting of 37 graphics primitives
 
 ::
 
@@ -320,38 +324,14 @@ filtering cylindrical (single test is cheap) ~2 sec for H(4)^hyp
 ::
 
     sage: H = AbelianStratum(4).hyperelliptic_component()
-
-::
-
-    sage: %%time
     sage: V = VeeringTriangulation.from_stratum(H)
-    sage: AV = Automaton.from_triangulation(V)
-    CPU times: user 23 s, sys: 15.9 ms, total: 23 s
-    Wall time: 23 s
-
-::
-
-    sage: %%time
-    sage: print(AV.num_states())
+    sage: AV = Automaton.from_triangulation(V)       # long time - ~21 secs
+    sage: print(AV.num_states())                     # long time - ~150 µs
     9116
-    CPU times: user 148 µs, sys: 2 µs, total: 150 µs
-    Wall time: 117 µs
-
-::
-
-    sage: %%time
-    sage: print(AV.num_geometric_triangulations())
+    sage: print(AV.num_geometric_triangulations())   # long time - ~21 secs
     2916
-    CPU times: user 21.2 s, sys: 6.12 ms, total: 21.2 s
-    Wall time: 21.3 s
-
-::
-
-    sage: %%time
-    sage: print(AV.num_cylindrical_triangulations())
+    sage: print(AV.num_cylindrical_triangulations()) # long time - ~1.5 secs
     636
-    CPU times: user 1.53 s, sys: 3.29 ms, total: 1.53 s
-    Wall time: 1.53 s
 
 License
 -------
