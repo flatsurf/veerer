@@ -88,12 +88,23 @@ geom. bal. (22824)
 example: VeeringTriangulation("(0,~14,~5)(1,12,~2)(2,~9,~3)(3,8,~4)(4,~1,~0)(5,~12,~6)(6,11,~7)(7,~13,~8)(9,13,~10)(10,14,~11)", "RBBBBBRBRRBBRBR")
 
 
+Q(8)
+not geom. not bal. (86436)
+example: VeeringTriangulation("(0,~10,9)(1,~14,~2)(2,13,~3)(3,14,~4)(4,~13,~5)(5,~11,~6)(6,10,~7)(7,~12,~8)(8,11,~9)(12,~1,~0)", "RBBBBBBRBBBRBRR")
+
+not geom. bal. (136)
+example: VeeringTriangulation("(0,~8,7)(1,14,~2)(2,~12,~3)(3,11,~4)(4,13,~5)(5,~11,~6)(6,10,~7)(8,~14,~9)(9,~13,~10)(12,~1,~0)", "RBBBRRBBBBRBRBR")
+
+geom. not bal. (35014)
+example: VeeringTriangulation("(0,~14,~11)(1,12,~2)(2,13,~3)(3,~12,~4)(4,~8,~5)(5,7,~6)(6,14,~7)(8,11,~9)(9,~13,~10)(10,~1,~0)", "RBBBBBBRRBBBRRB")
+
+geom. bal. (30944)
+example: VeeringTriangulation("(0,~8,7)(1,14,~2)(2,~13,~3)(3,12,~4)(4,~9,~5)(5,8,~6)(6,~12,~7)(9,~14,~10)(10,13,~11)(11,~1,~0)", "RBBBBRBBBBBBRRR")
+
 
 
 MORE TO COME
 ------------
-
-Q(8)
 
 H(3,1)
 
