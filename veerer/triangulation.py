@@ -2,7 +2,7 @@ r"""
 Triangulation of surfaces.
 """
 from __future__ import absolute_import, print_function
-from six.moves import range, map, zip
+from six.moves import range, map, filter, zip
 
 from array import array
 from .permutation import *
@@ -397,7 +397,7 @@ class Triangulation(object):
         return sum(ep[i] == i for i in range(n))
 
     def num_edges(self):
-        return (self._n + self.num_folded_edges()) / 2
+        return (self._n + self.num_folded_edges()) // 2
 
     def _edge_rep(self, e):
         f = self._ep[e]
