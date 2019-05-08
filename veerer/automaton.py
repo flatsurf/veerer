@@ -11,7 +11,7 @@ from .constants import *
 
 from .env import sage
 
-class Automaton(object):
+class CoreAutomaton(object):
     r"""
     Automaton of core veering triangulations.
 
@@ -21,26 +21,26 @@ class Automaton(object):
         sage: from surface_dynamics import *
 
         sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
-        sage: A = Automaton.from_triangulation(T)
+        sage: A = CoreAutomaton.from_triangulation(T)
         sage: len(A)
         2
 
-        sage: Automaton.from_stratum(AbelianStratum(2))
+        sage: CoreAutomaton.from_stratum(AbelianStratum(2))
         Core veering automaton with 86 vertices
 
-        sage: Automaton.from_stratum(QuadraticStratum(2,-1,-1))
+        sage: CoreAutomaton.from_stratum(QuadraticStratum(2,-1,-1))
         Core veering automaton with 160 vertices
 
-        sage: Automaton.from_stratum(QuadraticStratum(2,2))
+        sage: CoreAutomaton.from_stratum(QuadraticStratum(2,2))
         Core veering automaton with 846 vertices
 
-        sage: Automaton.from_stratum(AbelianStratum(1,1))
+        sage: CoreAutomaton.from_stratum(AbelianStratum(1,1))
         Core veering automaton with 876 vertices
 
     Quadratic strata::
 
         sage: T = VeeringTriangulation('(0,1,2)', 'BBR')
-        sage: A = Automaton.from_triangulation(T)
+        sage: A = CoreAutomaton.from_triangulation(T)
         sage: len(A)
         2
 
@@ -49,7 +49,7 @@ class Automaton(object):
         sage: fp = '(0,1,2)(~0,~3,~8)(3,5,4)(~4,~1,~5)(6,7,8)(~6,9,~2)'
         sage: cols = 'BRBRBBBRBR'
         sage: T = VeeringTriangulation(fp, cols)
-        sage: A = Automaton.from_triangulation(T)
+        sage: A = CoreAutomaton.from_triangulation(T)
         sage: len(A)
         1074
     """
@@ -93,7 +93,7 @@ class Automaton(object):
             sage: fp = "(0,~7,6)(1,~8,~2)(2,~6,~3)(3,5,~4)(4,8,~5)(7,~1,~0)"
             sage: cols = 'RBRBRBBBB'
             sage: T = VeeringTriangulation(fp, cols)
-            sage: A = Automaton.from_triangulation(T)
+            sage: A = CoreAutomaton.from_triangulation(T)
             sage: A
             Core veering automaton with 86 vertices
 
@@ -130,7 +130,7 @@ class Automaton(object):
             sage: from surface_dynamics import *
 
             sage: T = VeeringTriangulation.from_stratum(AbelianStratum(2))
-            sage: A = Automaton.from_triangulation(T)
+            sage: A = CoreAutomaton.from_triangulation(T)
             sage: rot = A.rotation_automorphism()
 
             sage: G = A.to_graph()
@@ -154,7 +154,7 @@ class Automaton(object):
             sage: from surface_dynamics import *
 
             sage: T = VeeringTriangulation.from_stratum(AbelianStratum(2))
-            sage: A = Automaton.from_triangulation(T)
+            sage: A = CoreAutomaton.from_triangulation(T)
             sage: conj = A.conjugation_automorphism()
 
             sage: G = A.to_graph()
@@ -205,7 +205,7 @@ class Automaton(object):
 
             sage: filename = tmp_filename() + '.dot'
             sage: T = VeeringTriangulation.from_stratum(AbelianStratum(2))
-            sage: A = Automaton.from_triangulation(T)
+            sage: A = CoreAutomaton.from_triangulation(T)
             sage: A.export_dot(filename)
         """
         if filename is not None:
@@ -273,7 +273,7 @@ class Automaton(object):
             sage: from veerer import *
             sage: from surface_dynamics import *
 
-            sage: A = Automaton.from_stratum(AbelianStratum(2))
+            sage: A = CoreAutomaton.from_stratum(AbelianStratum(2))
             sage: A.triangulations()
             <generator object __iter__ at ...>
             sage: for t in A.triangulations():
@@ -289,7 +289,7 @@ class Automaton(object):
 
             sage: from veerer import *
             sage: from surface_dynamics import *
-            sage: A = Automaton.from_stratum(AbelianStratum(2))
+            sage: A = CoreAutomaton.from_stratum(AbelianStratum(2))
             sage: A.num_triangulations()
             86
         """
@@ -305,7 +305,7 @@ class Automaton(object):
 
             sage: from veerer import *
             sage: from surface_dynamics import *
-            sage: A = Automaton.from_stratum(AbelianStratum(2))
+            sage: A = CoreAutomaton.from_stratum(AbelianStratum(2))
             sage: A.num_transitions()
             300
         """
@@ -324,7 +324,7 @@ class Automaton(object):
 
             sage: from veerer import *
             sage: from surface_dynamics import *
-            sage: A = Automaton.from_stratum(AbelianStratum(2))
+            sage: A = CoreAutomaton.from_stratum(AbelianStratum(2))
             sage: st = A.statistics()
             sage: st
             {0: 24, 1: 4, 2: 4, 16: 28, 17: 5, 18: 5, 24: 10, 29: 3, 30: 3}
@@ -341,7 +341,7 @@ class Automaton(object):
 
             sage: from veerer import *
             sage: from surface_dynamics import *
-            sage: A = Automaton.from_stratum(AbelianStratum(2))
+            sage: A = CoreAutomaton.from_stratum(AbelianStratum(2))
             sage: A.print_statistics()
                     red square-tiled 3
                    blue square-tiled 3
@@ -372,7 +372,7 @@ class Automaton(object):
             sage: from veerer import *
             sage: from surface_dynamics import *
 
-            sage: A = Automaton.from_stratum(AbelianStratum(2))
+            sage: A = CoreAutomaton.from_stratum(AbelianStratum(2))
             sage: vt, P = next(A.geometric_triangulations())
             sage: vt.geometric_polytope() == P
             True
@@ -396,7 +396,7 @@ class Automaton(object):
 
             sage: from veerer import *
             sage: from surface_dynamics import *
-            sage: A = Automaton.from_stratum(AbelianStratum(2))
+            sage: A = CoreAutomaton.from_stratum(AbelianStratum(2))
             sage: A.num_geometric_triangulations()
             54
         """
@@ -412,7 +412,7 @@ class Automaton(object):
             sage: from surface_dynamics import *
 
             sage: T = VeeringTriangulation.from_stratum(AbelianStratum(2))
-            sage: A = Automaton.from_triangulation(T)
+            sage: A = CoreAutomaton.from_triangulation(T)
 
             sage: vt = next(A.cylindrical_triangulations())
             sage: sum(len(u) for u in vt.cylinders(BLUE)) == 6 or \
@@ -538,7 +538,7 @@ class Automaton(object):
 
         if verbose == 1:
             print('\r[automaton] %8d      %8d      %.3f      ' % (len(graph),len(branch),time()-t0))
-        return Automaton(graph)
+        return CoreAutomaton(graph)
 
     @classmethod
     def from_stratum(self, stratum):
@@ -547,7 +547,7 @@ class Automaton(object):
 
             sage: from veerer import *
             sage: from surface_dynamics import *
-            sage: Automaton.from_stratum(AbelianStratum(2))
+            sage: CoreAutomaton.from_stratum(AbelianStratum(2))
             Core veering automaton with 86 vertices
         """
         return self.from_triangulation(VeeringTriangulation.from_stratum(stratum))
