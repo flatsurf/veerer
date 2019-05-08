@@ -2,9 +2,61 @@ r"""
 Utility functions.
 """
 
+from __future__ import print_function, absolute_import
+
 
 def det2(u, v):
     return u[0]*v[1] - u[1]*v[0]
+
+def flipper_edge(T, e):
+    r"""
+    EXAMPLES::
+
+        sage: import flipper
+        sage: from veerer.layout import flipper_edge
+
+        sage: T = flipper.create_triangulation([(0r,1r,2r),(-1r,-2r,-3r)])
+        sage: sorted([flipper_edge(T, e) for e in T.edges])
+        [0, 1, 2, 3, 4, 5]
+    """
+    n = (3 * T.num_triangles)
+    e = e.label
+    return n * (e < 0) + e
+
+def flipper_edge_perm(n):
+    from array import array
+    return array('l', range(n-1,-1,-1))
+
+def flipper_face_edge_perms(T):
+    r"""
+    Return a pair ``(face permutation, edge permutation)`` from a flipper triangulation.
+    """
+    from .permutation import perm_init
+    n = 3 * T.num_triangles # number of half edges
+
+    # extract triangulation
+    triangles = [(flipper_edge(T, e), flipper_edge(T, f), flipper_edge(T, g)) for e,f,g in T]
+    return perm_init(triangles), flipper_edge_perm(n)
+
+def flipper_isometry_to_perm(isom, ep, inv=False):
+    r"""
+    Question: how do we create an isometry in flipper?
+    """
+    from array import array
+    n = isom.zeta
+    p = array('l', [-1]*(2*n))
+    if inv:
+        dic = isom.inverse_label_map
+    else:
+        dic = isom.label_map
+
+    for i,j in dic.items():
+        if i < 0:
+            i = ep[~i]
+        if j < 0:
+            j = ep[~j]
+        p[i] = j
+    return p
 
 def flipper_nf_to_sage(K, name='a'):
     r"""

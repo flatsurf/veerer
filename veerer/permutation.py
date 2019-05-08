@@ -1,5 +1,14 @@
 r"""
 Partial permutation on `\{0, 1, ..., n-1\}`.
+
+TODO:
+
+- We want much faster datastructure (ie C array)
+
+- In many situations, we need a bitarray of the size of
+  the permutation (conjugation, composition, etc). But
+  such array should not be allocated each time the function
+  is called.
 """
 from __future__ import absolute_import, print_function
 from six.moves import range, map, zip
@@ -161,6 +170,12 @@ def perm_init(data, n=None, involution=None):
     if isinstance(data, str):
         c = str_to_cycles(data)
         return perm_from_cycles(c, n=n, involution=involution)
+
+    if data.__module__.startswith('flipper'):
+        if involution is None:
+            raise ValueError("involution must be provided")
+        from .misc import flipper_isometry_to_perm
+        return flipper_isometry_to_perm(data, involution)
 
     raise TypeError("The input must be list, tuple or string")
 
@@ -329,6 +344,7 @@ def perm_random_conjugacy_class(c):
 #####################################################################
 # Serialization
 #####################################################################
+# TODO: this is called often and would better be cythonized
 
 CHARS = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+-'
 CHARS_INV = {j:i for i,j in enumerate(CHARS)}
@@ -486,6 +502,9 @@ def perm_cycles(p, singletons=True, n=None):
     """
     if n is None:
         n = len(p)
+    elif n < 0 or n > len(p):
+        raise ValueError
+
     seen = [False] * n
     res = []
 

@@ -1,5 +1,5 @@
 r"""
-Flat veering triangulations.
+Display for veering triangulations.
 
 Note:
 
@@ -30,11 +30,11 @@ from sage.plot.bezier_path import bezier_path
 from sage.plot.point import point2d
 
 from .constants import BLUE, RED, PURPLE, GREEN, HORIZONTAL, VERTICAL
-from .misc import flipper_nf_to_sage, flipper_nf_element_to_sage, det2
+from .permutation import perm_init, perm_check, perm_on_list
+from .misc import flipper_edge, flipper_edge_perm, flipper_nf_to_sage, flipper_nf_element_to_sage, det2, flipper_face_edge_perms
 from .triangulation import Triangulation
 from .veering_triangulation import VeeringTriangulation
 
-QQx = PolynomialRing(QQ, 'x')
 _Fields = Fields()
 
 EDGE_COLORS = {
@@ -44,25 +44,6 @@ EDGE_COLORS = {
     GREEN: 'green'
     }
 
-
-def flipper_edge(T, e):
-    r"""
-    EXAMPLES::
-
-        sage: import flipper
-        sage: from veerer.layout import flipper_edge
-
-        sage: T = flipper.create_triangulation([(0r,1r,2r),(-1r,-2r,-3r)])
-        sage: sorted([flipper_edge(T, e) for e in T.edges])
-        [0, 1, 2, 3, 4, 5]
-    """
-    n = (3 * T.num_triangles)
-    e = e.label
-    return n * (e < 0) + e
-
-def flipper_edge_perm(n):
-    from array import array
-    return array('l', range(n-1,-1,-1))
 
 def vec_slope(v):
     r"""
@@ -122,9 +103,12 @@ def has_intersection(triangles, new_triangle, pos):
 # given a pseudo-Anosov, generate its L^infinity Delaunay sequence
 # (as well as back and forth with flipper)
 
-class FlatVeeringTriangulationLayout:
+class FlatVeeringTriangulationLayout(object):
     r"""
     A flat triangulation.
+
+    The vectors are kept coherently within triangles (ie a+b+c = 0). A pair of
+    edges (e, E) can either be glued via translation or point symmetry.
 
     EXAMPLES:
 
@@ -194,7 +178,7 @@ class FlatVeeringTriangulationLayout:
         cols = [vec_slope(self._vectors[e]) for e in range(n)]
         self._triangulation = VeeringTriangulation(self._triangulation, cols)
 
-        # for actual display
+        # for actual display. Isn't it dangerous to keep it?
         self._pos = None                     # vertex positions (list of length n)
 
         self._check()
@@ -248,6 +232,18 @@ class FlatVeeringTriangulationLayout:
                                    b, vectors[b],
                                    c, vectors[c]))
 
+    def copy(self):
+        res = FlatVeeringTriangulationLayout.__new__(FlatVeeringTriangulationLayout)
+        res._triangulation = self._triangulation.copy()
+        res._V = self._V
+        res._K = self._K
+        res._vectors = [v.__copy__() for v in self._vectors]
+        if self._pos is not None:
+            res._pos = [v.__copy__() for v in self._pos]
+        else:
+            res._pos = None
+        return res
+
     @classmethod
     def from_pseudo_anosov(cls, h):
         r"""
@@ -259,19 +255,26 @@ class FlatVeeringTriangulationLayout:
             sage: from veerer import *
 
             sage: T = flipper.load('SB_4')
-            sage: h = T.mapping_class('s_0S_1s_2S_3s_1S_2')
-            sage: FlatVeeringTriangulationLayout.from_pseudo_anosov(h)
+            sage: h = T.mapping_class('s_0S_1s_2S_3s_1S_2').canonical()
+            sage: F = FlatVeeringTriangulationLayout.from_pseudo_anosov(h)
+            sage: F
             Flat Triangulation made of 4 triangles
+
+        The flipper and veerer triangulations carry the same edge labels::
+
+            sage: F._triangulation
+            VeeringTriangulation("(0,7,~15)(1,4,5)(2,17,12)(3,~4,~17)(6,~7,~5)(8,~9,~0)(9,10,~13)(11,~1,~16)(13,~12,~10)(14,15,~2)(16,~8,~3)(~14,~11,~6)", "RRRRBBRBBRBBRRBRBB")
+            sage: h.source_triangulation
+            [(~17, 3, ~4), (~16, 11, ~1), (~15, 0, 7), (~14, ~11, ~6), (~13, 10, ~12), (~10, 9, 13), (~9, ~0, 8), (~8, ~3, 16), (~7, ~5, 6), (~2, 14, 15), (1, 4, 5), (2, 17, 12)]
+
         """
         from permutation import perm_init
+
         Fh = h.flat_structure()
         Th = Fh.triangulation
         n = 3 * Th.num_triangles # number of half edges
 
-        # extract triangulation
-        triangles = [(flipper_edge(Th, e), flipper_edge(Th, f), flipper_edge(Th, g)) for e,f,g in Th]
-        fp = perm_init(triangles)
-        ep = flipper_edge_perm(n)
+        fp, ep = flipper_face_edge_perms(Th)
         T = Triangulation.from_face_edge_perms(fp, ep)
 
         # extract flat structure
@@ -315,6 +318,11 @@ class FlatVeeringTriangulationLayout:
         return 'Flat Triangulation made of %s triangles' % self._triangulation.num_faces()
 
     def _edge_is_boundary(self, e):
+        r"""
+        Test whether the edge ``e`` is on the boundary of the display.
+        """
+        if self._pos is None:
+            return False
         fp = self._triangulation.face_permutation(copy=False)
         ep = self._triangulation.edge_permutation(copy=False)
         pos = self._pos
@@ -322,14 +330,26 @@ class FlatVeeringTriangulationLayout:
         E = ep[e]
         return pos[fp[e]] is None or pos[E] is None or pos[fp[e]] != pos[E] or vectors[e] != -vectors[E]
 
+    # there is something wrong with edge gluing
+    # sometimes we end up with non-valid positions...
     def glue_edge(self, e):
         r"""
-        Glue the triangle accross the edge ``e`` to ``e``.
-        """
-        if not self._edge_is_boundary(e):
-            return
+        Glue the triangle accross the edge ``e`` to ``E`` so that
+        we have a quadrilateral around ``e``.
 
-        pos = self._pos
+        TESTS::
+
+            sage: from veerer import *
+            sage: t = "(0,~10,9)(1,~14,~2)(2,13,~3)(3,14,~4)(4,~13,~5)(5,~11,~6)(6,10,~7)(7,~12,~8)(8,11,~9)(12,~1,~0)"
+            sage: cols = "RBBBBBBRBBBRBRR"
+            sage: T = VeeringTriangulation(t, cols)
+            sage: F = T.flat_structure_middle()
+            sage: F.set_pos()
+            sage: for _ in range(100):
+            ....:     e = randrange(15)
+            ....:     _ = F.glue_edge(e)
+            ....:     F._check()
+        """
         vectors = self._vectors
         fp = self._triangulation.face_permutation(False)
         ep = self._triangulation.edge_permutation(False)
@@ -337,24 +357,27 @@ class FlatVeeringTriangulationLayout:
         b = fp[a]
         c = fp[b]
 
-        if pos[e] is None:
-            raise RuntimeError
-
+        # point-symmetry applied to the triangle
         if a != e and vectors[a] == vectors[e]:
             vectors[a] *= -1
             vectors[b] *= -1
             vectors[c] *= -1
 
-        if a != e:
-            pos[a] = pos[e] + vectors[e]
-        pos[b] = pos[a] + vectors[a]
-        pos[c] = pos[b] + vectors[b]
-        xmin = min(pos[a][0], pos[b][0], pos[c][0])
-        xmax = max(pos[a][0], pos[b][0], pos[c][0])
-        ymin = min(pos[a][1], pos[b][1], pos[c][1])
-        ymax = max(pos[a][1], pos[b][1], pos[c][1])
+        if self._edge_is_boundary(e):
+            pos = self._pos
+            if pos is None or pos[e] is None:
+                raise RuntimeError
 
-        return xmin, xmax, ymin, ymax
+            if a != e:
+                pos[a] = pos[e] + vectors[e]
+            pos[b] = pos[a] + vectors[a]
+            pos[c] = pos[b] + vectors[b]
+            xmin = min(pos[a][0], pos[b][0], pos[c][0])
+            xmax = max(pos[a][0], pos[b][0], pos[c][0])
+            ymin = min(pos[a][1], pos[b][1], pos[c][1])
+            ymax = max(pos[a][1], pos[b][1], pos[c][1])
+
+            return xmin, xmax, ymin, ymax
 
     def set_pos(self, cylinders=None, y_space=0.1):
         r"""
@@ -502,23 +525,67 @@ class FlatVeeringTriangulationLayout:
             if self._pos[e] is None:
                 raise RuntimeError('pos[%s] not set properly' % e)
 
+    def relabel(self, p):
+        r"""
+        EXAMPLES::
+
+            sage: import veerer
+            sage: T = veerer.VeeringTriangulation("(0,1,2)(~0,~1,~2)", [1, 2, 2])
+            sage: F = T.flat_structure_middle()
+            sage: F.set_pos()
+            sage: F = F.relabel([0,1,3,2,5,4])
+            sage: F._check()
+        """
+        n = self._triangulation._n
+        if not perm_check(p, n):
+            p = perm_init(p, n, self._triangulation.edge_permutation(False))
+            if not perm_check(p, n):
+                raise ValueError('invalid relabeling permutation')
+
+        self._triangulation.relabel(p)
+        perm_on_list(p, self._vectors)
+        if self._pos is not None:
+            perm_on_list(p, self._pos)
+
+    def forward_flippable_edges(self):
+        return self._triangulation.forward_flippable_edges()
+
+    def backward_flippable_edges(self):
+        return self._triangulation.backward_flippable_edges()
+
     def flip(self, e):
+        r"""
+        Flip an edge of this flat triangulation.
+
+        EXAMPLES::
+
+            sage: import veerer
+            sage: import flipper
+            sage: from veerer.misc import flipper_isometry_to_perm
+            sage: S21 = flipper.load('S_2_1')
+            sage: h = S21.mapping_class('abCeF').canonical()
+            sage: F0 = veerer.FlatVeeringTriangulationLayout.from_pseudo_anosov(h)
+
+            sage: F = F0.copy()
+            sage: for flip in h.sequence[:-1]:
+            ....:     F.flip(flip.edge_index)
+        """
         if not self._triangulation.is_forward_flippable(e):
-            raise ValueError
+            raise ValueError("not flippable")
 
         # be sure that e is in the middle of a quadrilateral
+        # for the layout
         ep = self._triangulation.edge_permutation(copy=False)
         fp = self._triangulation.face_permutation(copy=False)
         E = ep[e]
-        pos = self._pos
-
-        if pos is not None:
-            self.glue_side_by_side(E)
+        self.glue_edge(E)
 
         # now update
         a = fp[e]; b = fp[a]
         c = fp[E]; d = fp[c]
         vectors = self._vectors
+        assert (vectors[a] + vectors[b] + vectors[e]).is_zero()
+        assert (vectors[c] + vectors[d] + vectors[E]).is_zero()
         # x<----------x
         # |     a    ^^
         # |         / |
@@ -533,16 +600,16 @@ class FlatVeeringTriangulationLayout:
         # v/    c     |
         # x---------->x
 
-        if pos is not None:
-            pos[e] = pos[d]
-            pos[E] = pos[b]
         vectors[e] = vectors[d] + vectors[a]
         vectors[E] = vectors[b] + vectors[c]
 
         self._triangulation.flip(e, vec_slope(vectors[e]))
 
-        self._check()
+        if self._pos is not None:
+            self._pos[e] = self._pos[d]
+            self._pos[E] = self._pos[b]
 
+        self._check()
 
     ###################################################################
     # Plotting functions
