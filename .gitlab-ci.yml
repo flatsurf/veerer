@@ -1,13 +1,15 @@
 image: ubuntu:18.04
+variables:
+  PIPINSTALL: pip install --disable-pip-version-check
 before_script:
 - export DEBIAN_FRONTEND=noninteractive   # avoid tzdata interactive configuration
 - apt-get -qq update
 - apt-get install -y apt-utils git cython libgmp-dev libmpfr-dev libppl-dev libmpc-dev sagemath
 - source /usr/share/sagemath/bin/sage-env
-- pip install gmpy2==2.1.0a4 --disable-pip-version-check
-- pip install pplpy
-- pip install surface_dynamics
-- pip install .
+- $PIPINSTALL gmpy2==2.1.0a4
+- $PIPINSTALL pplpy
+- $PIPINSTALL git+https://gitlab.com/videlec/surface_dynamics
+- $PIPINSTALL .
 
 python2.7:
   script:
