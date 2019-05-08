@@ -106,8 +106,10 @@ def colour_from_char(c):
 
         sage: from veerer.constants import colour_from_char, RED, BLUE, GREEN, PURPLE
 
-        sage: colour_from_char('R') == RED
-        True
+        sage: assert colour_from_char('R') == RED
+        sage: assert colour_from_char('B') == BLUE
+        sage: assert colour_from_char('G') == GREEN
+        sage: assert colour_from_char('P') == PURPLE
 
         sage: colour_from_char('X')
         Traceback (most recent call last):
@@ -126,6 +128,16 @@ def colour_from_char(c):
         raise ValueError("unknown color '%s'" % c)
 
 def colour_to_char(col):
+    r"""
+    EXAMPLES::
+
+        sage: from veerer.constants import colour_to_char, RED, BLUE, GREEN, PURPLE
+
+        sage: assert colour_to_char(RED) == 'R'
+        sage: assert colour_to_char(BLUE) == 'B'
+        sage: assert colour_to_char(GREEN) == 'G'
+        sage: assert colour_to_char(PURPLE) == 'P'
+    """
     if col == RED:
         return 'R'
     elif col == BLUE:
