@@ -3,7 +3,9 @@ test: &test
   script:
     - sage -c "print(\"hello\")"
     - sage -pip install .
-    - sage -t --force-lib --long veerer
+    - DIR="$(pwd)"
+    - cd
+    - sage -t --force-lib --long ${DIR}/veerer
 
 test:8.7:
   << : *test
