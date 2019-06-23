@@ -1,16 +1,11 @@
-image: ubuntu:18.04
-variables:
-  PIPINSTALL: pip install --disable-pip-version-check
-before_script:
-- export DEBIAN_FRONTEND=noninteractive   # avoid tzdata interactive configuration
-- apt-get -qq update
-- apt-get install -y apt-utils git cython libgmp-dev libmpfr-dev libppl-dev libmpc-dev sagemath
-- source /usr/share/sagemath/bin/sage-env
-- $PIPINSTALL gmpy2==2.1.0a4
-- $PIPINSTALL pplpy
-- $PIPINSTALL git+https://gitlab.com/videlec/surface_dynamics
-- $PIPINSTALL .
-
-python2.7:
+test: &test
+  image: sagemath/sagemath-develop
   script:
-    - sage -tp --long --force-lib veerer
+    - sage -c "print(\"hello\")"
+    - sage -pip install .
+    - sage -t --force-lib --long veerer
+
+test:8.7:
+  << : *test
+  image: sagemath/sagemath-dev:8.7
+
