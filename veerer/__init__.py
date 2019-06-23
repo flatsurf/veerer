@@ -10,7 +10,7 @@ from .constants import RED, BLUE, HORIZONTAL, VERTICAL
 from .triangulation import Triangulation
 from .cover import TriangulationCover
 from .veering_triangulation import VeeringTriangulation, VeeringTriangulations
-from .automaton import Automaton
+from .automaton import CoreAutomaton
 
 from .env import sage
 if sage is not None:
