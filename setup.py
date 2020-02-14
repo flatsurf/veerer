@@ -28,7 +28,7 @@ setup(
     name='veerer',
     version=readfile("VERSION"),
     description='A Python module to manipulate Veering triangulations and their associated flat structures',
-    long_description=readfile("README"),
+    long_description=readfile("README.rst"),
     author='Mark Bell, Vincent Delecroix and Saul Schleimer',
     author_email='vincent.delecroix@u-bordeaux.fr',
     url='https://framagit.org/saulsch/Veerer',
