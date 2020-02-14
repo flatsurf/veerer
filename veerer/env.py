@@ -44,7 +44,7 @@ error_msg = {
 
     'flipper': 'the function {} only works when the package flipper is installed. See https://pypi.org/project/flipper/ for instructions',
 
-    'pplpy': 'the function {} only works when the package pplpy is installed. See https://pypi.org/project/pplpy/ for instructions.'
+    'ppl': 'the function {} only works when the package pplpy is installed. See https://pypi.org/project/pplpy/ for instructions.'
     }
 
 missing_mods = {
