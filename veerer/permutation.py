@@ -89,6 +89,8 @@ def perm_check(l, n=None):
         n = len(l)
     else:
         n = int(n)
+        if len(l) < n:
+            return False
 
     seen = [False] * n
     for i in range(n):
@@ -735,18 +737,6 @@ def perm_invert(l, n=None):
 
         sage: perm_invert([2, -1, 5, 0, -1, 3])
         array('l', [3, -1, 0, 5, -1, 2])
-
-    TESTS::
-
-        sage: from itertools import permutations
-        sage: from veerer.permutation import perm_invert, perm_compose, perm_id
-
-        sage: q = perm_id(3)
-        sage: all(perm_compose(perm_invert(p),p) == q for p in permutations(range(3)))
-        True
-        sage: all(perm_compose(p,perm_invert(p)) == q for p in permutations(range(3)))
-        True
-
     """
     if n is None:
         n = len(l)

@@ -303,43 +303,11 @@ class Triangulation(object):
                 raise error('fev relation not satisfied')
 
     def __eq__(self, other):
-        r"""
-        TESTS::
-
-            sage: from veerer import *
-
-            sage: T1 = Triangulation("(0,1,2)(~0,~1,~2)")
-            sage: T2 = Triangulation("(0,1,2)(~0,~1,~2)")
-            sage: T3 = Triangulation("(0,1,2)(~0,~2,~1)")
-            sage: T4 = Triangulation("(0,1,2)")
-            sage: T1 == T2
-            True
-            sage: T1 == T3
-            False
-            sage: T1 == T4
-            False
-        """
         if type(self) != type(other):
             raise TypeError
         return self._n == other._n and self._fp == other._fp and self._ep == other._ep
 
     def __ne__(self, other):
-        r"""
-        TESTS::
-
-            sage: from veerer import *
-
-            sage: T1 = Triangulation("(0,1,2)(~0,~1,~2)")
-            sage: T2 = Triangulation("(0,1,2)(~0,~1,~2)")
-            sage: T3 = Triangulation("(0,1,2)(~0,~2,~1)")
-            sage: T4 = Triangulation("(0,1,2)")
-            sage: T1 != T2
-            False
-            sage: T1 != T3
-            True
-            sage: T1 != T4
-            True
-        """
         if type(self) != type(other):
             raise TypeError
         return self._n != other._n or self._fp != other._fp or self._ep != other._ep
