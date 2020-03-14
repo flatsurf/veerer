@@ -7,3 +7,5 @@ test:
     - DIR="$(pwd)"
     - cd
     - sage -t --force-lib --long ${DIR}/veerer
+    - cd ${DIR}/test
+    - sage -python run_tests.py
