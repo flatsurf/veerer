@@ -263,13 +263,10 @@ class FlatVeeringTriangulationLayout(object):
         The flipper and veerer triangulations carry the same edge labels::
 
             sage: F._triangulation
-            VeeringTriangulation("(0,7,~15)(1,4,5)(2,17,12)(3,~4,~17)(6,~7,~5)(8,~9,~0)(9,10,~13)(11,~1,~16)(13,~12,~10)(14,15,~2)(16,~8,~3)(~14,~11,~6)", "RRRRBBRBBRBBRRBRBB")
+            VeeringTriangulation("(0,4,~1)(1,5,3)(2,~0,~3)(~5,~4,~2)", "RBBBBR")
             sage: h.source_triangulation
-            [(~17, 3, ~4), (~16, 11, ~1), (~15, 0, 7), (~14, ~11, ~6), (~13, 10, ~12), (~10, 9, 13), (~9, ~0, 8), (~8, ~3, 16), (~7, ~5, 6), (~2, 14, 15), (1, 4, 5), (2, 17, 12)]
-
+            [(~5, ~4, ~2), (~3, 2, ~0), (~1, 0, 4), (1, 5, 3)]
         """
-        from permutation import perm_init
-
         Fh = h.flat_structure()
         Th = Fh.triangulation
         n = 3 * Th.num_triangles # number of half edges
@@ -278,7 +275,7 @@ class FlatVeeringTriangulationLayout(object):
         T = Triangulation.from_face_edge_perms(fp, ep)
 
         # extract flat structure
-        x = Fh.edge_vectors.values()[0].x
+        x = next(iter(Fh.edge_vectors.values())).x
         K = flipper_nf_to_sage(x.number_field)
         V = VectorSpace(K, 2)
         # translate into Sage number field
@@ -533,7 +530,7 @@ class FlatVeeringTriangulationLayout(object):
             sage: T = veerer.VeeringTriangulation("(0,1,2)(~0,~1,~2)", [1, 2, 2])
             sage: F = T.flat_structure_middle()
             sage: F.set_pos()
-            sage: F = F.relabel([0,1,3,2,5,4])
+            sage: F.relabel([0,1,3,2,5,4])
             sage: F._check()
         """
         n = self._triangulation._n
