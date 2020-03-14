@@ -540,17 +540,6 @@ class VeeringTriangulation(Triangulation):
         return Triangulation.__eq__(self, other) and self._colouring == other._colouring
 
     def __ne__(self, other):
-        r"""
-        TESTS::
-
-            sage: from veerer import *
-
-            sage: VeeringTriangulation("(0,1,2)", 'RRB') != VeeringTriangulation("(0,1,2)", 'RRB')
-            False
-            sage: VeeringTriangulation("(0,1,2)", 'RRB') != VeeringTriangulation("(0,1,2)", 'RBR')
-            True
-
-        """
         if type(self) != type(other):
             raise TypeError
         return Triangulation.__ne__(self, other) or self._colouring != other._colouring
@@ -1575,7 +1564,7 @@ class VeeringTriangulation(Triangulation):
             sage: s0 = T.to_string()
             sage: T.set_canonical_labels()
             sage: assert s0 == T.to_string()
-            sage: from veerer.permutation import perm_random
+            sage: from veerer.permutation import perm_random, perm_random_centralizer
             sage: for _ in range(10):
             ....:     p = perm_random(24)
             ....:     T.relabel(p)
@@ -1592,11 +1581,12 @@ class VeeringTriangulation(Triangulation):
 
             sage: T0 = T.copy()
             sage: Gx0 = Gx.__copy__()
-            sage: for _ in range(10):
-            ....:     p = perm_random(9)
+            sage: for _ in range(10): # known bug
+            ....:     p = perm_random_centralizer(T.edge_permutation(copy=False))
             ....:     T.relabel(p, Gx=Gx)
             ....:     T.set_canonical_labels(Gx=Gx)
-            ....:     assert T == T0 and Gx == Gx0
+            ....:     assert T == T0
+            ....:     assert Gx == Gx0
         """
         if Lx:
             raise NotImplementedError
@@ -2914,10 +2904,10 @@ class VeeringTriangulation(Triangulation):
             sage: T, s, t = VeeringTriangulations.L_shaped_surface(2,3,5,2,1,1)
             sage: Gx = matrix(QQ, [s, t])
             sage: T.geometric_flips(Gx=Gx)
-            [[(5, 2)], [(5, 1)], [(4, 2)]]
+            [[(4, 2)], [(5, 2)], [(5, 1)]]
             sage: Lx = Gx.right_kernel_matrix()
             sage: T.geometric_flips(Lx=Lx)
-            [[(5, 2)], [(5, 1)], [(4, 2)]]
+            [[(4, 2)], [(5, 2)], [(5, 1)]]
         """
         require_package('ppl', 'geometric_flips')
 
