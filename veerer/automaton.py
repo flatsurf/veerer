@@ -284,7 +284,7 @@ class CoreAutomaton(object):
 
             sage: A = CoreAutomaton.from_stratum(AbelianStratum(2))
             sage: A.triangulations()
-            <generator object __iter__ at ...>
+            <generator object ...>
             sage: for t in A.triangulations():
             ....:     assert t.stratum() == AbelianStratum(2)
         """
@@ -450,7 +450,7 @@ class CoreAutomaton(object):
         return sum(vt.is_cylindrical() for vt in self)
 
     @classmethod
-    def from_triangulation(self, T, reduced, verbosity=0):
+    def from_triangulation(self, T, reduced=False, verbosity=0):
         r"""
         Build the core automaton of ``T``.
 

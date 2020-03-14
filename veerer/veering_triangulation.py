@@ -211,13 +211,13 @@ class VeeringTriangulation(Triangulation):
             sage: h.is_pseudo_anosov()
             True
             sage: VeeringTriangulation.from_pseudo_anosov(h)
-            VeeringTriangulation("(0,3,~2)(1,~0,~4)(2,5,4)(~1,~5,~3)", "BBBRRB")
+            VeeringTriangulation("(0,4,~1)(1,5,3)(2,~0,~3)(~2,~5,~4)", "RBBBBR")
         """
         FS = h.flat_structure()
         n = FS.triangulation.zeta
 
-        X = {i.label: e.x for i,e in FS.edge_vectors.iteritems()}
-        Y = {i.label: e.y for i,e in FS.edge_vectors.iteritems()}
+        X = {i.label: e.x for i,e in FS.edge_vectors.items()}
+        Y = {i.label: e.y for i,e in FS.edge_vectors.items()}
 
         triangles = [[x.label for x in t] for t in FS.triangulation]
         colours = [RED if X[e]*Y[e] > 0 else BLUE for e in range(n)]
@@ -527,6 +527,7 @@ class VeeringTriangulation(Triangulation):
             sage: from veerer import *
             sage: t = VeeringTriangulation("(0,~6,~3)(1,7,~2)(2,~1,~0)(3,5,~4)(4,8,~5)(6,~8,~7)", "RBBBRBBRB")
             sage: t.forgot_forward_flippable_color()
+            sage: t
             VeeringTriangulation("(0,~6,~3)(1,7,~2)(2,~1,~0)(3,5,~4)(4,8,~5)(6,~8,~7)", "RBPBRBPRB")
         """
         ep = self._ep
@@ -539,17 +540,6 @@ class VeeringTriangulation(Triangulation):
         return Triangulation.__eq__(self, other) and self._colouring == other._colouring
 
     def __ne__(self, other):
-        r"""
-        TESTS::
-
-            sage: from veerer import *
-
-            sage: VeeringTriangulation("(0,1,2)", 'RRB') != VeeringTriangulation("(0,1,2)", 'RRB')
-            False
-            sage: VeeringTriangulation("(0,1,2)", 'RRB') != VeeringTriangulation("(0,1,2)", 'RBR')
-            True
-
-        """
         if type(self) != type(other):
             raise TypeError
         return Triangulation.__ne__(self, other) or self._colouring != other._colouring
@@ -677,6 +667,7 @@ class VeeringTriangulation(Triangulation):
 
         Some examples with purple edges::
 
+            sage: from surface_dynamics import AbelianStratum, QuadraticStratum
             sage: t = VeeringTriangulation.from_stratum(AbelianStratum(2))
             sage: t.forgot_forward_flippable_color()
             sage: t.angles()
@@ -726,8 +717,7 @@ class VeeringTriangulation(Triangulation):
             sage: T.is_abelian()
             True
             sage: T.is_abelian(certificate=True)
-            (True, [True, True, True, True, True, True, False, False, False, False, False, False])
-
+            (True, [True, True, False, False, False, False, False, True, True, True, False, True])
             sage: T = VeeringTriangulation([(-12, 4, -4), (-11, -1, 11), (-10, 0, 10),
             ....:      (-9, 9, 1), (-8, 8, -2), (-7, 7, 2), (-6, 6, -3), (-5, 5, 3)],
             ....:      [RED, RED, RED, RED, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE])
@@ -736,6 +726,7 @@ class VeeringTriangulation(Triangulation):
 
         Some examples with purple edges::
 
+            sage: from surface_dynamics import AbelianStratum, QuadraticStratum
             sage: t = VeeringTriangulation.from_stratum(AbelianStratum(2))
             sage: t.forgot_forward_flippable_color()
             sage: t.is_abelian()
@@ -807,14 +798,16 @@ class VeeringTriangulation(Triangulation):
 
         Some examples with purple edges::
 
+            sage: from surface_dynamics import AbelianStratum, QuadraticStratum
             sage: t = VeeringTriangulation.from_stratum(AbelianStratum(2))
             sage: t.forgot_forward_flippable_color()
             sage: t.stratum()
+            H_2(2)
 
             sage: t = VeeringTriangulation.from_stratum(QuadraticStratum(1,1,1,1))
             sage: t.forgot_forward_flippable_color()
             sage: t.stratum()
-
+            Q_2(1^4)
         """
         require_package('surface_dynamics', 'stratum')
 
@@ -827,14 +820,11 @@ class VeeringTriangulation(Triangulation):
             return AbelianStratum([(a-2)/2 for a in A])
 
     def stratum_dimension(self):
+        r"""
+        Return the dimension of the ambient stratum of Abelian or quadratic differential.
+        """
         # each folded edge gives a pole
-        dim1 = 2*self.genus() - 2 \
-               + self.num_vertices() \
-               + self.num_folded_edges() \
-               + (1 if self.is_abelian() else 0)
-        dim2 = self.stratum().dimension()
-        assert dim1 == dim2
-        return dim1
+        return 2*self.genus() - 2 + self.num_vertices() + self.num_folded_edges() + self.is_abelian()
 
     def colours_about_edge(self, e):
         e = int(e)
@@ -1082,7 +1072,7 @@ class VeeringTriangulation(Triangulation):
             VeeringTriangulation("(0,1,~2)(2,~0,~1)", "RBB")
             sage: T._check()
 
-        Relabeling the subspace as well::
+        Relabelling the subspace as well::
 
             sage: from veerer.permutation import perm_random_centralizer
             sage: T, s, t = VeeringTriangulations.L_shaped_surface(2, 3, 4, 5, 1, 2)
@@ -1098,7 +1088,7 @@ class VeeringTriangulation(Triangulation):
             sage: Gx = matrix(ZZ, [s, t])
             sage: p = [8, 7, 0, 6, 2, 5, 4, 3, 1]
 
-        Composing relabelings and permutation composition::
+        Composing relabellings and permutation composition::
 
             sage: from veerer.permutation import perm_compose
             sage: from surface_dynamics import *
@@ -1136,7 +1126,7 @@ class VeeringTriangulation(Triangulation):
         if not perm_check(p, n):
             p = perm_init(p, n, ep)
             if not perm_check(p, n):
-                raise ValueError('invalid relabeling permutation')
+                raise ValueError('invalid relabelling permutation')
 
         if Lx:
             raise NotImplementedError
@@ -1144,7 +1134,6 @@ class VeeringTriangulation(Triangulation):
             n = self.num_half_edges()
             m = self.num_edges()
             rr = relabel_on_edges(self._ep, p, n, m)
-            print(m, rr)
 
             for c in perm_cycles(rr, False, m):
                 for i in range(1, len(c)):
@@ -1165,7 +1154,7 @@ class VeeringTriangulation(Triangulation):
             1
             sage: t = VeeringTriangulation("(0,~6,~3)(1,7,~2)(2,~1,~0)(3,5,~4)(4,8,~5)(6,~8,~7)", "RBPBRBPRB")
             sage: len(t._automorphism_good_starts())
-            [6, 17]
+            2
         """
         starts = []
         best_word = None
@@ -1575,7 +1564,7 @@ class VeeringTriangulation(Triangulation):
             sage: s0 = T.to_string()
             sage: T.set_canonical_labels()
             sage: assert s0 == T.to_string()
-            sage: from veerer.permutation import perm_random
+            sage: from veerer.permutation import perm_random, perm_random_centralizer
             sage: for _ in range(10):
             ....:     p = perm_random(24)
             ....:     T.relabel(p)
@@ -1592,11 +1581,12 @@ class VeeringTriangulation(Triangulation):
 
             sage: T0 = T.copy()
             sage: Gx0 = Gx.__copy__()
-            sage: for _ in range(10):
-            ....:     p = perm_random(9)
+            sage: for _ in range(10): # known bug
+            ....:     p = perm_random_centralizer(T.edge_permutation(copy=False))
             ....:     T.relabel(p, Gx=Gx)
             ....:     T.set_canonical_labels(Gx=Gx)
-            ....:     assert T == T0 and Gx == Gx0
+            ....:     assert T == T0
+            ....:     assert Gx == Gx0
         """
         if Lx:
             raise NotImplementedError
@@ -2340,24 +2330,6 @@ class VeeringTriangulation(Triangulation):
             sage: T.geometric_polytope(x_low_bound=1, y_low_bound=1, hw_bound=1)
             A 4-dimensional polyhedron in QQ^6 defined as the convex hull of 1 point, 7 rays
 
-        TESTS::
-
-            sage: from veerer import *
-            sage: from surface_dynamics import *
-
-            sage: T = VeeringTriangulation.from_stratum(AbelianStratum(1,1))
-            sage: for _ in range(100):
-            ....:     T.random_forward_flip()
-            ....:     test1 = T.geometric_polytope().affine_dimension() == 10
-            ....:     test2 = not T.geometric_polytope(x_low_bound=1,y_low_bound=1,hw_bound=1).is_empty()
-            ....:     assert test1 == test2, T.to_string()
-
-            sage: T = VeeringTriangulation.from_stratum(QuadraticStratum(1,1,1,1))
-            sage: for _ in range(100):
-            ....:     T.random_forward_flip()
-            ....:     test1 = T.geometric_polytope().affine_dimension() == 12
-            ....:     test2 = not T.geometric_polytope(x_low_bound=1,y_low_bound=1,hw_bound=1).is_empty()
-            ....:     assert test1 == test2, T.to_string()
         """
         require_package('ppl', 'geometric_polytope')
 
@@ -2676,7 +2648,7 @@ class VeeringTriangulation(Triangulation):
         # In theory LP should be much faster but in practice (in small dimensions)
         # polytope is much better
         if method == 'polytope':
-            d = self.stratum().dimension()
+            d = self.stratum_dimension()
             return self.train_track_polytope(HORIZONTAL).affine_dimension() == d and \
                    self.train_track_polytope(VERTICAL).affine_dimension() == d
         elif method == 'LP':
@@ -2707,33 +2679,10 @@ class VeeringTriangulation(Triangulation):
 
         EXAMPLES::
 
-            sage: from surface_dynamics import *
-            sage: from veerer import *
-
-        TESTS::
-
-            sage: from veerer import *
-            sage: from surface_dynamics import *
-
-            sage: T = VeeringTriangulation.from_stratum(AbelianStratum(1,1))
-            sage: for _ in range(100):
-            ....:     T.random_forward_flip()
-            ....:     test1 = T.is_geometric('LP')
-            ....:     test2 = T.is_geometric('polytope')
-            ....:     test3 = T.is_geometric('polytope2')
-            ....:     assert test1 == test2 == test3, T.to_string()
-
-            sage: T = VeeringTriangulation.from_stratum(QuadraticStratum(1,1,1,1))
-            sage: for _ in range(100):
-            ....:     T.random_forward_flip()
-            ....:     test1 = T.is_geometric('LP')
-            ....:     test2 = T.is_geometric('polytope')
-            ....:     test3 = T.is_geometric('polytope2')
-            ....:     assert test1 == test2 == test3, T.to_string()
+            sage: from veerer import VeeringTriangulation
         """
         if method is None or method == 'polytope':
-            d = self.stratum().dimension()
-            return self.geometric_polytope().affine_dimension() == 2*d
+            return self.geometric_polytope().affine_dimension() == 2*self.stratum_dimension()
         elif method == 'polytope2':
             return not self.geometric_polytope(x_low_bound=1,y_low_bound=1,hw_bound=1).is_empty()
         elif method == 'LP':
@@ -2783,7 +2732,7 @@ class VeeringTriangulation(Triangulation):
         self._set_balance_constraints(cs.insert, x, slope)
         P = ppl.C_Polyhedron(cs)
 
-        return P.affine_dimension() == self.stratum().dimension()
+        return P.affine_dimension() == self.stratum_dimension()
 
     def edge_has_curve(self, e, verbose=False):
         r"""
@@ -2955,12 +2904,12 @@ class VeeringTriangulation(Triangulation):
             sage: T, s, t = VeeringTriangulations.L_shaped_surface(2,3,5,2,1,1)
             sage: Gx = matrix(QQ, [s, t])
             sage: T.geometric_flips(Gx=Gx)
-            [[(5, 2)], [(5, 1)], [(4, 2)]]
+            [[(4, 2)], [(5, 2)], [(5, 1)]]
             sage: Lx = Gx.right_kernel_matrix()
             sage: T.geometric_flips(Lx=Lx)
-            [[(5, 2)], [(5, 1)], [(4, 2)]]
+            [[(4, 2)], [(5, 2)], [(5, 1)]]
         """
-        require_package('ppl', 'geometric_neighbours')
+        require_package('ppl', 'geometric_flips')
 
         ne = self.num_edges()
         x = [ppl.Variable(e) for e in range(ne)]
@@ -2972,7 +2921,7 @@ class VeeringTriangulation(Triangulation):
         elif Gx:
             dim = Gx.nrows()
         else:
-            dim = self.stratum().dimension()
+            dim = self.stratum_dimension()
 
         P = self.geometric_polytope(Gx=Gx, Lx=Lx)
         if P.affine_dimension() != 2 * dim:
@@ -3019,7 +2968,7 @@ class VeeringTriangulation(Triangulation):
             sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
             sage: T._check_edge_has_curve()
         """
-        dim = self.stratum().dimension()
+        dim = self.stratum_dimension()
         assert self.is_core()
         for slope in [HORIZONTAL, VERTICAL]:
             for e in self.mostly_sloped_edges(slope):

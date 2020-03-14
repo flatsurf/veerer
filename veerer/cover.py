@@ -241,7 +241,7 @@ class TriangulationCover(object):
         return nfe
 
     def num_edges(self):
-        return ((self._d * self._t.num_half_edges()) + self.num_folded_edges()) / 2
+        return ((self._d * self._t.num_half_edges()) + self.num_folded_edges()) // 2
 
     def num_faces(self):
         return self._t.num_faces() * self._d
@@ -254,7 +254,7 @@ class TriangulationCover(object):
 
     def genus(self):
         # 2 - 2g = \chi so
-        return (2 - self.euler_characteristic()) / 2
+        return (2 - self.euler_characteristic()) // 2
 
     ########
     # flip #
