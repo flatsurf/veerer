@@ -44,6 +44,17 @@ EDGE_COLORS = {
     GREEN: 'green'
     }
 
+TIKZ_EDGE_COLORS = {
+    BLUE: 'veeringblue',
+    RED: 'veeringred',
+    PURPLE: 'veeringpurple',
+    GREEN: 'veeringgreen'
+}
+
+TIKZ_FACE_COLORS = {
+    BLUE: 'veeringblue!20',
+    RED: 'veeringred!20',
+}
 
 def vec_slope(v):
     r"""
@@ -276,7 +287,7 @@ class FlatVeeringTriangulationLayout(object):
 
         # extract flat structure
         x = next(iter(Fh.edge_vectors.values())).x
-        K = flipper_nf_to_sage(x.number_field)
+        K = flipper_nf_to_sage(x.field)
         V = VectorSpace(K, 2)
         # translate into Sage number field
         Vec = {flipper_edge(Th,e): V((flipper_nf_element_to_sage(v.x, K),
@@ -644,6 +655,46 @@ class FlatVeeringTriangulationLayout(object):
 
         return L
 
+    def _tikz_edge(self, output, e, edge_label, **opts):
+        r"""
+        Plot the edge ``e``.
+        """
+        assert self._pos is not None
+        assert edge_label is True or edge_label is False
+
+        pos = self._pos
+        vectors = self._vectors
+        fp = self._triangulation._fp
+        ep = self._triangulation._ep
+
+        E = ep[e]
+        u = pos[e]
+        v = pos[fp[e]]
+
+        edge_tikz_opts = TIKZ_EDGE_COLORS[self._edge_slope(e)]
+        if not self._edge_is_boundary(e):
+            # the edge is between adjacent faces
+            edge_tikz_opts += ',dotted'
+
+        if edge_label:
+            tilde = self._edge_is_boundary(e)
+
+            if self._edge_is_boundary(e) and e > E:
+                lab = "$\\sim%d$"%(E)
+            else:
+                lab = "$%d$" % e
+
+            output.write('\\draw[%s] (%s,%s) -- node[sloped] {\\contour{white}{%s}} (%s,%s);\n' % (edge_tikz_opts, u[0], u[1], lab, v[0], v[1]))
+
+        else:
+            output.write('\\draw[%s] (%s,%s) -- (%s,%s);\n' % (edge_tikz_opts, u[0], u[1], v[0], v[1]))
+
+        if e == E:
+            # folded edge
+            mid = (u + v) / 2
+            output.write('\\draw mid +(.1,.1) -- (-.1,-.1);\n')
+            output.write('\\draw mid +(-.1,.1) -- (.1,-.1);\n')
+
     def _plot_edge_label(self, a, tilde=None, **opts):
         assert self._pos is not None
 
@@ -735,6 +786,37 @@ class FlatVeeringTriangulationLayout(object):
 
         return G
 
+    def _tikz_face(self, output, a,
+            red='red!20', blue='blue!20', neutral='gray!20', tikz_face_options=None):
+        assert self._pos is not None
+
+        fp = self._triangulation.face_permutation(copy=False)
+        b = fp[a]
+        c = fp[b]
+        pos = self._pos
+
+        # computing slopes in order to determine filling color
+        nred = nblue = 0
+        for e in (a,b,c):
+            slope = self._edge_slope(e)
+            if slope == RED:
+                nred += 1
+            elif slope == BLUE:
+                nblue += 1
+
+        if nred == 2:
+            color = TIKZ_FACE_COLORS[RED]
+        elif nblue == 2:
+            color = TIKZ_FACE_COLORS[BLUE]
+        else:
+            color = 'gray!20'
+
+        output.write('\\fill[%s] (%s,%s) -- (%s,%s) -- (%s,%s) -- cycle;\n' % (
+             color if tikz_face_options is None else color + ',' + tikz_face_options,
+             pos[a][0], pos[a][1],
+             pos[b][0], pos[b][1],
+             pos[c][0], pos[c][1]))
+
     def _plot_train_track(self, slope):
         pos = self._pos
         vectors = self._vectors
@@ -793,6 +875,9 @@ class FlatVeeringTriangulationLayout(object):
                                cs2 + 0.3 * os2, cs2]], rgbcolor=color)
         return G
 
+    def _tikz_train_track(self, slope):
+        raise NotImplementedError
+
     def plot(self, horizontal_train_track=False, vertical_train_track=False, edge_labels=True):
         r"""
         Return a graphics.
@@ -844,6 +929,39 @@ class FlatVeeringTriangulationLayout(object):
         G.set_aspect_ratio(1)
         G.axes(False)
         return G
+
+    def tikz(self, filename=None, horizontal_train_track=False, vertical_train_track=False, edge_labels=True):
+        if filename is None:
+            from sys import stdout as output
+        else:
+            output = open(filename, 'w')
+
+        if self._pos is None:
+            self.set_pos()
+
+        G = Graphics()
+        n = self._triangulation.num_half_edges()
+        fp = self._triangulation.face_permutation(copy=False)
+        ep = self._triangulation.edge_permutation(copy=False)
+
+        # 1. plot faces
+        for e in range(n):
+            if e < fp[e] and e < fp[fp[e]]:
+                self._tikz_face(output, e)
+
+        # 2. plot edges
+        for e in range(n):
+            if self._edge_is_boundary(e) or e <= ep[e]:
+                self._tikz_edge(output, e, edge_labels)
+
+        # 3. possibly plot train tracks
+        if horizontal_train_track:
+            self._tikz_train_track(output, HORIZONTAL)
+        if vertical_train_track:
+            self._tikz_train_track(output, VERTICAL)
+
+        if filename is not None:
+            output.close()
 
     def train_track(self, slope=VERTICAL):
         r"""
