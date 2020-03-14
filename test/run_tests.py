@@ -5,7 +5,7 @@ import sys
 
 import veerer.env
 
-tests = ["permutation.py", "triangulation_isomorphism.py", "flip.py"]
+tests = ["permutation.py", "triangulation_comparison.py", "triangulation_isomorphism.py", "flip.py"]
 
 if veerer.env.ppl is not None:
     tests.extend(["geometric_polytope.py"])
