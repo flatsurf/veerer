@@ -1313,7 +1313,7 @@ class Triangulation(object):
 
         return str(n) + '_' + fp + '_' + ep
 
-    def is_isomorphic_to(self, other):
+    def is_isomorphic_to(self, other, certificate=False):
         r"""
         Check wheter ``self`` is isomorphic to ``other``.
 
@@ -1330,7 +1330,19 @@ class Triangulation(object):
         """
         if type(self) is not type(other):
             raise TypeError("can only check isomorphisms between two triangulations")
-        return self.iso_sig() == other.iso_sig()
+
+        if self._n != other._n or self.num_folded_edges() != other.num_folded_edges():
+            return (False, None) if certificate else False
+
+        r1, data1 = self.best_relabelling()
+        r2, data2 = other.best_relabelling()
+
+        if data1 != data2:
+            return (False, None) if certificate else False
+        elif certificate:
+            return (True, perm_compose(r1, perm_invert(r2)))
+        else:
+            return True
 
     def cover(self, c):
         from .cover import TriangulationCover

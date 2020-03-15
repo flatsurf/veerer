@@ -1314,7 +1314,26 @@ class VeeringTriangulation(Triangulation):
 
     def best_relabelling(self, all=False):
         r"""
+        Return a pair ``(r, (cols, fp, ep))`` where the triple ``(cols, fp,
+        ep)`` is the data of the canonical labelling of this veering
+        triangulation and ``r`` is a relabelling that brings this triangulation
+        to the canonical one.
+
         EXAMPLES::
+
+            sage: from veerer import *
+            sage: from veerer.permutation import perm_random_centralizer
+            sage: fp = "(0,~1,2)(~0,1,~3)(4,~5,3)(~4,6,~2)(7,~6,8)(~7,5,~9)(10,~11,9)(~10,11,~8)"
+            sage: cols = "BRBBBRRBBBBR"
+            sage: V = VeeringTriangulation(fp, cols)
+            sage: r, (cols, fp, ep) = V.best_relabelling()
+            sage: for _ in range(10):
+            ....:     p = perm_random_centralizer(V.edge_permutation(copy=False))
+            ....:     V.relabel(p)
+            ....:     r2, (cols2, fp2, ep2) = V.best_relabelling()
+            ....:     assert cols2 == cols and fp2 == fp and ep2 == ep
+
+        TESTS::
 
             sage: from veerer import *
             sage: T, s, t = VeeringTriangulations.L_shaped_surface(2, 3, 4, 5, 1, 2)
@@ -1326,9 +1345,6 @@ class VeeringTriangulation(Triangulation):
             ....:     S.relabel(p)
             ....:     S._check()
 
-        TESTS::
-
-            sage: from veerer import *
             sage: from veerer.permutation import *
             sage: T, s, t = VeeringTriangulations.L_shaped_surface(2, 3, 4, 5, 1, 2)
             sage: Gx = matrix(ZZ, [s,t])
@@ -1517,7 +1533,7 @@ class VeeringTriangulation(Triangulation):
             sage: T2 = VeeringTriangulation.from_string(s)
             sage: T == T2
             False
-            sage: T.is_isomorphic(T2)
+            sage: T.is_isomorphic_to(T2)
             True
 
         TESTS::
@@ -1612,18 +1628,48 @@ class VeeringTriangulation(Triangulation):
             r, (cols, fp, ep) = self.best_relabelling()
             self.relabel(r)
 
-    def is_isomorphic(self, other):
+    def is_isomorphic_to(self, other, certificate=False):
         r"""
         Test whether this triangulation is isomorphic to ``other``.
+
+        If ``certificate`` is set to ``True``, also returns the relabelling
+        map from ``self`` to ``other``.
+
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation
+            sage: from veerer.permutation import perm_random_centralizer
+
+            sage: fp = "(0,~1,2)(~0,1,~3)(4,~5,3)(~4,6,~2)(7,~6,8)(~7,5,~9)(10,~11,9)(~10,11,~8)"
+            sage: cols = "BRBBBRRBBBBR"
+            sage: V = VeeringTriangulation(fp, cols)
+            sage: W = V.copy()
+            sage: p = perm_random_centralizer(V.edge_permutation(copy=False))
+            sage: W.relabel(p)
+            sage: assert V.is_isomorphic_to(W) is True
+            sage: ans, cert = V.is_isomorphic_to(W, True)
+            sage: V.relabel(cert)
+            sage: assert V == W
         """
         if type(self) != type(other):
             raise TypeError
 
         if self._n != other._n or \
-           self._colouring.count(RED) != other._colouring.count(RED):
-               return False
+           self.num_folded_edges() != other.num_folded_edges() or \
+           self._colouring.count(RED) != other._colouring.count(RED) or \
+           self._colouring.count(BLUE) != other._colouring.count(BLUE) or \
+           self._colouring.count(PURPLE) != other._colouring.count(PURPLE):
+               return (False, None) if certificate else False
 
-        return self.iso_sig() == other.iso_sig()
+        r1, data1 = self.best_relabelling()
+        r2, data2 = other.best_relabelling()
+
+        if data1 != data2:
+            return (False, None) if certificate else False
+        elif certificate:
+            return (True, perm_compose(r1, perm_invert(r2)))
+        else:
+            return True
 
 # TODO?
 #    def isometries_to(self, other):
