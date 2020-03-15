@@ -22,7 +22,7 @@ import pytest
 
 from veerer import Triangulation, VeeringTriangulation
 
-def test_comparison():
+def test_triangulation_comparison():
     T1 = Triangulation("(0,1,2)(~0,~1,~2)")
     T2 = Triangulation("(0,1,2)(~0,~1,~2)")
     T3 = Triangulation("(0,1,2)(~0,~2,~1)")
@@ -37,6 +37,7 @@ def test_comparison():
     assert T1 != T4
     assert T3 != T4
 
+def test_veering_triangulation_comparison():
     V1 = VeeringTriangulation("(0,1,2)", "RRB")
     V2 = VeeringTriangulation("(0,1,2)", "RRB")
     V3 = VeeringTriangulation("(0,1,2)", "RBB")

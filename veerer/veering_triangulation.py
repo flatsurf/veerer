@@ -606,9 +606,6 @@ class VeeringTriangulation(Triangulation):
         T._colouring = self._colouring[:]
         return T
 
-    def _faces_string(self):
-        return ''.join('(' + ','.join(self._edge_rep(e) for e in f) + ')' for f in self.faces())
-
     def _colouring_string(self, short=False):
         n = self.num_half_edges()
         ep = self._ep
@@ -627,7 +624,8 @@ class VeeringTriangulation(Triangulation):
             VeeringTriangulation("(0,1,2)", "RRB")
         """
         return "VeeringTriangulation(\"{}\", \"{}\")".format(
-                self._faces_string(), self._colouring_string(short=True))
+                perm_cycle_string(self._fp, False, self._n, self._ep),
+                self._colouring_string(short=True))
 
     def __repr__(self):
         return str(self)

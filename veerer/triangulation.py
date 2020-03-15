@@ -480,8 +480,7 @@ class Triangulation(object):
             sage: str(T)
             'Triangulation("(0,1,2)(~2,~0,~1)")'
         """
-        faces = self.faces()
-        return 'Triangulation("' + ''.join('(' + ','.join(self._edge_rep(e) for e in f) + ')' for f in faces) + '")'
+        return 'Triangulation("%s")' % perm_cycle_string(self._fp, n=self._n, involution=self._ep)
 
     def __repr__(self):
         return str(self)
@@ -835,18 +834,13 @@ class Triangulation(object):
 
             sage: from veerer import *
 
-            sage: T = Triangulation([(0,1,2), (-1,-2,-3)])
-            sage: T.relabel([1,5,0,2,4,3])
-            sage: T.faces()
-            [[0, 1, 5], [2, 3, 4]]
-            sage: T.edges()
-            [[0, 2], [1, 3], [4, 5]]
-            sage: T._check()
+            sage: T = Triangulation("(0,1,2)(~0,~1,~2)")
+            sage: T.relabel("(0,~0)"); T
+            Triangulation("(0,~1,~2)(1,2,~0)")
+            sage: T.relabel("(0,1,~2)"); T
+            Triangulation("(0,1,2)(~2,~0,~1)")
 
-            sage: T = Triangulation("(0,1,~2)(2,~0,~1)")
-            sage: T.relabel("(0,~0)(1,~1)")
-            sage: T
-            Triangulation("(0,1,2)(~1,~2,~0)")
+        An example of a flip sequence which forms a loop after non-trivial relabelling::
 
             sage: T0 = Triangulation("(1,~0,4)(2,~4,~1)(3,~2,5)(~5,~3,0)")
             sage: T = T0.copy()
@@ -854,14 +848,16 @@ class Triangulation(object):
             sage: T.flip_back(3)
             sage: T.flip_back(0)
             sage: T.flip_back(2)
-            sage: T.relabel("(0,2)(~0,~2)(1,3)(~1,~3)")
+            sage: T.relabel("(0,2)(1,3)")
             sage: T == T0
             True
         """
         n = self._n
         if not perm_check(p, n):
+            # if the input is not a valid permutation, we assume that half-edges
+            # are not separated
             p = perm_init(p, self._n, self._ep)
-            if not perm_check(p, n):
+            if not perm_check(p, n, self._ep):
                 raise ValueError('invalid relabeling permutation')
 
         self._vp = perm_conjugate(self._vp, p)
