@@ -36,9 +36,5 @@ def test_isomorphism(fp, cols, repeat):
         p = perm_random_centralizer(V.edge_permutation(copy=False))
         W.relabel(p)
         assert V.is_isomorphic(W) is True
-        ans, cert = V.is_isomorphic(W, True)
-        assert ans is True
-        V.relabel(cert)
-        assert V == W
 
 if __name__ == '__main__': sys.exit(pytest.main(sys.argv))

@@ -8,11 +8,14 @@ directory = os.path.dirname(__file__)
 
 import veerer.env
 
-tests = ["permutation.py", "triangulation_comparison.py", "triangulation_isomorphism.py", "flip.py"]
+tests = ["permutation.py", "triangulation_comparison.py", "triangulation_isomorphism.py"]
 
 if veerer.env.ppl is not None:
-    tests.extend(["geometric_polytope.py"])
+    tests.extend(["flip.py", "geometric_polytope.py"])
 
+output = 0
 for test in tests:
     test = os.path.join(directory, test)
-    subprocess.run([sys.executable, test] + sys.argv[1:])
+    output += subprocess.call([sys.executable, test] + sys.argv[1:])
+
+sys.exit(output)

@@ -1,24 +1,83 @@
+# alpine based tests (around 30secs)
+python2:
+  image: python:2-alpine
+  script:
+    - pip install .
+    - pip install pytest
+    - python test/run_tests.py
+
+python3:
+  image: python:3-alpine
+  script:
+    - pip install .
+    - pip install pytest
+    - python test/run_tests.py
+
+# ubuntu based tests (between 2min and 3min)
+python2-ppl:
+  image: ubuntu:xenial
+  script:
+    - export PYTHON="python"
+    - export PIP="python -m pip"
+    - apt-get update
+    - apt-get install -y python python-pip cython python-pytest libgmp-dev libmpfr-dev libmpc-dev libppl-dev
+    - ${PIP} install .
+    - ${PIP} install cysignals
+    - ${PIP} install gmpy2 --pre --user
+    - ${PIP} install pplpy
+    - ${PYTHON} test/run_tests.py
+
+python3-ppl:
+  image: ubuntu:xenial
+  script:
+    - export PYTHON="python3"
+    - export PIP="python3 -m pip"
+    - apt-get update
+    - apt-get install -y python3 python3-pip cython python3-pytest libgmp-dev libmpfr-dev libmpc-dev libppl-dev
+    - ${PIP} install .
+    - ${PIP} install cysignals
+    - ${PIP} install gmpy2 --pre --user
+    - ${PIP} install pplpy
+    - ${PYTHON} test/run_tests.py
+
+python2-flipper-curver:
+  image: ubuntu:xenial
+  script:
+    - export PYTHON="python"
+    - export PIP="python -m pip"
+    - apt-get update
+    - apt-get install -y python python-pip python-numpy python-pandas python-pytest
+    - ${PIP} install .
+    - ${PIP} install 'networkx==2.2' # xenial version is too old (1.11)
+    - ${PIP} install flipper curver
+    - ${PYTHON} test/run_tests.py
+
+python3-flipper-curver:
+  image: ubuntu:xenial
+  script:
+    - export PYTHON="python3"
+    - export PIP="python3 -m pip"
+    - apt-get update
+    - apt-get install -y python3 python3-pip python3-networkx python3-numpy python3-pandas python3-pytest
+    - ${PIP} install .
+    - ${PIP} install flipper curver
+    - ${PYTHON} test/run_tests.py
+
+# sagemath based tests (around 10min)
 sage:
   image: sagemath/sagemath-dev:develop
   script:
+    - export PYTHON="sage -python"
+    - export PIP="sage -pip"
     - sage -c 'import sage.env; print(sage.env.SAGE_VERSION)'
     - for pkg in "flipper curver surface_dynamics"; do sage -pip install ${pkg}; done
-    - sage -pip install .
+    - ${PIP} install .
+    - ${PIP} install pytest
+    - ${PYTHON} test/run_tests.py
+    # NOTE: the sage doctester refuses to execute from the repository because
+    # of "wrong" permissions. For that reason we cd to the home directory before
+    # running them.
     - DIR="$(pwd)"
     - cd
     - sage -t --force-lib --long ${DIR}/veerer
     - sage -t --force-lib --long ${DIR}/docs/source
-    - sage -python ${DIR}/test/run_tests.py
-
-python:
-  script:
-    - pip install --user .
-    - python test/run_tests.py
-
-python-flipper-curver:
-  script:
-    - pip install --user flipper
-    - pip install --user curver
-    - pip install --user .
-    - python test/run_tests.py
-

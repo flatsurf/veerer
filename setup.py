@@ -34,6 +34,7 @@ setup(
     url='https://framagit.org/saulsch/Veerer',
     # Remember to update these if the directory structure changes.
     packages=['veerer/'],
+    install_requires=['six'],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Science/Research',
