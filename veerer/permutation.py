@@ -49,7 +49,7 @@ def argmin(l):
 # Initialization and conversion
 #####################################################################
 
-def perm_check(l, n=None):
+def perm_check(l, n=None, involution=None):
     r"""
     Checks that ``l`` is a partial permutation of `\{0, 1, ..., n-1\}`.
 
@@ -82,6 +82,13 @@ def perm_check(l, n=None):
         False
         sage: perm_check(array('l', [1, 0, 1]))
         False
+
+    With involution::
+
+        sage: perm_check(array('l', [2,1,0]), involution=array('l', [2,1,0]))
+        True
+        sage: perm_check(array('l', [1,0,2]), involution=array('l', [2,1,0]))
+        False
     """
     if not isinstance(l, array):
         return False
@@ -99,6 +106,12 @@ def perm_check(l, n=None):
         if l[i] < 0 or l[i] >= n or seen[l[i]]:
             return False
         seen[l[i]] = True
+
+    if involution is not None:
+        for i in range(n):
+            if l[involution[i]] != involution[l[i]]:
+                return False
+
     return True
 
 def perm_id(n):
@@ -113,6 +126,14 @@ def perm_id(n):
         array('l', [0, 1, 2, 3])
     """
     return array('l', range(n))
+
+def perm_is_one(p, n=None):
+    if n is None:
+        n = len(p)
+    for i in range(n):
+        if p[i] != i:
+            return False
+    return True
 
 def perm_init(data, n=None, involution=None):
     """
@@ -147,6 +168,19 @@ def perm_init(data, n=None, involution=None):
         sage: perm_init('(0,1)(3,2)')
         array('l', [1, 0, 3, 2])
 
+    Initialize a permutation in the centralizer of an involution::
+
+        sage: perm_init('(0,2)(1,3)', involution=[0,4,2,5,1,3])
+        array('l', [2, 3, 0, 1, 5, 4])
+        sage: perm_init('(0,~1)', involution=[0,1])
+        array('l', [1, 0])
+        sage: perm_init('(0,~1)', involution=[2,3,0,1])
+        array('l', [3, 2, 1, 0])
+        sage: perm_init('(0,3)', involution=[0,4,2,5,1,3])
+        Traceback (most recent call last):
+        ...
+        ValueError: invalid input
+
     Zerology::
 
         sage: perm_init([])
@@ -158,6 +192,8 @@ def perm_init(data, n=None, involution=None):
         sage: perm_init('()')
         array('l')
     """
+    if n is None and involution is not None:
+        n = len(involution)
     if isinstance(data, (array, tuple, list)):
         if not data:
             if n is not None:
@@ -206,8 +242,8 @@ def perm_from_cycles(t, n=None, involution=None):
         sage: perm_from_cycles([[],[]])
         array('l')
 
-        sage: perm_from_cycles([[1,-2,0,3]], n=6, involution=[0,4,5,3,1,2])
-        array('l', [3, 4, 2, 1, 0, 5])
+        sage: perm_from_cycles([[1,-2],[0,3]], n=6, involution=[0,4,5,3,1,2])
+        array('l', [3, 4, 2, 0, 1, 5])
     """
     if not any(tt for tt in t):
         return array('l', [])
@@ -228,11 +264,20 @@ def perm_from_cycles(t, n=None, involution=None):
             if b < 0:
                 b = n+b if involution is None else involution[~b]
             res[a] = b
+            if involution is not None:
+                if (a == involution[a]) != (b == involution[b]):
+                    raise ValueError("invalid input")
+                res[involution[a]] = involution[b]
             a = b
         b = int(c[0])
         if b < 0:
             b = n+b if involution is None else involution[~b]
+
         res[a] = b
+        if involution is not None:
+            if (a == involution[a]) != (b == involution[b]):
+                raise ValueError("invalid input")
+            res[involution[a]] = involution[b]
 
     return res
 
@@ -593,7 +638,7 @@ def perm_cycle_type(p, n=None):
     c.sort(reverse=True)
     return c
 
-def perm_cycle_string(p, singletons=True, n=None):
+def perm_cycle_string(p, singletons=True, n=None, involution=None):
     r"""
     Returns a string representing the cycle decomposition of `p`
 
@@ -605,7 +650,12 @@ def perm_cycle_string(p, singletons=True, n=None):
         sage: perm_cycle_string([0,2,1],False)
         '(1,2)'
     """
-    return ''.join(map(lambda x: '('+','.join(map(str, x))+')',
+    if involution:
+        elt = lambda e: '%d'%e if e <= involution[e] else '~%d'%involution[e]
+    else:
+        elt = str
+
+    return ''.join(map(lambda x: '('+','.join(map(elt, x))+')',
                        perm_cycles(p, singletons, n)))
 
 def perm_orbit(p, i):
@@ -624,6 +674,24 @@ def perm_orbit(p, i):
         res.append(j)
         j = p[j]
     return res
+
+def perm_preimage(p, i):
+    r"""
+    Return the preimage of ``i`` under ``p``.
+
+    EXAMPLES::
+
+        sage: from veerer.permutation import perm_init, perm_preimage
+        sage: p = perm_init("(0,3,1,5)(2,4)")
+        sage: perm_preimage(p, 3)
+        0
+        sage: perm_preimage(p, 2)
+        4
+    """
+    j = i
+    while p[j] != i:
+        j = p[j]
+    return j
 
 def perm_on_list(p, a, n=None, swap=None):
     r"""
