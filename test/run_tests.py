@@ -2,6 +2,9 @@
 
 import subprocess
 import sys
+import os.path
+
+directory = os.path.dirname(__file__)
 
 import veerer.env
 
@@ -11,4 +14,5 @@ if veerer.env.ppl is not None:
     tests.extend(["geometric_polytope.py"])
 
 for test in tests:
+    test = os.path.join(directory, test)
     subprocess.run([sys.executable, test] + sys.argv[1:])

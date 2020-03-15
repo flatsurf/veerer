@@ -1,4 +1,4 @@
-test:
+sage:
   image: sagemath/sagemath-dev:develop
   script:
     - sage -c 'import sage.env; print(sage.env.SAGE_VERSION)'
@@ -7,5 +7,18 @@ test:
     - DIR="$(pwd)"
     - cd
     - sage -t --force-lib --long ${DIR}/veerer
-    - cd ${DIR}/test
-    - sage -python run_tests.py
+    - sage -t --force-lib --long ${DIR}/docs/source
+    - sage -python ${DIR}/test/run_tests.py
+
+python:
+  script:
+    - pip install --user .
+    - python test/run_tests.py
+
+python-flipper-curver:
+  script:
+    - pip install --user flipper
+    - pip install --user curver
+    - pip install --user .
+    - python test/run_tests.py
+
