@@ -832,7 +832,7 @@ class VeeringTriangulation(Triangulation):
         e = int(e)
         colours = self.colours_about_edge(e)
         if any(colours[f] == GREEN or colours[f] == PURPLE for f in range(4)):
-            print("Warning: alternating_square is not carefullly defined with GREEN/PURPLE edges")
+            return False
         return all(colours[f] != colours[(f+1) % 4] for f in range(4))
 
     def vertex_cycles(self, slope=VERTICAL, T=None):
@@ -1677,7 +1677,7 @@ class VeeringTriangulation(Triangulation):
 #    def self_isometries(self):
 #        return self.isometries_to(self)
 
-    def flip(self, e, col, Lx=None, Gx=None):
+    def flip(self, e, col, Lx=None, Gx=None, reduced=False):
         r"""
         Flip an edge inplace.
 
@@ -1693,11 +1693,14 @@ class VeeringTriangulation(Triangulation):
         - ``Gx`` - (optional) - matrix whose rows are generators of a linear subspace
           that has to be carried around
 
+        - ``reduced`` -- whether to change the colours of the neighbors edges to ``PURPLE``
+          if they become forward flippable.
+
         EXAMPLES::
 
             sage: from veerer import *
 
-            sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
+            sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
             sage: T.flip(1, RED); T
             VeeringTriangulation("(0,~2,1)(2,~1,~0)", "RRB")
             sage: T.flip(0, RED); T
@@ -1707,6 +1710,21 @@ class VeeringTriangulation(Triangulation):
             VeeringTriangulation("(0,~2,1)(2,~1,~0)", "RBB")
             sage: T.flip(2, BLUE); T
             VeeringTriangulation("(0,~1,~2)(1,2,~0)", "RBB")
+
+        The same flip sequence with reduced veering triangulations (forward flippable
+        edges in ``PURPLE``)::
+
+            sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
+            sage: T.forgot_forward_flippable_colour(); T
+            VeeringTriangulation("(0,1,2)(~2,~0,~1)", "RPB")
+            sage: T.flip(1, RED, reduced=True); T
+            VeeringTriangulation("(0,~2,1)(2,~1,~0)", "PRB")
+            sage: T.flip(0, RED, reduced=True); T
+            VeeringTriangulation("(0,1,2)(~2,~0,~1)", "RPB")
+            sage: T.flip(1, BLUE, reduced=True); T
+            VeeringTriangulation("(0,~2,1)(2,~1,~0)", "RBP")
+            sage: T.flip(2, BLUE, reduced=True); T
+            VeeringTriangulation("(0,~1,~2)(1,2,~0)", "RPB")
 
         Some examples involving linear subspaces::
 
@@ -1726,9 +1744,12 @@ class VeeringTriangulation(Triangulation):
             ....:     T._set_switch_conditions(T._tt_check, Gx.row(0), VERTICAL)
             ....:     T._set_switch_conditions(T._tt_check, Gx.row(1), VERTICAL)
         """
-        if Lx:
+        if col != BLUE and col != RED:
+            raise ValueError("'col' must be BLUE or RED")
+
+        if Lx is not None:
             raise NotImplementedError("not implemented for linear equations")
-        if Gx:
+        if Gx is not None:
             a, b, c, d = self.square_about_edge(e)
             e = self._norm(e)
             a = self._norm(a)
@@ -1758,6 +1779,37 @@ class VeeringTriangulation(Triangulation):
 
         Triangulation.flip(self, e)
         self._colouring[e] = self._colouring[E] = col
+
+        if reduced:
+            ep = self._ep
+            a, b, c, d = self.square_about_edge(e)
+            assert self._colouring[a] == RED, (a, self._colouring[a])
+            assert self._colouring[b] == BLUE, (b, self._colouring[b])
+            assert self._colouring[c] == RED, (c, self._colouring[c])
+            assert self._colouring[d] == BLUE, (d, self._colouring[d])
+
+            # assertions to be removed
+            assert not self.is_forward_flippable(e)
+
+            if col == BLUE:
+                if self.is_forward_flippable(b):
+                    self._colouring[b] = PURPLE
+                    self._colouring[ep[b]] = PURPLE
+                if d != ep[b] and self.is_forward_flippable(d):
+                    self._colouring[d] = PURPLE
+                    self._colouring[ep[d]] = PURPLE
+                assert not self.is_forward_flippable(a)
+                assert not self.is_forward_flippable(c)
+            else:
+                assert col == RED
+                if self.is_forward_flippable(a):
+                    self._colouring[a] = PURPLE
+                    self._colouring[ep[a]] = PURPLE
+                if c != ep[a] and self.is_forward_flippable(c):
+                    self._colouring[c] = PURPLE
+                    self._colouring[ep[c]] = PURPLE
+                assert not self.is_forward_flippable(b)
+                assert not self.is_forward_flippable(d)
 
     def cylinders(self, col):
         r"""
@@ -2836,19 +2888,22 @@ class VeeringTriangulation(Triangulation):
             print('[edge_has_curve] checking edge %s with colour %s' % (edge_rep(e), colouring[e]))
 
         a, b, c, d = self.square_about_edge(e)
-        if colouring[a] == BLUE:
+        if colouring[a] == BLUE or colouring[b] == RED:
+            assert colouring[c] == BLUE or colouring[d] == RED
             POS, NEG = BLUE, RED
             if verbose:
                 print('[edge_has_curve] checking HORIZONTAL track')
         else:
+            assert colouring[a] == RED or colouring[b] == BLUE
+            assert colouring[c] == RED or colouring[d] == BLUE
             POS, NEG = RED, BLUE
             if verbose:
                 print('[edge_has_curve] checking VERTICAL track')
 
         # check alternating condition
-        assert colouring[a] != colouring[b]
-        assert colouring[c] == colouring[a]
-        assert colouring[d] == colouring[b]
+        assert colouring[e] == BLUE or colouring[e] == RED
+        assert colouring[a] != colouring[b], (a, b, colouring[a], colouring[b])
+        assert colouring[c] != colouring[d], (c, d, colouring[c], colouring[d])
 
         if colouring[e] == NEG:
             start = b
