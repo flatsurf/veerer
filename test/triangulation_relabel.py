@@ -1,5 +1,5 @@
 ######################################################################
-# This file is part of veering.
+# This file is part of veerer.
 #
 #       Copyright (C) 2020 Vincent Delecroix
 #
