@@ -65,7 +65,6 @@ canonical triangulations. We denote them below by ``V0``, ``Vright`` and
     sage: V.relabel("(0,2)(4,~4)")
     sage: assert V == V0
 
-
 ::
 
     sage: from veerer import VeeringFlipSequence
@@ -89,3 +88,4 @@ canonical triangulations. We denote them below by ``V0``, ``Vright`` and
     sage: assert F9.is_closed()
 
     sage: F0 * F2 * F4 * F3 * F1
+    VeeringFlipSequence(VeeringTriangulation("(0,3,4)(1,~3,5)(2,6,~4)", "PPPBRRB"), "2B 0B 1B 6R 3R 4B 1R", (0,6,1,5,2)(3,4)(~4,~3), reduced=True)
