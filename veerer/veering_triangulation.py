@@ -101,7 +101,7 @@ class VeeringTriangulation(Triangulation):
 
         sage: from veerer import *
 
-    Built from an explicit triangulation (in cycle or list form) and a list of colors::
+    Built from an explicit triangulation (in cycle or list form) and a list of colours::
 
         sage: VeeringTriangulation("(0,1,2)(~0,~1,~2)", [RED, RED, BLUE])
         VeeringTriangulation("(0,1,2)(~2,~0,~1)", "RRB")
@@ -405,8 +405,8 @@ class VeeringTriangulation(Triangulation):
 
         nseps = c.nseps()
 
-        colors = [RED] * nseps + [BLUE] * (2*nseps)
-        return VeeringTriangulation(triangles, colors)
+        colours = [RED] * nseps + [BLUE] * (2*nseps)
+        return VeeringTriangulation(triangles, colours)
 
     @classmethod
     def from_face_edge_perms(self, colouring, fp, ep, vp=None, check=True):
@@ -515,18 +515,18 @@ class VeeringTriangulation(Triangulation):
 
         return curver.create_triangulation(F)
 
-    def forgot_forward_flippable_color(self):
+    def forgot_forward_flippable_colour(self):
         r"""
-        Make purple the color of forward flippable edges.
+        Make purple the colour of forward flippable edges.
 
         The result of this operation determines is entirely determined by the
-        vertical train track (as only forward flippable edges have an undefined color).
+        vertical train track (as only forward flippable edges have an undefined colour).
 
         EXAMPLES::
 
             sage: from veerer import *
             sage: t = VeeringTriangulation("(0,~6,~3)(1,7,~2)(2,~1,~0)(3,5,~4)(4,8,~5)(6,~8,~7)", "RBBBRBBRB")
-            sage: t.forgot_forward_flippable_color()
+            sage: t.forgot_forward_flippable_colour()
             sage: t
             VeeringTriangulation("(0,~6,~3)(1,7,~2)(2,~1,~0)(3,5,~4)(4,8,~5)(6,~8,~7)", "RBPBRBPRB")
         """
@@ -546,7 +546,7 @@ class VeeringTriangulation(Triangulation):
 
     def to_core(self, slope=VERTICAL):
         r"""
-        Change the color of each forward (reps. backward) flippable edge in
+        Change the colour of each forward (reps. backward) flippable edge in
         PURPLE if ``slope`` is ``VERTICAL`` (resp ``HORIZONTAL``)
 
         EXAMPLES::
@@ -667,12 +667,12 @@ class VeeringTriangulation(Triangulation):
 
             sage: from surface_dynamics import AbelianStratum, QuadraticStratum
             sage: t = VeeringTriangulation.from_stratum(AbelianStratum(2))
-            sage: t.forgot_forward_flippable_color()
+            sage: t.forgot_forward_flippable_colour()
             sage: t.angles()
             [6]
 
             sage: t = VeeringTriangulation.from_stratum(QuadraticStratum(1,1,1,1))
-            sage: t.forgot_forward_flippable_color()
+            sage: t.forgot_forward_flippable_colour()
             sage: t.angles()
             [3, 3, 3, 3]
         """
@@ -726,12 +726,12 @@ class VeeringTriangulation(Triangulation):
 
             sage: from surface_dynamics import AbelianStratum, QuadraticStratum
             sage: t = VeeringTriangulation.from_stratum(AbelianStratum(2))
-            sage: t.forgot_forward_flippable_color()
+            sage: t.forgot_forward_flippable_colour()
             sage: t.is_abelian()
             True
 
             sage: t = VeeringTriangulation.from_stratum(QuadraticStratum(1,1,1,1))
-            sage: t.forgot_forward_flippable_color()
+            sage: t.forgot_forward_flippable_colour()
             sage: t.is_abelian()
             False
         """
@@ -798,12 +798,12 @@ class VeeringTriangulation(Triangulation):
 
             sage: from surface_dynamics import AbelianStratum, QuadraticStratum
             sage: t = VeeringTriangulation.from_stratum(AbelianStratum(2))
-            sage: t.forgot_forward_flippable_color()
+            sage: t.forgot_forward_flippable_colour()
             sage: t.stratum()
             H_2(2)
 
             sage: t = VeeringTriangulation.from_stratum(QuadraticStratum(1,1,1,1))
-            sage: t.forgot_forward_flippable_color()
+            sage: t.forgot_forward_flippable_colour()
             sage: t.stratum()
             Q_2(1^4)
         """
@@ -1167,7 +1167,7 @@ class VeeringTriangulation(Triangulation):
                 if self._colouring[e] == PURPLE:
                     has_purple = True
 
-        # first run: compare edges using colors and vertex permutation orbits
+        # first run: compare edges using colours and vertex permutation orbits
         # FIX: Take advantage of folded edges, if they are present?
         for e in range(n):
             f = vp[e]
@@ -1685,7 +1685,7 @@ class VeeringTriangulation(Triangulation):
 
         - ``e`` - edge number
 
-        - ``col`` - color of the edge after the flip (ie either ``RED`` or ``BLUE``)
+        - ``col`` - colour of the edge after the flip (ie either ``RED`` or ``BLUE``)
 
         - ``Lx`` - (optional) - matrix whose rows are equations in a linear subspace
           that has to be carried around
@@ -1749,7 +1749,7 @@ class VeeringTriangulation(Triangulation):
                 Gx.add_multiple_of_column(e, d, -1)
                 Gx.add_multiple_of_column(e, a, +1)
             else:
-                raise ValueError("invalid color")
+                raise ValueError("invalid colour")
 
         # topological flip
         e = int(e)
@@ -1761,7 +1761,7 @@ class VeeringTriangulation(Triangulation):
 
     def cylinders(self, col):
         r"""
-        Return the cylinders of color ``col``.
+        Return the cylinders of colour ``col``.
 
         Each cylinder is given as a list of edges that correspond
         to the (ordered) list of edges crossed by the waist curve
@@ -2833,7 +2833,7 @@ class VeeringTriangulation(Triangulation):
         ep = self._ep
 
         if verbose:
-            print('[edge_has_curve] checking edge %s with color %s' % (edge_rep(e), colouring[e]))
+            print('[edge_has_curve] checking edge %s with colour %s' % (edge_rep(e), colouring[e]))
 
         a, b, c, d = self.square_about_edge(e)
         if colouring[a] == BLUE:
@@ -2917,7 +2917,7 @@ class VeeringTriangulation(Triangulation):
         - ``Gx`` - (optional) a matrix whose rows are admissible train-track
           lengths
 
-        OUTPUT: a list of pairs (edge number, new color)
+        OUTPUT: a list of pairs (edge number, new colour)
 
         EXAMPLES:
 

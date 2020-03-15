@@ -52,7 +52,7 @@ def test_flip(fp, cols, repeat):
         assert test1 == test2, (V, W, e, col)
 
         X = W.copy()
-        X.forgot_forward_flippable_color()
+        X.forgot_forward_flippable_colour()
         test3 = X.train_track_polytope(VERTICAL).affine_dimension() == X.stratum_dimension()
         assert test1 == test3, (W, X)
 

@@ -458,14 +458,14 @@ class CoreAutomaton(object):
 
         - ``T`` - a veering triangulation (no GREEN allowed)
 
-        - ``reduced`` - boolean - whether we forgot colors of forward flippable edges
+        - ``reduced`` - boolean - whether we forgot colours of forward flippable edges
 
         - ``verbosity`` - integer (default ``0``) - the verbosity level. If nonzero print
           information during the computation.
         """
         assert T.is_core()
         if reduced:
-            T.forgot_forward_flippable_color()
+            T.forgot_forward_flippable_colour()
 
             # check to be removed
             T._check()
@@ -638,7 +638,7 @@ class CoreAutomaton(object):
                 if reduced:
                     for ee, ccol in recol:
                         if verbosity >= 2:
-                            print('[automaton] recolor %d as %s' % (ee, colour_to_char(ccol)))
+                            print('[automaton] recolour %d as %s' % (ee, colour_to_char(ccol)))
                             sys.stdout.flush()
                         T._colouring[ee] = ccol
                         T._colouring[T._ep[ee]] = ccol
