@@ -845,6 +845,21 @@ def perm_compose(p1, p2, n=None):
 
 perm_compose_00 = perm_compose
 
+# TODO: do something less stupid
+# (do it for each cycle independently, detecting if needed period)
+def perm_pow(p, k, n=None):
+    if n is None:
+        n = len(p)
+    if k == 0:
+        return perm_id(n)
+
+    q = p[:]
+    k -= 1
+    while k:
+        q = perm_compose(q, p)
+        k -= 1
+    return q
+
 def perm_compose_10(p1, p2, n=None):
     r"""
     Return the product ``p1^(-1) p2``

@@ -23,7 +23,7 @@ import pytest
 import itertools
 from random import randint
 from veerer.permutation import (perm_init, perm_invert, perm_compose, perm_id,
-        perm_random, perm_check, perm_cycles, perm_from_cycles)
+        perm_random, perm_check, perm_cycles, perm_from_cycles, perm_pow)
 
 def test_zero():
     p = perm_init([])
@@ -45,5 +45,19 @@ def test_cycles(repeat=50):
         p = perm_random(randint(0, 10))
         c = perm_cycles(p)
         assert perm_from_cycles(c) == p
+
+def test_pow(repeat=50):
+    for i in range(repeat):
+        n = randint(0, 100)
+        p = perm_random(n)
+        k = randint(0, 100)
+        q = perm_pow(p, k)
+
+        r = perm_id(n)
+        for _ in range(k):
+            r = perm_compose(r, p)
+
+        assert r == q
+
 
 if __name__ == '__main__': sys.exit(pytest.main(sys.argv))
