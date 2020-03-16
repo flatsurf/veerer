@@ -639,11 +639,6 @@ class VeeringTriangulation(Triangulation):
         r"""
         Return the list of angles (divided by \pi).
 
-        Note that the vertices of the triangulation are labeled. The
-        angles are given in the same order.
-
-        # ??? Confused - there is no labelling yet.
-
         EXAMPLES::
 
             sage: from veerer import *
@@ -1664,7 +1659,7 @@ class VeeringTriangulation(Triangulation):
 #    def self_isometries(self):
 #        return self.isometries_to(self)
 
-    def flip(self, e, col, Lx=None, Gx=None, reduced=False):
+    def flip(self, e, col, Lx=None, Gx=None, reduced=None):
         r"""
         Flip an edge inplace.
 
@@ -1704,13 +1699,13 @@ class VeeringTriangulation(Triangulation):
             sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
             sage: T.forgot_forward_flippable_colour(); T
             VeeringTriangulation("(0,1,2)(~2,~0,~1)", "RPB")
-            sage: T.flip(1, RED, reduced=True); T
+            sage: T.flip(1, RED); T
             VeeringTriangulation("(0,~2,1)(2,~1,~0)", "PRB")
-            sage: T.flip(0, RED, reduced=True); T
+            sage: T.flip(0, RED); T
             VeeringTriangulation("(0,1,2)(~2,~0,~1)", "RPB")
-            sage: T.flip(1, BLUE, reduced=True); T
+            sage: T.flip(1, BLUE); T
             VeeringTriangulation("(0,~2,1)(2,~1,~0)", "RBP")
-            sage: T.flip(2, BLUE, reduced=True); T
+            sage: T.flip(2, BLUE); T
             VeeringTriangulation("(0,~1,~2)(1,2,~0)", "RPB")
 
         Some examples involving linear subspaces::
@@ -1733,6 +1728,13 @@ class VeeringTriangulation(Triangulation):
         """
         if col != BLUE and col != RED:
             raise ValueError("'col' must be BLUE or RED")
+
+        e = int(e)
+        if e < 0 or e >= self._n or not self.is_flippable(e):
+            raise ValueError("invalid half edge 'e' for flipping veering triangulation")
+
+        if reduced is None:
+            reduced = self._colouring[e] == PURPLE
 
         if Lx is not None:
             raise NotImplementedError("not implemented for linear equations")
@@ -1759,11 +1761,8 @@ class VeeringTriangulation(Triangulation):
             else:
                 raise ValueError("invalid colour")
 
-        # topological flip
-        e = int(e)
-        assert(self.is_flippable(e))
+        # flip and set colour
         E = self._ep[e]
-
         Triangulation.flip(self, e)
         self._colouring[e] = self._colouring[E] = col
 
@@ -1926,7 +1925,8 @@ class VeeringTriangulation(Triangulation):
         Return whether this veering triangulation is cylindrical.
 
         A Veering triangulation is blue cylindrical (resp red cylindrical) if
-        all its triangles have two blue edges (resp red).
+        all its triangles have two blue edges (resp red). It is purple
+        cylindrical if all its triangle are adjacent to a purple edge.
 
         EXAMPLES::
 
@@ -1935,9 +1935,22 @@ class VeeringTriangulation(Triangulation):
             sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
             sage: T.is_cylindrical()
             True
+            sage: T.forgot_forward_flippable_colour()
+            sage: T.is_cylindrical(PURPLE)
+            True
+            sage: T.is_cylindrical(RED)
+            False
+            sage: T.is_cylindrical(BLUE)
+            False
+
+            sage: T = VeeringTriangulation("(0,3,4)(1,~3,5)(2,6,~4)", "PPPBRRB")
+            sage: T.is_cylindrical(PURPLE)
+            True
         """
         if col is None:
-            return self.is_cylindrical(BLUE) or self.is_cylindrical(RED)
+            return self.is_cylindrical(PURPLE) or self.is_cylindrical(BLUE) or self.is_cylindrical(RED)
+        elif col != BLUE and col != RED and col != PURPLE:
+            raise ValueError("'col' must be one of BLUE, RED or PURPLE")
 
         n = self._n
         fp = self._fp
@@ -1948,8 +1961,12 @@ class VeeringTriangulation(Triangulation):
                 continue
             b = fp[a]
             c = fp[b]
-            if (cols[a] == col) + (cols[b] == col) + (cols[c] == col) != 2:
-                return False
+            if col == PURPLE:
+                if cols[a] != PURPLE and cols[b] != PURPLE and cols[c] != PURPLE:
+                    return False
+            else:
+                if (cols[a] == col) + (cols[b] == col) + (cols[c] == col) != 2:
+                    return False
         return True
 
     def is_quadrangulable(self):
@@ -1964,7 +1981,7 @@ class VeeringTriangulation(Triangulation):
 
         return k == self.num_faces()
 
-    def is_square_tiled(self, col=None):
+    def is_square_tiled(self, col=PURPLE):
         r"""
         EXAMPLES::
 
@@ -2008,9 +2025,6 @@ class VeeringTriangulation(Triangulation):
             sage: T.is_cylindrical()
             True
         """
-        if col is None:
-            return self.is_square_tiled(BLUE) or self.is_square_tiled(RED)
-
         k = 0
         n = self.num_edges()
         ep = self._ep
@@ -2728,6 +2742,7 @@ class VeeringTriangulation(Triangulation):
             sage: T.is_core()
             False
         """
+        # TODO: could use v.has_curve for every edge?
         # In theory LP should be much faster but in practice (in small dimensions)
         # polytope is much better
         if method == 'polytope':

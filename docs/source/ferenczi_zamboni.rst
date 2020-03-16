@@ -9,83 +9,93 @@ flips in hyperelliptic strata of Abelian differentials (or equivalently,
 minimal strata of quadratic differentials on the sphere).
 
 The case of H(2) corresponds to Q(1,-1^5). The automaton is made of three
-canonical triangulations. We denote them below by ``V0``, ``Vright`` and
-``Vleft``.
+canonical triangulations. We denote them below by ``Vc``, ``Vl`` and
+``Vr`` where c, l and r respectively stand for center, left and right.
 
 ::
 
     sage: from veerer import VeeringTriangulation, BLUE, RED
 
-    sage: V0 = VeeringTriangulation("(0,3,4)(1,~3,5)(2,6,~4)", "PPPBRRB")
-    sage: Vright = VeeringTriangulation("(0,4,3)(1,5,~3)(2,6,~4)", "BBPPRRB")
-    sage: Vleft = VeeringTriangulation("(0,4,3)(1,~3,5)(2,~4,6)", "RPRBPRB")
+    sage: Vc = VeeringTriangulation("(0,~5,4)(3,5,6)(1,2,~6)", "PPBPRBR")
+    sage: Vr = VeeringTriangulation("(0,6,5)(1,2,~6)(3,4,~5)", "BPBBRPR")
+    sage: Vl = VeeringTriangulation("(0,~5,4)(1,6,5)(2,3,~6)", "PRBRRBP")
 
-    sage: assert V0.angles() == Vright.angles() == Vleft.angles() == [3, 1, 1, 1, 1, 1]
+    sage: V = Vc.copy()
 
-    sage: assert V0.flippable_edges() == [0, 1, 2]
-    sage: assert Vright.flippable_edges() == [2, 3]
-    sage: assert Vleft.flippable_edges() == [1, 4]
+    sage: V.flip(1, BLUE)
+    sage: V.relabel("(1,2)")
+    sage: assert V == Vc
 
-    sage: V = V0.copy()
+    sage: V.flip(0, RED)
+    sage: V.relabel("(0,4)")
+    sage: assert V == Vc
 
-    sage: V.flip(2, BLUE, reduced=True)
-    sage: V.relabel("(2,6)")
-    sage: assert V == V0
+    sage: V.flip(0, BLUE)
+    sage: V.flip(3, BLUE)
+    sage: V.relabel("(0,3)")
+    sage: assert V == Vr
 
-    sage: V.flip(1, RED, reduced=True)
-    sage: V.relabel("(1,5)")
-    sage: assert V == V0
+    sage: V.flip(1, BLUE)
+    sage: V.relabel("(1,2)")
+    sage: assert V == Vr
 
-    sage: V.flip(0, BLUE, reduced=True)
-    sage: V.flip(1, BLUE, reduced=True)
-    sage: assert V == Vright
+    sage: V.flip(1, RED)
+    sage: V.flip(5, RED)
+    sage: V.relabel("(0,2,3)(1,4)(5,6)")
+    sage: assert V == Vr
 
-    sage: V.flip(2, RED, reduced=True)
-    sage: V.flip(3, RED, reduced=True)
-    sage: V.relabel("(0,6,1)(2,5)(3,4)")
-    sage: assert V == Vright
+    sage: V.flip(5, BLUE)
+    sage: assert V == Vc
 
-    sage: V.flip(2, BLUE, reduced=True)
-    sage: V.relabel("(2,6)")
-    sage: assert V == Vright
+    sage: V.flip(1, RED)
+    sage: V.flip(3, RED)
+    sage: V.relabel("(1,3)")
+    sage: assert V == Vl
 
-    sage: V.flip(3, BLUE, reduced=True)
-    sage: V.relabel("(0,1)")
-    sage: assert V == V0
+    sage: V.flip(0, RED)
+    sage: V.relabel("(0,4)")
+    sage: assert V == Vl
 
-    sage: V.flip(0, RED, reduced=True)
-    sage: V.flip(2, RED, reduced=True)
-    sage: assert V == Vleft
+    sage: V.flip(0, BLUE)
+    sage: V.flip(6, BLUE)
+    sage: V.relabel("(0,2)(1,4,3)(5,6,~5,~6)")
+    sage: assert V == Vl
 
-    sage: V.flip(1, RED, reduced=True)
-    sage: V.relabel("(1,5)")
-    sage: assert V == Vleft
+    sage: V.flip(6, RED)
+    sage: V.relabel("(6,~6)")
+    sage: assert V == Vc
 
-    sage: V.flip(4, RED, reduced=True)
-    sage: V.relabel("(0,2)(4,~4)")
-    sage: assert V == V0
+Now, instead of modifying a given triangulation we instead define flip sequences
 
 ::
 
     sage: from veerer import VeeringFlipSequence
 
-    sage: F0 = VeeringFlipSequence(V0, "2B", "(2,6)", reduced=True)
-    sage: F1 = VeeringFlipSequence(V0, "1R", "(1,5)", reduced=True)
-    sage: assert F0.is_closed() and F1.is_closed()
-    sage: F2 = VeeringFlipSequence(V0, "0B 1B", reduced=True)
-    sage: F3 = VeeringFlipSequence(Vright, "3B", "(0,1)", reduced=True)
-    sage: assert not F2.is_closed() and not F3.is_closed()
-    sage: assert F2._end == Vright and F3._end == V0
-    sage: F4 = VeeringFlipSequence(Vright, "2R 3R", "(0,6,1)(2,5)(3,4)", reduced=True)
-    sage: F5 = VeeringFlipSequence(Vright, "2B", "(2,6)", reduced=True)
-    sage: assert F4.is_closed() and F5.is_closed()
-    sage: F6 = VeeringFlipSequence(V0, "0R 2R", reduced=True)
-    sage: F7 = VeeringFlipSequence(Vleft, "4R", "(0,2)(4,~4)", reduced=True)
-    sage: assert not F6.is_closed() and not F7.is_closed()
-    sage: assert F6._end == Vleft and F7._end == V0
-    sage: F8 = None
-    sage: F9 = VeeringFlipSequence(Vleft, "1R", "(1,5)", reduced=True)
-    sage: assert F9.is_closed()
+    sage: CR5 = VeeringFlipSequence(Vc, "1B", "(1,2)")
+    sage: CL5 = VeeringFlipSequence(Vc, "0R", "(0,4)")
+    sage: R3 = VeeringFlipSequence(Vc, "0B 3B", "(0,3)")
+    sage: R5 = VeeringFlipSequence(Vr, "1B", "(1,2)")
+    sage: R1 = VeeringFlipSequence(Vr, "1R 5R", "(0,2,3)(1,4)(5,6)")
+    sage: R2 = VeeringFlipSequence(Vr, "5B")
+    sage: L3 = VeeringFlipSequence(Vc, "1R 3R", "(1,3)")
+    sage: L5 = VeeringFlipSequence(Vl, "0R", "(0,4)")
+    sage: L1 = VeeringFlipSequence(Vl, "0B 6B", "(0,2)(1,4,3)(5,6,~5,~6)")
+    sage: L2 = VeeringFlipSequence(Vl, "6R", "(6,~6)")
 
-    sage: F0 * F2 * F4 * F3 * F1
-    VeeringFlipSequence(VeeringTriangulation("(0,3,4)(1,~3,5)(2,6,~4)", "PPPBRRB"), "2B 0B 1B 6R 3R 4B 1R", (0,6,1,5,2)(3,4)(~4,~3), reduced=True)
+    sage: assert CL5.start() == CL5.end() == Vc
+    sage: assert CR5.start() == CR5.end() == Vc
+    sage: assert R3.start() == Vc and R3.end() == Vr
+    sage: assert R5.start() == R5.end() == Vr
+    sage: assert R1.start() == R1.end() == Vr
+    sage: assert R2.start() == Vr and R2.end() == Vc
+    sage: assert L3.start() == Vc and L3.end() == Vl
+    sage: assert L5.start() == L5.end() == Vl
+    sage: assert L1.start() == L1.end() == Vl
+    sage: assert L2.start() == Vl and L2.end() == Vc
+
+They can be composed and one can check whether they define pseudo-Anosov homeomorphism::
+
+    sage: (R3 * R2 * CR5).is_pseudo_anosov()
+    False
+    sage: (R3 * R5 * R2 * L3 * L5 * L2).is_pseudo_anosov()
+    True

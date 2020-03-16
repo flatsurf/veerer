@@ -467,7 +467,7 @@ class CoreAutomaton(object):
         if reduced:
             T.forgot_forward_flippable_colour()
 
-            # check to be removed
+            # TODO: check to be removed
             T._check()
 
         if verbosity:
@@ -500,7 +500,7 @@ class CoreAutomaton(object):
         old_size = 0
         t0 = time()
         while True:
-            # check to be removed
+            # TODO: check to be removed
             T._check()
 
             if verbosity >= 2:
@@ -523,7 +523,7 @@ class CoreAutomaton(object):
 
             # assertion to be removed
             assert not reduced or old_col == PURPLE
-            T.flip(e, col)
+            T.flip(e, col, reduced=False)
 
             if verbosity >= 2:
                 print('[automaton] ... landed at %s' % T.to_string())
@@ -536,10 +536,10 @@ class CoreAutomaton(object):
                     a, b, c, d = T.square_about_edge(e)
 
                     # assertions to be removed
-                    assert T._colouring[a] == RED
-                    assert T._colouring[b] == BLUE
-                    assert T._colouring[c] == RED
-                    assert T._colouring[d] == BLUE
+                    assert T._colouring[a] == RED, (a, colour_to_string(T._colouring[a]))
+                    assert T._colouring[b] == BLUE, (b, colour_to_string(T._colouring[b]))
+                    assert T._colouring[c] == RED, (c, colour_to_string(T._colouring[c]))
+                    assert T._colouring[d] == BLUE, (d, colour_to_string(T._colouring[d]))
                     if col == BLUE:
                         if T.is_forward_flippable(b):
                             recol.append((b, BLUE))
@@ -630,6 +630,7 @@ class CoreAutomaton(object):
                     T._colouring[ee] = ccol
                     T._colouring[T._ep[ee]] = ccol
             T.flip_back(e, old_col)
+            # TODO: check to be removed
             T._check()
             assert T.iso_sig() == iso_sigs[-1], (T.iso_sig(), iso_sigs[-1])
 

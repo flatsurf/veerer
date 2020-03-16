@@ -50,6 +50,23 @@ sage:
   before_script:
     - export PYTHON="sage -python" PIP="sage -pip"
     - sage -c 'import sage.env; print(sage.env.SAGE_VERSION)'
+    - ${PIP} install .
+    - ${PIP} install pytest
+  script:
+    - ${PYTHON} test/run_tests.py
+    # NOTE: the sage doctester refuses to execute from the repository because
+    # of "wrong" permissions. For that reason we cd to the home directory before
+    # running them.
+    - DIR="$(pwd)"
+    - cd
+    - sage -t --force-lib --long --optional=sage ${DIR}/veerer
+    - sage -t --force-lib --long --optional=sage ${DIR}/docs/source
+
+sage-optional:
+  image: sagemath/sagemath-dev:develop
+  before_script:
+    - export PYTHON="sage -python" PIP="sage -pip"
+    - sage -c 'import sage.env; print(sage.env.SAGE_VERSION)'
     - for pkg in "flipper curver surface_dynamics"; do sage -pip install ${pkg}; done
     - ${PIP} install .
     - ${PIP} install pytest
@@ -60,5 +77,5 @@ sage:
     # running them.
     - DIR="$(pwd)"
     - cd
-    - sage -t --force-lib --long ${DIR}/veerer
-    - sage -t --force-lib --long ${DIR}/docs/source
+    - sage -t --force-lib --long --optional=sage,flipper,surface_dynamics ${DIR}/veerer
+    - sage -t --force-lib --long --optional=sage,flipper,surface_dynamics ${DIR}/docs/source

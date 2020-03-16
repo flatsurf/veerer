@@ -6,6 +6,7 @@ from six.moves import range, map, filter, zip
 
 from array import array
 from .permutation import *
+from .env import require_package
 
 def face_edge_perms_init(data):
     r"""
@@ -568,6 +569,7 @@ class Triangulation(object):
             [ 1  0]
             [ 0  0]
         """
+        require_package('sage', 'homology_matrix')
         from sage.matrix.constructor import matrix
         from sage.rings.integer_ring import ZZ
 
@@ -598,18 +600,18 @@ class Triangulation(object):
         self._check_homology_matrix(h)
         return h
 
-    def flip_homological_action(self, e, m):
+    def flip_homological_action(self, e, m, twist=False):
         r"""
         Multiply the matrix ``m`` on the left by the homology action of
         the ``e``-flip.
 
         The matrix ``m`` must have ``ne`` rows and each column represents a
-        vector in cohomology. That is to say, each column has to satisfy the
-        following conditions:
+        vector in cohomology (possibly twisted for quadratic differentials).
+        That is to say, each column has to satisfy the following conditions:
 
-        - for each face `F` the evaluation on its boundary is zero.
+        - for each face `F` the evaluation on its boundary is zero (up to twist).
 
-        - for each folded edge, the corresponding entry is zero.
+        - for each folded edge, the corresponding entry is zero (up to twist).
 
         INPUT:
 
@@ -661,17 +663,9 @@ class Triangulation(object):
             [0 1 0]
             [1 1 1]
         """
-        from sage.modules.free_module import FreeModule
-        from sage.rings.integer_ring import ZZ
-
         ne = self.num_edges()
         assert m.nrows() == ne
         ep = self._ep
-
-        V = FreeModule(ZZ, ne)
-
-        # matrix check (to be disabled)
-        self._check_homology_matrix(m)
 
         if ep[e] == e:
             return
@@ -679,27 +673,40 @@ class Triangulation(object):
             e = ep[e]
 
         a,b,c,d = self.square_about_edge(e)
-        # v_e becomes v_a + v_d. We might want to use optimized row operations
-        # such as
+        # v_e use to be v_c + v_d and becomes v_d + v_a
+        # v<----------u     v<----------u
+        # |     a    ^^     |^    a     ^
+        # |         / |     | \         |
+        # |  F     /  |     |  \     G  |
+        # |       /   |     |   \       |
+        # |b    e/   d| --> |b   \e    d|
+        # |     /     |     |     \     |
+        # |    /      |     |      \    |
+        # |   /       |     |       \   |
+        # |  /     G  |     | F      \  |
+        # | /         |     |         \ |
+        # v/    c     |     v     c    \|
+        # w---------->x     w---------->x
+
+        # NOTE: We might want to use optimized row operations such as
         #   swap_rows(i, j)
         #   add_multiple_of_row(i, j, s)
-        V = m._row_ambient_module()
 
-        v = V.zero()
         A = ep[a]
-        if a < A:
-            v += m[a]
-        elif A < a:
-            v -= m[A]
         D = ep[d]
-        if d < D:
-            v += m[d]
-        elif D < d:
-            v -= m[D]
+        if twist:
+            m[e] = (m[a] if a < A else m[A]) + (m[d] if d < D else m[D])
+        else:
+            if a == A and d == D:
+                m[e] = V = m._row_ambient_module().zero()
+            elif a == A:
+                m[e] = m[d] if d < D else -m[D]
+            elif d == D:
+                m[e] = m[a] if a < A else -m[A]
+            else:
+                m[e] = (m[a] if a < A else -m[A]) + (m[d] if d < D else -m[D])
 
-        m[e] = v
-
-    def relabel_homological_action(self, p, m):
+    def relabel_homological_action(self, p, m, twist=False):
         r"""
         Acts on the homological vectors ``m`` by the relabeling permutation ``p``.
 
@@ -773,14 +780,14 @@ class Triangulation(object):
                 else:
                     is_neg = False
                 m.swap_rows(e, ee)
-                if is_neg:
+                if is_neg and not twist:
                     m[e] *= -1
 
                 e = ee
 
             # one more sign change?
             assert e == e0
-            if is_e0_neg:
+            if is_e0_neg and not twist:
                 m[e] *= -1
 
     def is_flippable(self, e):

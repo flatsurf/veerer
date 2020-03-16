@@ -209,6 +209,7 @@ def perm_init(data, n=None, involution=None):
         c = str_to_cycles(data)
         return perm_from_cycles(c, n=n, involution=involution)
 
+    # TODO: test flipper conversion
     if data.__module__.startswith('flipper'):
         if involution is None:
             raise ValueError("involution must be provided")
