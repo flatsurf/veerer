@@ -51,7 +51,9 @@ colors.
 
 ::
 
-    sage: T0.stratum()
+    sage: T0.angles()
+    [2]
+    sage: T0.stratum()  # optional - surface_dynamics
     H_1(0)
 
 ::
@@ -79,7 +81,9 @@ colors.
 
 ::
 
-    sage: T1.stratum()
+    sage: T1.angles()
+    [6]
+    sage: T1.stratum()  # optional - surface_dynamics
     H_2(2)
 
 ::
@@ -101,7 +105,9 @@ colors.
 
 ::
 
-    sage: T2.stratum()
+    sage: T2.angles()
+    [3, 3, 1, 1]
+    sage: T2.stratum()  # optional - surface_dynamics
     Q_1(1^2, -1^2)
 
 ::
