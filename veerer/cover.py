@@ -220,7 +220,7 @@ class TriangulationCover(object):
             sage: T = Triangulation("(0,1,~1)(~0,2,3)(~2,4,~4)")
             sage: C = T.cover([[0,1,3,2],[1,0,3,2],[1,2,3,0],[3,2,1,0],[0,1,3,2]])
             sage: C.as_triangulation()
-            Triangulation("(0,1,8)(2,3,~0)...(~23,~22,~20)")
+            Triangulation("(0,1,7)(2,3,~0)(4,~4,6)...(~6,~3,~18)(~23,~22,~20)")
         """
         return Triangulation.from_face_edge_perms(
                 fp=self.face_permutation(),

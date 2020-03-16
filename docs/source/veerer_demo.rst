@@ -151,7 +151,7 @@ train-tracks.
 ::
 
     sage: VeeringTriangulation.from_pseudo_anosov(h)
-    VeeringTriangulation("(0,~3,~1)(1,2,14)(3,~5,~13)(4,~12,~8)(5,6,~11)(7,8,13)(9,~6,~7)(10,~0,11)(12,~14,~10)(~2,~9,~4)", "RBRBRRBRBBBBRBR")
+    VeeringTriangulation("(0,~3,~1)(1,2,14)(3,~5,~13)(4,~12,~8)(5,6,~11)(7,8,13)(9,~6,~7)(10,~0,11)(12,~14,~10)(~9,~4,~2)", "RBRBRRBRBBBBRBR")
 
 Core vs not core
 ----------------
@@ -331,7 +331,7 @@ filtering cylindrical (single test is cheap) ~2 sec for H(4)^hyp
     9116
     sage: print(AV.num_geometric_triangulations())       # long time - ~21 secs
     2916
-    sage: print(AV.num_cylindrical_triangulations()) # long time - ~1.5 secs
+    sage: print(AV.num_cylindrical_triangulations())     # long time - ~1.5 secs
     636
 
 License

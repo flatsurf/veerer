@@ -18,36 +18,57 @@ def face_edge_perms_init(data):
 
         sage: face_edge_perms_init('(0,1,2)')
         (array('l', [1, 2, 0]), array('l', [0, 1, 2]))
+
+    TESTS:
+
+    Check that edge permutation do not depend on the details of faces::
+
+        sage: f1 = "(0,~5,4)(3,5,6)(1,2,~6)"
+        sage: f2 = "(0,6,5)(1,2,~6)(3,4,~5)"
+        sage: f3 = "(6,4,3)(~6,~5,1)(5,0,2)"
+        sage: assert face_edge_perms_init(f1)[1] == face_edge_perms_init(f2)[1] == face_edge_perms_init(f3)[1]
     """
     if isinstance(data, str):
         l = str_to_cycles(data)
     else:
         l = [[int(i) for i in c] for c in data]
 
-    # max label
-    k = max(max(max(i,~i) for i in c) for c in l) + 1
-
-    # how many ~ edges
-    n_twins = sum(sum(i < 0 for i in c) for c in l)
-
-    n = 2 * n_twins + (k - n_twins)
-
-    ep = [-1] * n # edge permutation
-    fp = [-1] * n # face permutation
-    twins = [None] * n_twins # tilde conversion
-    m = n - 1
+    pos = []
+    neg = []
     for c in l:
         for e in c:
             if e < 0:
-                E = ~e
-                e = m
-                m -= 1
-                ep[E] = e
-                ep[e] = E
+                neg.append(e)
+            else:
+                pos.append(e)
+
+    for e in neg:
+        if ~e not in pos:
+            raise ValueError("inconsistent permutation data")
+    pos.sort()
+    neg.sort(reverse=True)
+    if pos != list(range(len(pos))):
+        raise ValueError("inconsistent permutation data")
+
+    # number of half edges
+    n = len(pos) + len(neg)
+
+    # build the edge permutation ep
+    ep = [-1] * n # edge permutation
+    m = n - 1 # label available at the back
+    for e in neg:
+        E = ~e
+        e = m
+        if ep[E] != -1:
+            raise ValueError("inconsistent permutation data")
+        m -= 1
+        ep[E] = e
+        ep[e] = E
     for i in range(n):
         if ep[i] == -1:
             ep[i] = i
 
+    fp = [-1] * n # face permutation
     for c in l:
         k = len(c)
         for i in range(k):
@@ -138,7 +159,7 @@ class Triangulation(object):
         sage: T.flip(0); T
         Triangulation("(0,~2,1)(2,~1,~0)")
         sage: T.flip(0); T
-        Triangulation("(0,1,2)(~1,~2,~0)")
+        Triangulation("(0,1,2)(~2,~0,~1)")
         sage: T.flip(0); T
         Triangulation("(0,2,~1)(1,~0,~2)")
 
@@ -247,12 +268,12 @@ class Triangulation(object):
             sage: Triangulation("(0,1,3)")
             Traceback (most recent call last):
             ...
-            ValueError: broken face permutation
+            ValueError: inconsistent permutation data
 
             sage: Triangulation("(0,1,~2)")
             Traceback (most recent call last):
             ...
-            ValueError: broken face permutation
+            ValueError: inconsistent permutation data
 
             sage: Triangulation("(0)")
             Traceback (most recent call last):
@@ -786,6 +807,23 @@ class Triangulation(object):
         b = self._fp[a]
         return a != E and b != E
 
+    def flippable_edges(self):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T = Triangulation("(0,1,2)(~0,~1,~2)")
+            sage: T.flippable_edges()
+            [0, 1, 2]
+            sage: V = VeeringTriangulation(T, [RED, RED, BLUE])
+            sage: V.flippable_edges()
+            [0, 1]
+        """
+        n = self._n
+        ep = self._ep
+        return [e for e in range(n) if e <= ep[e] and self.is_flippable(e)]
+
     def square_about_edge(self, e):
         r"""
         Return the four edges that makes ``e`` the diagonal of a quadrilateral.
@@ -1056,7 +1094,7 @@ class Triangulation(object):
             sage: T = Triangulation("(0,1,2)(~0,~4,~2)(3,4,5)(~3,~1,~5)")
             sage: T.conjugate()
             sage: T
-            Triangulation("(0,2,4)(1,3,5)(~5,~4,~3)(~1,~0,~2)")
+            Triangulation("(0,2,4)(1,3,5)(~5,~4,~3)(~2,~1,~0)")
         """
         # for reference
         #

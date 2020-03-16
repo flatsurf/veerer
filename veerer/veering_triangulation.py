@@ -118,14 +118,15 @@ class VeeringTriangulation(Triangulation):
 
     From a flipper pseudo-Anosov map::
 
-        sage: import flipper
+        sage: import flipper                # optional - flipper
 
-        sage: T = flipper.load('S_2_1')
-        sage: h = T.mapping_class('abcD')
-        sage: h.is_pseudo_anosov()
+        sage: T = flipper.load('S_2_1')     # optional - flipper
+        sage: h = T.mapping_class('abcD')   # optional - flipper
+        sage: h.is_pseudo_anosov()          # optional - flipper
         True
-        sage: VeeringTriangulation.from_pseudo_anosov(h)
-        VeeringTriangulation("(0,~3,~1)...(12,~14,~10)(~2,~9,~4)", "RBRBRRBRBBBBRBR")
+        sage: V = VeeringTriangulation.from_pseudo_anosov(h)  # optional - flipper
+        sage: V # optional - flipper
+        VeeringTriangulation("(0,~3,~1)(1,2,14)...(12,~14,~10)(~9,~4,~2)", "RBRBRRBRBBBBRBR")
 
     A triangulation with some purple::
 
@@ -136,18 +137,18 @@ class VeeringTriangulation(Triangulation):
 
     def __init__(self, triangulation,  colouring, check=True):
         Triangulation.__init__(self, triangulation, check=False)
+        n = self._n  # number of half edges (get initialized by the triangulation)
 
         if isinstance(colouring, str):
             colouring = [colour_from_char(c) for c in colouring]
 
-        n = self._n
-        # A list : edge_indices --> {Red, Blue}
+        # set _colouring: half edge index --> {RED, BLUE}
         if len(colouring) == self.num_edges():
             colouring = [colouring[self._norm(i)] for i in range(n)]
         elif len(colouring) == n:
             colouring = colouring
         else:
-            raise ValueError('wrong colouring argument')
+            raise ValueError("'colouring' argument of invalid length")
 
         self._colouring = array('l', colouring)
 
@@ -163,7 +164,7 @@ class VeeringTriangulation(Triangulation):
         if not isinstance(cols, array) or \
            len(cols) != n or \
            any(col not in COLOURS for col in cols) or \
-           any(cols[e] != cols[ep[e]] for e in range(n)):
+           any(cols[e] != cols[ep[e]] for e in range(self._n)):
             raise error('bad colouring attribute')
 
         # no monochromatic face
@@ -211,7 +212,7 @@ class VeeringTriangulation(Triangulation):
             sage: h.is_pseudo_anosov()
             True
             sage: VeeringTriangulation.from_pseudo_anosov(h)
-            VeeringTriangulation("(0,4,~1)(1,5,3)(2,~0,~3)(~2,~5,~4)", "RBBBBR")
+            VeeringTriangulation("(0,4,~1)(1,5,3)(2,~0,~3)(~5,~4,~2)", "RBBBBR")
         """
         FS = h.flat_structure()
         n = FS.triangulation.zeta
@@ -715,7 +716,7 @@ class VeeringTriangulation(Triangulation):
             sage: T.is_abelian()
             True
             sage: T.is_abelian(certificate=True)
-            (True, [True, True, False, False, False, False, False, True, True, True, False, True])
+            (True, [True, True, False, False, False, False, True, True, True, True, False, False])
             sage: T = VeeringTriangulation([(-12, 4, -4), (-11, -1, 11), (-10, 0, 10),
             ....:      (-9, 9, 1), (-8, 8, -2), (-7, 7, 2), (-6, 6, -3), (-5, 5, 3)],
             ....:      [RED, RED, RED, RED, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE])
@@ -936,20 +937,6 @@ class VeeringTriangulation(Triangulation):
         """
         e = int(e)
         return Triangulation.is_flippable(self, e) and self.alternating_square(e)
-
-    def flippable_edges(self):
-        r"""
-        EXAMPLES::
-
-            sage: from veerer import *
-
-            sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
-            sage: T.flippable_edges()
-            [0, 1]
-        """
-        n = self._n
-        ep = self._ep
-        return [e for e in range(n) if e <= ep[e] and self.is_flippable(e)]
 
     def is_forward_flippable(self, e):
         r"""
@@ -1391,7 +1378,7 @@ class VeeringTriangulation(Triangulation):
             sage: T = VeeringTriangulation(faces, cols)
             sage: T.rotate()
             sage: T
-            VeeringTriangulation("(0,1,2)(3,4,5)(~5,~3,~1)(~2,~0,~4)", "RBBRBB")
+            VeeringTriangulation("(0,1,2)(3,4,5)(~5,~3,~1)(~4,~2,~0)", "RBBRBB")
             sage: T._check()
 
             sage: from surface_dynamics import *
@@ -1420,7 +1407,7 @@ class VeeringTriangulation(Triangulation):
             sage: T = VeeringTriangulation(faces, cols)
             sage: T.conjugate()
             sage: T
-            VeeringTriangulation("(0,2,4)(1,3,5)(~5,~4,~3)(~1,~0,~2)", "RBBRBB")
+            VeeringTriangulation("(0,2,4)(1,3,5)(~5,~4,~3)(~2,~1,~0)", "RBBRBB")
             sage: T._check()
         """
         Triangulation.conjugate(self)
@@ -1847,7 +1834,7 @@ class VeeringTriangulation(Triangulation):
 
             sage: T = VeeringTriangulation("(5,4,7)(~5,3,10)(1,~0,8)(~1,~4,11)(2,6,9)(~2,0,12)", "BBBBBBBRRRRRR")
             sage: T.cylinders(BLUE)
-            [[3, 17, 4, 15, 16, 13, 6]]
+            [[3, 13, 4, 16, 17, 15, 6]]
             sage: T.cylinders(RED)
             []
 
@@ -1857,13 +1844,13 @@ class VeeringTriangulation(Triangulation):
             sage: T.cylinders(BLUE)
             [[6, 7]]
             sage: T.cylinders(RED)
-            [[10, 17, 11]]
+            [[10, 15, 11]]
 
             sage: fp = '(0,~5,4)(1,~3,2)(3,5,~4)(6,~1,~0)'
             sage: cols = 'RBBRBRB'
             sage: T = VeeringTriangulation(fp, cols)
             sage: T.cylinders(BLUE)
-            [[6, 8, 2]]
+            [[6, 10, 2]]
             sage: T.cylinders(RED)
             []
 

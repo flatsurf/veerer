@@ -86,13 +86,13 @@ class VeeringFlipSequence(object):
 
             sage: T = VeeringTriangulation("(0,1,2)(~1,~2,~0)", "RRB")
             sage: VeeringFlipSequence(T, "1R 0R")
-            VeeringFlipSequence(VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB"), "1R 0R", (0)(1)(2)(~0)(~2)(~1))
+            VeeringFlipSequence(VeeringTriangulation("(0,1,2)(~2,~0,~1)", "RRB"), "1R 0R", (0)(1)(2)(~2)(~1)(~0))
             sage: VeeringFlipSequence(T, "1R 0R", reduced=True)
-            VeeringFlipSequence(VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RPB"), "1R 0R", (0)(1)(2)(~0)(~2)(~1), reduced=True)
+            VeeringFlipSequence(VeeringTriangulation("(0,1,2)(~2,~0,~1)", "RPB"), "1R 0R", (0)(1)(2)(~2)(~1)(~0), reduced=True)
             sage: VeeringFlipSequence(T, "1R 0R", relabelling="(0,5)(1,3)")
-            VeeringFlipSequence(VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RPB"), "1R 0R", (0,~1)(1,~0)(2)(~2))
+            VeeringFlipSequence(VeeringTriangulation("(0,1,2)(~2,~0,~1)", "RPB"), "1R 0R", (0,~0)(1,~2)(2,~1))
             sage: VeeringFlipSequence(T, "1R 0R", relabelling="(0,5)(1,3)", reduced=True)
-            VeeringFlipSequence(VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RPB"), "1R 0R", (0,~1)(1,~0)(2)(~2), reduced=True)
+            VeeringFlipSequence(VeeringTriangulation("(0,1,2)(~2,~0,~1)", "RPB"), "1R 0R", (0,~0)(1,~2)(2,~1), reduced=True)
         """
         args = [repr(self._start)]
         if self._flips:
