@@ -619,7 +619,6 @@ class Triangulation(object):
         EXAMPLES::
 
             sage: from veerer import *
-            sage: from surface_dynamics import *
             sage: T = Triangulation("(1,~0,4)(2,~4,~1)(3,~2,5)(~5,~3,0)")
             sage: T.homology_matrix()
             [ 1  0  0]
@@ -688,6 +687,9 @@ class Triangulation(object):
         - ``e`` - a half edge
 
         - ``m`` - matrix
+
+        - ``twist`` - whether we consider the twisted homology (mainly useful for
+          veering triangulations)
 
         EXAMPLES::
 

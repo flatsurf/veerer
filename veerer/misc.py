@@ -86,9 +86,8 @@ def flipper_nf_element_to_sage(x, K=None):
 
     EXAMPLES::
 
-        sage: import flipper
         sage: from veerer.misc import flipper_nf_element_to_sage
-
+        sage: import flipper                            # optional - flipper
         sage: S = flipper.load('S_2_1')                 # optional - flipper
         sage: h = S.mapping_class('acBD')               # optional - flipper
         sage: F = h.flat_structure()                    # optional - flipper
