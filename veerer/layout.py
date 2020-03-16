@@ -268,7 +268,7 @@ class FlatVeeringTriangulationLayout(object):
             sage: T = flipper.load('SB_4')  # optional - flipper
             sage: h = T.mapping_class('s_0S_1s_2S_3s_1S_2').canonical()     # optional - flipper
             sage: F = FlatVeeringTriangulationLayout.from_pseudo_anosov(h)  # optional - flipper
-            sage: F
+            sage: F                                                         # optional - flipper
             Flat Triangulation made of 4 triangles
 
         The flipper and veerer triangulations carry the same edge labels::

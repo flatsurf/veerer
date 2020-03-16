@@ -10,7 +10,7 @@ from time import time
 from .veering_triangulation import VeeringTriangulation
 from .constants import *
 
-from .env import sage
+from .env import sage, require_package
 
 class CoreAutomaton(object):
     r"""
@@ -35,9 +35,10 @@ class CoreAutomaton(object):
         sage: fp = '(0,1,2)(~0,~3,~8)(3,5,4)(~4,~1,~5)(6,7,8)(~6,9,~2)'
         sage: cols = 'BRBRBBBRBR'
         sage: T = VeeringTriangulation(fp, cols)
-        sage: A = CoreAutomaton.from_triangulation(T)
-        sage: len(A)
-        1074
+        sage: CoreAutomaton.from_triangulation(T)
+        Core veering automaton with 1074 vertices
+        sage: CoreAutomaton.from_triangulation(T, reduced=True)
+        Core veering automaton with 356 vertices
 
     Exploring strata::
 
@@ -110,9 +111,8 @@ class CoreAutomaton(object):
             sage: A.to_graph(directed=False, multiedges=False, loops=True)
             Looped graph on 86 vertices
         """
-        if sage is None:
-            raise ValueError('Only available in SageMath')
-        elif directed:
+        require_package('sage', 'to_graph')
+        if directed:
             from sage.graphs.digraph import DiGraph
             G = DiGraph(loops=loops, multiedges=multiedges)
         else:
@@ -275,7 +275,6 @@ class CoreAutomaton(object):
         EXAMPLES::
 
             sage: from veerer import *
-            sage: from surface_dynamics import *
 
             sage: T = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
             sage: A = CoreAutomaton.from_triangulation(T)
@@ -391,7 +390,7 @@ class CoreAutomaton(object):
             sage: sum(1 for _ in A.geometric_triangulations())
             54
         """
-        dim = self.one_triangulation().stratum().dimension()
+        dim = self.one_triangulation().stratum_dimension()
         for vt in self:
             p = vt.geometric_polytope()
             if p.affine_dimension() == 2*dim:
@@ -473,7 +472,7 @@ class CoreAutomaton(object):
 
         if verbosity:
             print('[automaton] stratum: %s' % T.stratum())
-            print('[automaton] stratum dimension: %d' % T.stratum().dimension())
+            print('[automaton] stratum dimension: %d' % T.stratum_dimension())
         if verbosity == 1:
             print('[automaton] size(graph)   size(path)    time')
 

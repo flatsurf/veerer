@@ -13,11 +13,10 @@ def flipper_edge(T, e):
     r"""
     EXAMPLES::
 
-        sage: import flipper
         sage: from veerer.layout import flipper_edge
-
-        sage: T = flipper.create_triangulation([(0r,1r,2r),(-1r,-2r,-3r)])
-        sage: sorted([flipper_edge(T, e) for e in T.edges])
+        sage: import flipper                                                # optional - flipper
+        sage: T = flipper.create_triangulation([(0r,1r,2r),(-1r,-2r,-3r)])  # optional - flipper
+        sage: sorted([flipper_edge(T, e) for e in T.edges])                 # optional - flipper
         [0, 1, 2, 3, 4, 5]
     """
     n = (3 * T.num_triangles)
@@ -90,12 +89,12 @@ def flipper_nf_element_to_sage(x, K=None):
         sage: import flipper
         sage: from veerer.misc import flipper_nf_element_to_sage
 
-        sage: S = flipper.load('S_2_1')
-        sage: h = S.mapping_class('acBD')
-        sage: F = h.flat_structure()
-        sage: for v in F.edge_vectors.values():
-        ....:     x = flipper_nf_element_to_sage(v.x)
-        ....:     y = flipper_nf_element_to_sage(v.y)
+        sage: S = flipper.load('S_2_1')                 # optional - flipper
+        sage: h = S.mapping_class('acBD')               # optional - flipper
+        sage: F = h.flat_structure()                    # optional - flipper
+        sage: for v in F.edge_vectors.values():         # optional - flipper
+        ....:     x = flipper_nf_element_to_sage(v.x)   # optional - flipper
+        ....:     y = flipper_nf_element_to_sage(v.y)   # optional - flipper
     """
     from sage.rings.rational_field import QQ
     if K is None:
