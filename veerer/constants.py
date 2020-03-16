@@ -19,6 +19,11 @@ cBLUE   = 'B'
 cPURPLE = 'P'
 cGREEN  = 'G'
 
+sRED = 'red'
+sBLUE = 'blue'
+sPURPLE = 'purple'
+sGREEN = 'green'
+
 COLOURS = [RED, BLUE, PURPLE, GREEN]
 
 # additional veering triangulation properties
@@ -138,16 +143,27 @@ def colour_to_char(col):
         sage: assert colour_to_char(GREEN) == 'G'
         sage: assert colour_to_char(PURPLE) == 'P'
     """
-    if col == RED:
-        return 'R'
-    elif col == BLUE:
-        return 'B'
-    elif col == PURPLE:
-        return 'P'
-    elif col == GREEN:
-        return 'G'
-    else:
-        raise ValueError("unknown color %s" % col)
+    if col == RED: return cRED
+    elif col == BLUE: return cBLUE
+    elif col == PURPLE: return cPURPLE
+    elif col == GREEN: return cGREEN
+    else: raise ValueError("unknown color %s" % col)
 
+def colour_to_string(col):
+    r"""
+    EXAMPLES::
+
+        sage: from veerer.constants import colour_to_string, RED, BLUE, GREEN, PURPLE
+
+        sage: assert colour_to_string(RED) == 'red'
+        sage: assert colour_to_string(BLUE) == 'blue'
+        sage: assert colour_to_string(GREEN) == 'green'
+        sage: assert colour_to_string(PURPLE) == 'purple'
+    """
+    if col == RED: return sRED
+    elif col == BLUE: return sBLUE
+    elif col == PURPLE: return sPURPLE
+    elif col == GREEN: return sGREEN
+    else: raise ValueError("unknown color %s" % col)
 
 
