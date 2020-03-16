@@ -59,8 +59,8 @@ sage:
     # running them.
     - DIR="$(pwd)"
     - cd
-    - sage -t --force-lib --long --optional=sage ${DIR}/veerer
-    - sage -t --force-lib --long --optional=sage ${DIR}/docs/source
+    - sage -t --force-lib --long ${DIR}/veerer
+    - sage -t --force-lib --long ${DIR}/docs/source
 
 sage-optional:
   image: sagemath/sagemath-dev:develop
@@ -77,5 +77,5 @@ sage-optional:
     # running them.
     - DIR="$(pwd)"
     - cd
-    - sage -t --force-lib --long --optional=sage,flipper,surface_dynamics ${DIR}/veerer
-    - sage -t --force-lib --long --optional=sage,flipper,surface_dynamics ${DIR}/docs/source
+    - sage -t --force-lib --long --optional=sage,curver,flipper,surface_dynamics ${DIR}/veerer
+    - sage -t --force-lib --long --optional=sage,curver,flipper,surface_dynamics ${DIR}/docs/source

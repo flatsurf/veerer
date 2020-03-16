@@ -27,12 +27,12 @@ def ppl_cone_to_hashable(P):
     EXAMPLES::
 
         sage: from veerer.veering_triangulation import VeeringTriangulation, ppl_cone_to_hashable, ppl_cone_from_hashable
-        sage: from surface_dynamics import *
+        sage: from surface_dynamics import *  # optional - surface_dynamics
 
-        sage: T = VeeringTriangulation.from_stratum(AbelianStratum(2))
-        sage: P = T.geometric_polytope()
-        sage: h = ppl_cone_to_hashable(P)
-        sage: P == ppl_cone_from_hashable(h)
+        sage: T = VeeringTriangulation.from_stratum(AbelianStratum(2))   # optional - surface_dynamics
+        sage: P = T.geometric_polytope()      # optional - surface_dynamics
+        sage: h = ppl_cone_to_hashable(P)     # optional - surface_dynamics
+        sage: P == ppl_cone_from_hashable(h)  # optional - surface_dynamics
         True
     """
     eqns = []
@@ -108,12 +108,12 @@ class VeeringTriangulation(Triangulation):
 
     From a stratum::
 
-        sage: from surface_dynamics import *
+        sage: from surface_dynamics import *  # optional - surface_dynamics
 
-        sage: VeeringTriangulation.from_stratum(AbelianStratum(2))
+        sage: VeeringTriangulation.from_stratum(AbelianStratum(2))  # optional - surface_dynamics
         VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
 
-        sage: VeeringTriangulation.from_stratum(QuadraticStratum({1:4}))
+        sage: VeeringTriangulation.from_stratum(QuadraticStratum({1:4}))  # optional - surface_dynamics
         VeeringTriangulation("(0,12,~11)(1,13,~12)...(16,~15,~1)", "RRRRRRBBBBBBBBBBBB")
 
     From a flipper pseudo-Anosov map::
@@ -204,14 +204,14 @@ class VeeringTriangulation(Triangulation):
 
         EXAMPLES::
 
-            sage: from flipper import *
+            sage: from flipper import *  # optional - flipper
             sage: from veerer import *
 
-            sage: T = flipper.load('SB_4')
-            sage: h = T.mapping_class('s_0S_1s_2S_3s_1S_2')
-            sage: h.is_pseudo_anosov()
+            sage: T = flipper.load('SB_4')  # optional - flipper
+            sage: h = T.mapping_class('s_0S_1s_2S_3s_1S_2')  # optional - flipper
+            sage: h.is_pseudo_anosov()  # optional - flipper
             True
-            sage: VeeringTriangulation.from_pseudo_anosov(h)
+            sage: VeeringTriangulation.from_pseudo_anosov(h) # optional - flipper
             VeeringTriangulation("(0,4,~1)(1,5,3)(2,~0,~3)(~5,~4,~2)", "RBBBBR")
         """
         FS = h.flat_structure()
@@ -237,25 +237,25 @@ class VeeringTriangulation(Triangulation):
 
         EXAMPLES::
 
-            sage: from surface_dynamics import Origami
+            sage: from surface_dynamics import Origami            # optional - surface_dynamics
             sage: from veerer import VeeringTriangulation
 
-            sage: o = Origami('(1,2)', '(1,3)')
-            sage: T = VeeringTriangulation.from_square_tiled(o)
-            sage: T
+            sage: o = Origami('(1,2)', '(1,3)')                   # optional - surface_dynamics
+            sage: T = VeeringTriangulation.from_square_tiled(o)   # optional - surface_dynamics
+            sage: T                                               # optional - surface_dynamics
             VeeringTriangulation("(0,1,2)(3,4,5)(6,7,8)(~8,~0,~7)(~6,~1,~5)(~4,~2,~3)", "RRBRRBRRB")
-            sage: o.stratum()
+            sage: o.stratum()                                     # optional - surface_dynamics
             H_2(2)
-            sage: T.stratum()
+            sage: T.stratum()                                     # optional - surface_dynamics
             H_2(2)
 
         A one cylinder example in the odd component of H(4)::
 
-            sage: o = Origami('(1,2,3,4,5)', '(1,4,3,5,2)')
-            sage: T = VeeringTriangulation.from_square_tiled(o)
-            sage: o.stratum()
+            sage: o = Origami('(1,2,3,4,5)', '(1,4,3,5,2)')       # optional - surface_dynamics
+            sage: T = VeeringTriangulation.from_square_tiled(o)   # optional - surface_dynamics
+            sage: o.stratum()                                     # optional - surface_dynamics
             H_3(4)
-            sage: T.stratum()
+            sage: T.stratum()                                     # optional - surface_dynamics
             H_3(4)
         """
         require_package('surface_dynamics', 'from_square_tiled')
@@ -306,37 +306,38 @@ class VeeringTriangulation(Triangulation):
 
         EXAMPLES::
 
-            sage: from surface_dynamics import *
+            sage: from surface_dynamics import *   # optional - surface_dynamics
             sage: from veerer import *
 
-            sage: T = VeeringTriangulation.from_stratum(AbelianStratum(2))
-            sage: T
+            sage: T = VeeringTriangulation.from_stratum(AbelianStratum(2))  # optional - surface_dynamics
+            sage: T                                                         # optional - surface_dynamics
             VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
-            sage: T.stratum()
+            sage: T.stratum()                                               # optional - surface_dynamics
             H_2(2)
 
-            sage: Q = QuadraticStratum(9,-1)
-            sage: CTreg = VeeringTriangulation.from_stratum(Q.regular_component())
-            sage: CTreg.stratum()
+            sage: Q = QuadraticStratum(9,-1)                                # optional - surface_dynamics
+
+            sage: CTreg = VeeringTriangulation.from_stratum(Q.regular_component()) # optional - surface_dynamics
+            sage: CTreg.stratum()  # optional - surface_dynamics
             Q_3(9, -1)
 
-            sage: CTirr = VeeringTriangulation.from_stratum(Q.irregular_component())
-            sage: CTirr.stratum()
+            sage: CTirr = VeeringTriangulation.from_stratum(Q.irregular_component())  # optional - surface_dynamics
+            sage: CTirr.stratum()  # optional - surface_dynamics
             Q_3(9, -1)
 
         Some examples built from cylinder diagram::
 
-            sage: c = QuadraticCylinderDiagram('(0)-(0)')
-            sage: VeeringTriangulation.from_stratum(c)
+            sage: c = QuadraticCylinderDiagram('(0)-(0)')    # optional - surface_dynamics
+            sage: VeeringTriangulation.from_stratum(c)       # optional - surface_dynamics
             VeeringTriangulation("(0,2,~1)(1,~0,~2)", "RBB")
 
-            sage: c = QuadraticCylinderDiagram('(0,0)-(1,1,2,2,3,3)')
-            sage: VeeringTriangulation.from_stratum(c)
+            sage: c = QuadraticCylinderDiagram('(0,0)-(1,1,2,2,3,3)')  # optional - surface_dynamics
+            sage: VeeringTriangulation.from_stratum(c)                 # optional - surface_dynamics
             VeeringTriangulation("(0,10,~9)(1,~8,9)(2,~6,7)(3,~4,5)(4,~3,~11)(6,~2,~5)(8,~1,~7)(11,~10,~0)", "RRRRBBBBBBBB")
 
-            sage: c = CylinderDiagram('(0,6,4,5)-(3,6,5) (1,3,2)-(0,1,4,2)')
-            sage: CT = VeeringTriangulation.from_stratum(c)
-            sage: CT.stratum()
+            sage: c = CylinderDiagram('(0,6,4,5)-(3,6,5) (1,3,2)-(0,1,4,2)')  # optional - surface_dynamics
+            sage: CT = VeeringTriangulation.from_stratum(c)                   # optional - surface_dynamics
+            sage: CT.stratum()                                                # optional - surface_dynamics
             H_4(6)
         """
         require_package('surface_dynamics', 'from_stratum')
@@ -461,60 +462,6 @@ class VeeringTriangulation(Triangulation):
         assert perm_base64_str(ep) == eps
         cols = array('l', [colour_from_char(c) for c in cols])
         return VeeringTriangulation.from_face_edge_perms(cols, fp, ep, check=check)
-
-    def to_flipper(self):
-        r"""
-        Return the corresponding flipper triangulation
-
-        EXAMPLES::
-
-            sage: from veerer import *
-            sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", [RED, RED, BLUE])
-            sage: T.to_flipper()
-            [(~2, ~0, ~1), (0, 1, 2)]
-        """
-        require_package('flipper', 'to_flipper')
-        ep = self._ep
-        F = []
-        for f in self.faces():
-            face = []
-            for e in f:
-                if ep[e] == e:
-                    raise ValueError("flipper do not accept folded edges")
-                if ep[e] < e:
-                    face.append(~int(ep[e]))
-                else:
-                    face.append(int(e))
-            F.append(tuple(face))
-
-        return flipper.create_triangulation(F)
-
-    def to_curver(self):
-        r"""
-        Return the corresponding curver triangulation
-
-        EXAMPLES::
-
-            sage: from veerer import *
-            sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", [RED, RED, BLUE])
-            sage: T.to_curver()
-            [(~2, ~0, ~1), (0, 1, 2)]
-        """
-        require_package('curver', 'to_curver')
-        ep = self._ep
-        F = []
-        for f in self.faces():
-            face = []
-            for e in f:
-                if ep[e] == e:
-                    raise ValueError("curver do not accept folded edges")
-                if ep[e] < e:
-                    face.append(~int(ep[e]))
-                else:
-                    face.append(int(e))
-            F.append(tuple(face))
-
-        return curver.create_triangulation(F)
 
     def forgot_forward_flippable_colour(self):
         r"""
@@ -661,13 +608,14 @@ class VeeringTriangulation(Triangulation):
 
         Some examples with purple edges::
 
-            sage: from surface_dynamics import AbelianStratum, QuadraticStratum
-            sage: t = VeeringTriangulation.from_stratum(AbelianStratum(2))
+            sage: t = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
             sage: t.forgot_forward_flippable_colour()
             sage: t.angles()
             [6]
 
-            sage: t = VeeringTriangulation.from_stratum(QuadraticStratum(1,1,1,1))
+            sage: fp = "(0,12,~11)(1,13,~12)(2,14,~13)(3,15,~14)(4,17,~16)(5,~10,11)(6,~3,~17)(7,~2,~6)(8,~5,~7)(9,~0,~8)(10,~4,~9)(16,~15,~1)"
+            sage: cols = "RRRRRRBBBBBBBBBBBB"
+            sage: t = VeeringTriangulation(fp, cols)
             sage: t.forgot_forward_flippable_colour()
             sage: t.angles()
             [3, 3, 3, 3]
@@ -1071,8 +1019,9 @@ class VeeringTriangulation(Triangulation):
         Composing relabellings and permutation composition::
 
             sage: from veerer.permutation import perm_compose
-            sage: from surface_dynamics import *
-            sage: T0 = VeeringTriangulation.from_stratum(AbelianStratum(1,1,1,1))
+            sage: fp = "(0,16,~15)(1,19,~18)(2,22,~21)(3,21,~20)(4,20,~19)(5,23,~22)(6,18,~17)(7,17,~16)(8,~1,~23)(9,~2,~8)(10,~3,~9)(11,~4,~10)(12,~5,~11)(13,~6,~12)(14,~7,~13)(15,~0,~14)"
+            sage: cols = "RRRRRRRRBBBBBBBBBBBBBBBB"
+            sage: T0 = VeeringTriangulation(fp, cols)
             sage: for _ in range(10):
             ....:     p1 = perm_random_centralizer(T0.edge_permutation(copy=False))
             ....:     p2 = perm_random_centralizer(T0.edge_permutation(copy=False))
@@ -1377,7 +1326,9 @@ class VeeringTriangulation(Triangulation):
             sage: T._check()
 
             sage: from surface_dynamics import *
-            sage: T0 = VeeringTriangulation.from_stratum(QuadraticStratum(1,1,1,1))
+            sage: fp = "(0,12,~11)(1,13,~12)(2,14,~13)(3,15,~14)(4,17,~16)(5,~10,11)(6,~3,~17)(7,~2,~6)(8,~5,~7)(9,~0,~8)(10,~4,~9)(16,~15,~1)"
+            sage: cols = "RRRRRRBBBBBBBBBBBB"
+            sage: T0 = VeeringTriangulation(fp, cols)
             sage: T = T0.copy()
             sage: T.rotate()
             sage: T.conjugate()
@@ -1458,16 +1409,16 @@ class VeeringTriangulation(Triangulation):
         EXAMPLES::
 
             sage: from veerer import *
-            sage: from surface_dynamics import *
 
             sage: T = VeeringTriangulation("(0,1,2)", "RRB")
             sage: T.to_string()
             'RRB_120_012'
 
-            sage: T = VeeringTriangulation.from_stratum(QuadraticStratum({1:20}))
-            sage: s = T.to_string()
-            sage: TT = VeeringTriangulation.from_string(s)
-            sage: T == TT
+            sage: from surface_dynamics import *  # optional - surface_dynamics
+            sage: T = VeeringTriangulation.from_stratum(QuadraticStratum({1:20}))  # optional - surface_dynamics
+            sage: s = T.to_string()  # optional - surface_dynamics
+            sage: TT = VeeringTriangulation.from_string(s)  # optional - surface_dynamics
+            sage: T == TT  # optional - surface_dynamics
             True
         """
         colours = self._colouring_string(short=False)
@@ -2619,10 +2570,10 @@ class VeeringTriangulation(Triangulation):
             sage: T.flat_structure_middle()
             Flat Triangulation made of 1 triangles
 
-            sage: from surface_dynamics import *
-            sage: Q = QuadraticStratum({1:4, -1:4})
-            sage: CT = VeeringTriangulation.from_stratum(Q)
-            sage: CT.flat_structure_middle()
+            sage: from surface_dynamics import *              # optional - surface_dynamics
+            sage: Q = QuadraticStratum({1:4, -1:4})           # optional - surface_dynamics
+            sage: CT = VeeringTriangulation.from_stratum(Q)   # optional - surface_dynamics
+            sage: CT.flat_structure_middle()                  # optional - surface_dynamics
             Flat Triangulation made of 16 triangles
 
         TESTS::
@@ -2652,18 +2603,18 @@ class VeeringTriangulation(Triangulation):
 
         EXAMPLES::
 
-            sage: from surface_dynamics import *
             sage: from veerer import *
 
-            sage: Q = QuadraticStratum({1:4, -1:4})
-            sage: CT = VeeringTriangulation.from_stratum(Q)
-            sage: CT.flat_structure_min()
+            sage: from surface_dynamics import *             # optional - surface_dynamics
+            sage: Q = QuadraticStratum({1:4, -1:4})          # optional - surface_dynamics
+            sage: CT = VeeringTriangulation.from_stratum(Q)  # optional - surface_dynamics
+            sage: CT.flat_structure_min()                    # optional - surface_dynamics
             Flat Triangulation made of 16 triangles
 
         By allowing degenerations you can get a simpler solution but
         with some of the edges horizontal or vertical::
 
-            sage: CT.flat_structure_min(True)
+            sage: CT.flat_structure_min(True)                 # optional - surface_dynamics
             Flat Triangulation made of 16 triangles
         """
         require_package('sage', 'flat_structure_min')

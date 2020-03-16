@@ -6,7 +6,7 @@ from six.moves import range, map, filter, zip
 
 from array import array
 from .permutation import *
-from .env import require_package
+from .env import require_package, flipper, curver
 
 def face_edge_perms_init(data):
     r"""
@@ -354,6 +354,76 @@ class Triangulation(object):
         T._ep = self._ep[:]
         T._vp = self._vp[:]
         return T
+
+    def to_flipper(self):
+        r"""
+        Return the corresponding flipper triangulation
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T = Triangulation("(0,1,2)(~0,~1,~2)")
+            sage: T.to_flipper()  # optional - flipper
+            [(~2, ~0, ~1), (0, 1, 2)]
+
+        Conversion of veering triangulation forgot the colors::
+
+            sage: V = VeeringTriangulation("(0,1,2)(~0,~1,~2)", [RED, RED, BLUE])
+            sage: V.to_flipper()  # optional - flipper
+            [(~2, ~0, ~1), (0, 1, 2)]
+        """
+        require_package('flipper', 'to_flipper')
+        ep = self._ep
+        F = []
+        for f in self.faces():
+            face = []
+            for e in f:
+                if ep[e] == e:
+                    raise ValueError("flipper do not accept folded edges")
+                if ep[e] < e:
+                    face.append(~int(ep[e]))
+                else:
+                    face.append(int(e))
+            F.append(tuple(face))
+
+        return flipper.create_triangulation(F)
+
+    def to_curver(self):
+        r"""
+        Return the corresponding curver triangulation
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T = Triangulation("(0,1,2)(~0,~1,~2)")
+            sage: T.to_curver()  # optional - curver
+            [(~2, ~0, ~1), (0, 1, 2)]
+
+        Conversion of veering triangulation forgot the colors::
+
+            sage: V = VeeringTriangulation("(0,1,2)(~0,~1,~2)", [RED, RED, BLUE])
+            sage: V.to_curver()  # optional - curver
+            [(~2, ~0, ~1), (0, 1, 2)]
+        """
+        require_package('curver', 'to_curver')
+        ep = self._ep
+        F = []
+        for f in self.faces():
+            face = []
+            for e in f:
+                if ep[e] == e:
+                    raise ValueError("curver do not accept folded edges")
+                if ep[e] < e:
+                    face.append(~int(ep[e]))
+                else:
+                    face.append(int(e))
+            F.append(tuple(face))
+
+        return curver.create_triangulation(F)
+
+
 
     def face_permutation(self, copy=True):
         if copy:
