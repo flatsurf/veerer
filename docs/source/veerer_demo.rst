@@ -30,7 +30,7 @@ stratum components). The plotting part is only available in SageMath.
 ::
 
    sage: from veerer import *
-   sage: from surface_dynamics import *
+   sage: from surface_dynamics import *   # optional - surface_dynamics
 
 To input a triangulation in the program one needs to specify a list of
 triangles ``(i, j, k)`` and the pairing of edges is by convention given
@@ -125,32 +125,32 @@ train-tracks.
 ::
 
     sage: # constructing veering triangulations from a component stratum
-    sage: Q = QuadraticStratum(3,3,3,3)
-    sage: Qreg = Q.regular_component()
-    sage: Qirr = Q.irregular_component()
+    sage: Q = QuadraticStratum(3,3,3,3)     # optional - surface_dynamics
+    sage: Qreg = Q.regular_component()      # optional - surface_dynamics
+    sage: Qirr = Q.irregular_component()    # optional - surface_dynamics
 
 ::
 
-    sage: VeeringTriangulation.from_stratum(Qreg)
+    sage: VeeringTriangulation.from_stratum(Qreg)    # optional - surface_dynamics
     VeeringTriangulation("(0,19,~18)(1,20,~19)(2,21,~20)(3,22,~21)(4,23,~22)(5,25,~24)(6,27,~26)(7,28,~27)(8,29,~28)(9,~16,17)(10,~5,~29)(11,~6,~10)(12,~1,~11)(13,~9,~12)(14,~7,~13)(15,~2,~14)(16,~0,~15)(18,~8,~17)(24,~23,~3)(26,~25,~4)", "RRRRRRRRRRBBBBBBBBBBBBBBBBBBBB")
 
 ::
 
-    sage: VeeringTriangulation.from_stratum(Qirr)
+    sage: VeeringTriangulation.from_stratum(Qirr)   # optional - surface_dynamics
     VeeringTriangulation("(0,21,~20)(1,22,~21)(2,23,~22)(3,24,~23)(4,25,~24)(5,26,~25)(6,28,~27)(7,29,~28)(8,~16,17)(9,~14,15)(10,~2,~29)(11,~1,~10)(12,~6,~11)(13,~9,~12)(14,~8,~13)(16,~4,~15)(18,~5,~17)(19,~3,~18)(20,~7,~19)(27,~26,~0)", "RRRRRRRRRRBBBBBBBBBBBBBBBBBBBB")
 
 ::
 
     sage: # constructing a veering triangulation from a pseudo-Anosov homeomorphism
-    sage: import flipper
-    sage: S_2_1 = flipper.load('S_2_1')
-    sage: h = S_2_1.mapping_class('abcD')
-    sage: print(h.nielsen_thurston_type())
+    sage: import flipper                    # optional - flipper
+    sage: S_2_1 = flipper.load('S_2_1')     # optional - flipper
+    sage: h = S_2_1.mapping_class('abcD')   # optional - flipper
+    sage: print(h.nielsen_thurston_type())  # optional - flipper
     Pseudo-Anosov
 
 ::
 
-    sage: VeeringTriangulation.from_pseudo_anosov(h)
+    sage: VeeringTriangulation.from_pseudo_anosov(h)  # optional - flipper
     VeeringTriangulation("(0,~3,~1)(1,2,14)(3,~5,~13)(4,~12,~8)(5,6,~11)(7,8,13)(9,~6,~7)(10,~0,11)(12,~14,~10)(~9,~4,~2)", "RBRBRRBRBBBBRBR")
 
 Core vs not core
@@ -324,14 +324,14 @@ filtering cylindrical (single test is cheap) ~2 sec for H(4)^hyp
 
 ::
 
-    sage: H = AbelianStratum(4).hyperelliptic_component()
-    sage: V = VeeringTriangulation.from_stratum(H)
-    sage: AV = CoreAutomaton.from_triangulation(V)       # long time - ~21 secs
-    sage: print(AV.num_states())                         # long time - ~150 µs
+    sage: H = AbelianStratum(4).hyperelliptic_component()  # optional - surface_dynamics
+    sage: V = VeeringTriangulation.from_stratum(H)         # optional - surface_dynamics
+    sage: AV = CoreAutomaton.from_triangulation(V)       # long time - ~21 secs # optional - surface_dynamics
+    sage: print(AV.num_states())                         # long time - ~150 µs # optional - surface_dynamics
     9116
-    sage: print(AV.num_geometric_triangulations())       # long time - ~21 secs
+    sage: print(AV.num_geometric_triangulations())       # long time - ~21 secs # optional - surface_dynamics
     2916
-    sage: print(AV.num_cylindrical_triangulations())     # long time - ~1.5 secs
+    sage: print(AV.num_cylindrical_triangulations())     # long time - ~1.5 secs # optional - surface_dynamics
     636
 
 License
