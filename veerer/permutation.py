@@ -1072,7 +1072,7 @@ def perms_relabel(p, m):
 
     EXAMPLES::
 
-        sage: from surface_dynamics.misc.constellation import perms_relabel
+        sage: from veerer.permutation import perms_relabel
         sage: perms_relabel([[0,1,2],[0,2,1]],[2,1,0])
         [[0, 1, 2], [1, 0, 2]]
     """
@@ -1106,7 +1106,7 @@ def perms_canonical_labels_from(x, y, j0):
 
     EXAMPLES::
 
-        sage: from surface_dynamics.misc.constellation import perms_canonical_labels_from
+        sage: from veerer.permutation import perms_canonical_labels_from
         sage: perms_canonical_labels_from([0,1,2],[[1,2,0]],0)
         [0, 1, 2]
         sage: perms_canonical_labels_from([1,0,2],[[2,0,1]],0)
