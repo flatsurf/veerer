@@ -142,11 +142,11 @@ class FlatVeeringTriangulationLayout(object):
 
     Or a pseudo-Anosov homeomorphism from flipper::
 
-        sage: from flipper import *
+        sage: from flipper import *           # optional - flipper
 
-        sage: T = flipper.load('S_2_1')
-        sage: h = T.mapping_class('abCeF')
-        sage: FlatVeeringTriangulationLayout.from_pseudo_anosov(h)
+        sage: T = flipper.load('S_2_1')       # optional - flipper
+        sage: h = T.mapping_class('abCeF')    # optional - flipper
+        sage: FlatVeeringTriangulationLayout.from_pseudo_anosov(h)  # optional - flipper
         Flat Triangulation made of 12 triangles
     """
     def __init__(self, triangles, vectors,
@@ -262,20 +262,20 @@ class FlatVeeringTriangulationLayout(object):
 
         EXAMPLES::
 
-            sage: from flipper import *
+            sage: from flipper import *  # optional - flipper
             sage: from veerer import *
 
-            sage: T = flipper.load('SB_4')
-            sage: h = T.mapping_class('s_0S_1s_2S_3s_1S_2').canonical()
-            sage: F = FlatVeeringTriangulationLayout.from_pseudo_anosov(h)
+            sage: T = flipper.load('SB_4')  # optional - flipper
+            sage: h = T.mapping_class('s_0S_1s_2S_3s_1S_2').canonical()     # optional - flipper
+            sage: F = FlatVeeringTriangulationLayout.from_pseudo_anosov(h)  # optional - flipper
             sage: F
             Flat Triangulation made of 4 triangles
 
         The flipper and veerer triangulations carry the same edge labels::
 
-            sage: F._triangulation
+            sage: F._triangulation         # optional - flipper
             VeeringTriangulation("(0,4,~1)(1,5,3)(2,~0,~3)(~5,~4,~2)", "RBBBBR")
-            sage: h.source_triangulation
+            sage: h.source_triangulation   # optional - flipper
             [(~5, ~4, ~2), (~3, 2, ~0), (~1, 0, 4), (1, 5, 3)]
         """
         Fh = h.flat_structure()
@@ -568,14 +568,14 @@ class FlatVeeringTriangulationLayout(object):
         EXAMPLES::
 
             sage: import veerer
-            sage: import flipper
+            sage: import flipper  # optional - flipper
             sage: from veerer.misc import flipper_isometry_to_perm
-            sage: S21 = flipper.load('S_2_1')
-            sage: h = S21.mapping_class('abCeF').canonical()
-            sage: F0 = veerer.FlatVeeringTriangulationLayout.from_pseudo_anosov(h)
+            sage: S21 = flipper.load('S_2_1')  # optional - flipper
+            sage: h = S21.mapping_class('abCeF').canonical()  # optional - flipper
+            sage: F0 = veerer.FlatVeeringTriangulationLayout.from_pseudo_anosov(h)  # optional - flipper
 
-            sage: F = F0.copy()
-            sage: for flip in h.sequence[:-1]:
+            sage: F = F0.copy()  # optional - flipper
+            sage: for flip in h.sequence[:-1]:  # optional - flipper
             ....:     F.flip(flip.edge_index)
         """
         if not self._triangulation.is_forward_flippable(e):

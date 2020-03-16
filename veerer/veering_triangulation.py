@@ -668,13 +668,14 @@ class VeeringTriangulation(Triangulation):
 
         Some examples with purple edges::
 
-            sage: from surface_dynamics import AbelianStratum, QuadraticStratum
-            sage: t = VeeringTriangulation.from_stratum(AbelianStratum(2))
+            sage: t = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
             sage: t.forgot_forward_flippable_colour()
             sage: t.is_abelian()
             True
 
-            sage: t = VeeringTriangulation.from_stratum(QuadraticStratum(1,1,1,1))
+
+            sage: t = VeeringTriangulation("(0,12,~11)(1,13,~12)(2,14,~13)(3,15,~14)(4,17,~16)(5,~10,11)(6,~3,~17)(7,~2,~6)(8,~5,~7)(9,~0,~8)(10,~4,~9)(16,~15,~1)", "RRRRRRBBBBBBBBBBBB")
+
             sage: t.forgot_forward_flippable_colour()
             sage: t.is_abelian()
             False
@@ -729,26 +730,26 @@ class VeeringTriangulation(Triangulation):
             sage: from veerer import *
 
             sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
-            sage: T.stratum()
+            sage: T.stratum()  # optional - surface_dynamics
             H_1(0)
 
             sage: fp = '(0,1,2)(~0,~3,~8)(3,5,4)(~4,~1,~5)(6,7,8)(~6,9,~2)'
             sage: cols = 'BRBRBBBRBR'
             sage: T = VeeringTriangulation(fp, cols)
-            sage: T.stratum()
+            sage: T.stratum()  # optional - surface_dynamics
             Q_1(1^2, -1^2)
 
         Some examples with purple edges::
 
-            sage: from surface_dynamics import AbelianStratum, QuadraticStratum
-            sage: t = VeeringTriangulation.from_stratum(AbelianStratum(2))
-            sage: t.forgot_forward_flippable_colour()
-            sage: t.stratum()
+            sage: from surface_dynamics import AbelianStratum, QuadraticStratum  # optional - surface_dynamics
+            sage: t = VeeringTriangulation.from_stratum(AbelianStratum(2))       # optional - surface_dynamics
+            sage: t.forgot_forward_flippable_colour()                            # optional - surface_dynamics
+            sage: t.stratum()                                                    # optional - surface_dynamics
             H_2(2)
 
-            sage: t = VeeringTriangulation.from_stratum(QuadraticStratum(1,1,1,1))
-            sage: t.forgot_forward_flippable_colour()
-            sage: t.stratum()
+            sage: t = VeeringTriangulation.from_stratum(QuadraticStratum(1,1,1,1)) # optional - surface_dynamics
+            sage: t.forgot_forward_flippable_colour()                              # optional - surface_dynamics
+            sage: t.stratum()                                                      # optional - surface_dynamics
             Q_2(1^4)
         """
         require_package('surface_dynamics', 'stratum')
@@ -787,10 +788,10 @@ class VeeringTriangulation(Triangulation):
 
             sage: from veerer import VeeringTriangulation, HORIZONTAL, VERTICAL
             sage: V = VeeringTriangulation([(0,1,2), (-1,-2,-3)], "RRB")
-            sage: V.vertex_cycles()
+            sage: V.vertex_cycles()  # optional - curver
             [Curve([(~2, ~0, ~1), (0, 1, 2)], [1, 1, 0]),
              Curve([(~2, ~0, ~1), (0, 1, 2)], [0, 1, 1])]
-            sage: V.vertex_cycles(HORIZONTAL)
+            sage: V.vertex_cycles(HORIZONTAL)  # optional - curver
             [Curve([(~2, ~0, ~1), (0, 1, 2)], [1, 0, 1]),
              Curve([(~2, ~0, ~1), (0, 1, 2)], [1, 1, 0])]
         """
@@ -1325,7 +1326,6 @@ class VeeringTriangulation(Triangulation):
             VeeringTriangulation("(0,1,2)(3,4,5)(~5,~3,~1)(~4,~2,~0)", "RBBRBB")
             sage: T._check()
 
-            sage: from surface_dynamics import *
             sage: fp = "(0,12,~11)(1,13,~12)(2,14,~13)(3,15,~14)(4,17,~16)(5,~10,11)(6,~3,~17)(7,~2,~6)(8,~5,~7)(9,~0,~8)(10,~4,~9)(16,~15,~1)"
             sage: cols = "RRRRRRBBBBBBBBBBBB"
             sage: T0 = VeeringTriangulation(fp, cols)
@@ -3035,6 +3035,7 @@ class VeeringTriangulation(Triangulation):
                             T.train_track_polytope(HORIZONTAL).affine_dimension(),
                             T.train_track_polytope(VERTICAL).affine_dimension()))
 
+    # TODO: this will not work with purple edges
     def random_forward_flip(self, repeat=1):
         r"""
         Apply a forward flip randomly among the ones that keeps the triangulation core.
@@ -3118,13 +3119,6 @@ class VeeringTriangulations(object):
         t = (b1, 0, 0, b1, b1, b2, b2)
 
         return T, s, t
-
-    @staticmethod
-    def H11_rank1_locus():
-        # return a surface in the McMullen discriminant locus in H(1,1)
-        # for square discriminants it is defined over Q while for primitive ones
-        # it is over a quadratic number field
-        raise NotImplemented
 
     @staticmethod
     def ngon(n):
