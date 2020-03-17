@@ -1242,6 +1242,14 @@ class VeeringTriangulation(Triangulation):
     def edge_colour(self, e):
         return self._colouring[e]
 
+    def set_edge_colour(self, e, col):
+        if self._colouring[e] != PURPLE and self._colouring[e] != GREEN:
+            raise ValueError("only PURPLE and GREEN edges could be changed colours")
+        if col != BLUE and col != RED:
+            raise ValueError("the new colour 'col' must be RED or BLUE")
+        E = self._ep[e]
+        self._colouring[e] = self._colouring[E] = col
+
     def best_relabelling(self, all=False):
         r"""
         Return a pair ``(r, (cols, fp, ep))`` where the triple ``(cols, fp,
@@ -1337,8 +1345,27 @@ class VeeringTriangulation(Triangulation):
             sage: S.rotate()
             sage: S == T
             True
+
+        Check that PURPLE edges are mapped to GREEN::
+
+            sage: T = VeeringTriangulation("(0,1,2)(3,4,5)(~5,~3,~1)(~4,~2,~0)", "BRPBRP")
+            sage: T.rotate()
+            sage: T
+            VeeringTriangulation("(0,1,2)(3,4,5)(~5,~3,~1)(~4,~2,~0)", "RBGRBG")
+            sage: T.rotate()
+            sage: T
+            VeeringTriangulation("(0,1,2)(3,4,5)(~5,~3,~1)(~4,~2,~0)", "BRPBRP")
         """
-        self._colouring = array('l', [RED if x == BLUE else BLUE for x in self._colouring])
+        for i, col in enumerate(self._colouring):
+            if col == RED:
+                self._colouring[i] = BLUE
+            elif col == BLUE:
+                self._colouring[i] = RED
+            elif col == PURPLE:
+                self._colouring[i] = GREEN
+            else:
+                assert col == GREEN
+                self._colouring[i] = PURPLE
 
     def conjugate(self):
         r"""
