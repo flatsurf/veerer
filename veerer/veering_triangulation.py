@@ -2556,6 +2556,9 @@ class VeeringTriangulation(Triangulation):
         assert all(x >=0 for x in VH)
         assert all(x >= 0 for x in VV)
 
+        self._set_train_track_constraints(self._tt_check, VH, HORIZONTAL, False, False)
+        self._set_train_track_constraints(self._tt_check, VV, VERTICAL, False, False)
+
         V = VectorSpace(base_ring, 2)
         vectors = [V((x, y if self._colouring[i] == RED else -y)) for \
                    i,(x,y) in enumerate(zip(VV, VH))]
