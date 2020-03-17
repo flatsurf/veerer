@@ -739,7 +739,7 @@ class Triangulation(object):
         assert m.nrows() == ne
         ep = self._ep
 
-        if ep[e] == e:
+        if not twist and ep[e] == e:
             return
         elif ep[e] < e:
             e = ep[e]
