@@ -8,13 +8,15 @@ Ferenczi-Zamboni induction is a particularly nice way to do veering
 flips in hyperelliptic strata of Abelian differentials (or equivalently,
 minimal strata of quadratic differentials on the sphere).
 
-The case of H(2) corresponds to Q(1,-1^5). The automaton is made of three
-canonical triangulations. We denote them below by ``Vc``, ``Vl`` and
-``Vr`` where c, l and r respectively stand for center, left and right.
+The case of 3 triangles correspond in terms of strata to H(2) (which is
+the canonical orientation cover of Q(1,-1^5) on the sphere). The
+Ferenczi-Zamboni automaton is made of three triangulations. We denote them
+below by ``Vc``, ``Vl`` and ``Vr`` where c, l and r respectively stand for
+center, left and right.
 
 ::
 
-    sage: from veerer import VeeringTriangulation, BLUE, RED
+    sage: from veerer import VeeringTriangulation, BLUE, RED, PURPLE
 
     sage: Vc = VeeringTriangulation("(0,~5,4)(3,5,6)(1,2,~6)", "PPBPRBR")
     sage: Vr = VeeringTriangulation("(0,6,5)(1,2,~6)(3,4,~5)", "BPBBRPR")
@@ -99,3 +101,27 @@ They can be composed and one can check whether they define pseudo-Anosov homeomo
     False
     sage: (R3 * R5 * R2 * L3 * L5 * L2).is_pseudo_anosov()
     True
+
+Some pseudo-Anosov with small dilatation in H(2)
+
+::
+
+    sage: f = R1 * R5
+    sage: assert f.is_pseudo_anosov()
+    sage: f.self_similar_surface()
+    (1.722083805739043?, Flat Triangulation made of 3 triangles)
+
+    sage: f = R1 * R1 * R5
+    sage: assert f.is_pseudo_anosov()
+    sage: f.self_similar_surface()
+    (2.296630262886538?, Flat Triangulation made of 3 triangles)
+
+    sage: f = R3 * R1 * R2 * CL5
+    sage: assert f.is_pseudo_anosov()
+    sage: f.self_similar_surface()
+    (3.732050807568878?, Flat Triangulation made of 3 triangles)
+
+    sage: f = R3 * R1 * R2 * CL5 * CR5
+    sage: assert f.is_pseudo_anosov()
+    sage: f.self_similar_surface()
+    (4.309326438416744?, Flat Triangulation made of 3 triangles)
