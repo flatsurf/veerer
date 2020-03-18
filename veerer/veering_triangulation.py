@@ -1760,10 +1760,10 @@ class VeeringTriangulation(Triangulation):
         if reduced:
             ep = self._ep
             a, b, c, d = self.square_about_edge(e)
-            assert self._colouring[a] == RED, (a, self._colouring[a])
-            assert self._colouring[b] == BLUE, (b, self._colouring[b])
-            assert self._colouring[c] == RED, (c, self._colouring[c])
-            assert self._colouring[d] == BLUE, (d, self._colouring[d])
+            assert self._colouring[a] == RED, (a, colour_to_string(self._colouring[a]))
+            assert self._colouring[b] == BLUE, (b, colour_to_string(self._colouring[b]))
+            assert self._colouring[c] == RED, (c, colour_to_string(self._colouring[c]))
+            assert self._colouring[d] == BLUE, (d, colour_to_string(self._colouring[d]))
 
             # assertions to be removed
             assert not self.is_forward_flippable(e)
@@ -1792,25 +1792,30 @@ class VeeringTriangulation(Triangulation):
         r"""
         Return the cylinders of colour ``col``.
 
-        Each cylinder is given as a list of edges that correspond
-        to the (ordered) list of edges crossed by the waist curve
-        of the cylinder.
+        Each cylinder is given as a quadruple ``(edges, rbdry, lbdry, half)`` where
+
+        - ``edges`` are the edges crossed by the core curve of the annulus
+
+        - ``rbdry`` and ``lbdry`` are respectively the list of edges on the right
+          and left boundaries
+
+        - ``half`` is a boolean that is ``True`` when it is cut by two folded edges
 
         EXAMPLES::
 
-            sage: from veerer import *
+            sage: from veerer import VeeringTriangulation, RED, BLUE
 
         The torus::
 
             sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
             sage: T.cylinders(RED)
-            [[0, 4]]
+            [([0, 4], [2], [3], False)]
             sage: T.cylinders(BLUE)
             []
 
             sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "BRB")
             sage: T.cylinders(BLUE)
-            [[0, 3]]
+            [([2, 5], [1], [4], False)]
             sage: T.cylinders(RED)
             []
 
@@ -1818,56 +1823,76 @@ class VeeringTriangulation(Triangulation):
 
             sage: T = VeeringTriangulation("(0,1,2)", "BBR")
             sage: T.cylinders(BLUE)
-            [[0, 1]]
+            [([0, 1], [], [2], True)]
             sage: T.cylinders(RED)
             []
 
             sage: T = VeeringTriangulation("(5,4,7)(~5,3,10)(1,~0,8)(~1,~4,11)(2,6,9)(~2,0,12)", "BBBBBBBRRRRRR")
             sage: T.cylinders(BLUE)
-            [[3, 13, 4, 16, 17, 15, 6]]
+            [([6, 2, 0, 1, 14, 5, 3], [9, 8, 7], [12, 11, 10], True)]
             sage: T.cylinders(RED)
             []
+            sage: T.forgot_forward_flippable_colour()
+            sage: T.cylinders(RED)
+            [([12, 15, 9], [6], [0], True),
+             ([8, 1, 11], [14], [17], True),
+             ([10, 13, 7], [4], [3], True)]
 
             sage: fp = "(0,12,3)(1,2,11)(4,6,7)(5,~2,10)(8,~5,~4)(9,~1,~0)"
             sage: cols = "BBRRRBBBBRRRB"
             sage: T = VeeringTriangulation(fp, cols)
             sage: T.cylinders(BLUE)
-            [[6, 7]]
+            [([6, 7], [], [4], True)]
             sage: T.cylinders(RED)
-            [[10, 15, 11]]
+            [([10, 15, 11], [5], [1], True)]
 
             sage: fp = '(0,~5,4)(1,~3,2)(3,5,~4)(6,~1,~0)'
             sage: cols = 'RBBRBRB'
             sage: T = VeeringTriangulation(fp, cols)
             sage: T.cylinders(BLUE)
-            [[6, 10, 2]]
+            [([2, 1, 6], [11], [9], True)]
             sage: T.cylinders(RED)
             []
 
             sage: T = VeeringTriangulation.from_string("RBRBBBRRBRBR_908274a531b6_ba9385764210")
             sage: T.cylinders(BLUE)
-            [[5, 4, 3]]
+            [([5, 4, 3], [], [7, 2], True)]
 
         Torus with PURPLE edge::
 
             sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "PBR")
             sage: T.cylinders(RED)
-            [[0, 3]]
+            [([2, 5], [1], [4], False)]
             sage: T.cylinders(BLUE)
-            [[0, 4]]
+            [([0, 4], [2], [3], False)]
 
             sage: R = T.copy()
             sage: R.set_colour(RED)
             sage: R.cylinders(RED)
-            [[0, 3]]
+            [([2, 5], [1], [4], False)]
 
             sage: B = T.copy()
             sage: B.set_colour(BLUE)
             sage: B.cylinders(BLUE)
-            [[0, 4]]
+            [([0, 4], [2], [3], False)]
+
+        A longer example::
+
+            sage: T = VeeringTriangulation("(~0,5,1)(~1,6,2)(~2,3,9)(~3,4,8)(~4,7,0)", "BBBBBRRRRR")
+            sage: T.cylinders(BLUE)
+            [([0, 1, 2, 3, 4], [7, 5, 6], [9, 8], False)]
+            sage: T.forgot_forward_flippable_colour()
+            sage: T.cylinders(BLUE)
+            [([0, 1, 2, 3, 4], [7, 5, 6], [9, 8], False)]
+            sage: T.set_colour(BLUE)
+            sage: T.rotate()
+            sage: T.cylinders(RED)
+            [([0, 1, 2, 3, 4], [7, 5, 6], [9, 8], False)]
         """
         if col != RED and col != BLUE:
             raise ValueError("'col' must be RED or BLUE")
+
+        opcol = RED if col == BLUE else BLUE
 
         n = self._n
         fp = self._fp
@@ -1881,56 +1906,100 @@ class VeeringTriangulation(Triangulation):
             if seen[a]:
                 continue
 
-            # compute the triangle (a,b,c)
+            # triangle (a,b,c)
             b = fp[a]
             c = fp[b]
             if seen[b] or seen[c]:
                 continue
 
-            if (cols[a] == PURPLE) + (cols[b] == PURPLE) + (cols[c] == PURPLE) + \
-               (cols[a] == col) + (cols[b] == col) + (cols[c] == col) != 2:
+            if (cols[a] == opcol) + (cols[b] == opcol) + (cols[c] == opcol) > 1:
                 seen[a] = seen[b] = seen[c] = True
                 continue
 
-            # find the two edges that can be crossed
-            doors = []
-            for e in (a,b,c):
-                if cols[e] == col or cols[e] == PURPLE:
-                    doors.append(e)
-            door = door0 = doors[0]
+            # We normalize the edges (a,b,c) so that a is the one going forward
+            # (each triangle in a cylinder has two "doors" and one "boundary"). We
+            # choose a traversal order in the triangle and hence have two types of
+            # triangles.
+            #
+            #  right triangle       left triangle
+            #
+            #       x               x---------x
+            #      / \               \    b  /
+            #     /b  \ -->           \c    /  -->
+            #    /    a\               \  a/
+            #   /  c    \               \ /
+            #  x---------x               x
+            #
+            # We make it so we start with a right triangle.
+            if cols[a] == opcol:
+                a, b, c = b, c, a
+            elif cols[b] == opcol:
+                a, b, c = c, a, b
+            assert cols[a] == col or cols[a] == PURPLE
+            assert cols[b] == col or cols[b] == PURPLE
+            assert cols[c] == opcol
+            a0, b0, c0 = a, b, c
+            RIGHT = 0
+            LEFT = 1
+            typ = RIGHT
 
-            cc = []  # cycle to be stored
-            half_turn = False
+            cc = []    # cycle of half-edges inside the cylinder
+            rbdry = [] # right boundary
+            lbdry = [] # left boundary
+            half_turn = False # whether the cylinder is a folded cylinder
             cyl = True
-            while not seen[door]:
-                seen[door] = seen[ep[door]] = True
-                cc.append(door)
+            while not seen[a]:
+                assert cols[a] == col or cols[a] == PURPLE, (typ, a, colour_to_string(cols[a]), b, colour_to_string(cols[b]), c, colour_to_string(cols[c]))
+                seen[a] = seen[ep[a]] = True
+                cc.append(a)
+                if typ == RIGHT:
+                    assert cols[c] == opcol, (typ, a, colour_to_string(cols[a]), b, colour_to_string(cols[b]), c, colour_to_string(cols[c]))
+                    assert cols[b] == col or cols[b] == PURPLE, (typ, a, colour_to_string(cols[a]), b, colour_to_string(cols[b]), c, colour_to_string(cols[c]))
+                    rbdry.append(c)
+                else:
+                    assert cols[b] == opcol, (typ, a, colour_to_string(cols[a]), b, colour_to_string(cols[b]), c, colour_to_string(cols[c]))
+                    assert cols[c] == col or cols[c] == PURPLE, (typ, a, colour_to_string(cols[a]), b, colour_to_string(cols[b]), c, colour_to_string(cols[c]))
+                    lbdry.append(b)
 
-                if door == ep[door]:
-                    # folded edges... we can not continue from here, start from
-                    # the other door or stop
+                if a == ep[a]:
+                    # found a folded edge... we can not continue in this
+                    # direction. Either stop or start again from the other door.
                     if half_turn:
                         cyl = True
                         break
                     half_turn = True
                     cc = [ep[x] for x in reversed(cc)]
-                    door = doors[1]
+                    lbdry.reverse()
+                    rbdry.reverse()
+                    rbdry, lbdry = lbdry, rbdry
+                    lbdry.pop()  # a0 will be added again at the begining of next loop
+                    assert cols[c0] == opcol
+                    a, b, c = b0, c0, a0
+                    typ = LEFT
                     continue
 
-                # pass through the door
-                a = ep[door]
+                # triangle across the door
+                a = ep[a]
                 b = fp[a]
                 c = fp[b]
+                assert cols[a] == col or cols[a] == PURPLE, (a, colour_to_string(cols[a]), b, colour_to_string(cols[b]), c, colour_to_string(cols[c]))
                 if cols[b] == col or cols[b] == PURPLE:
-                    door = b
+                    assert cols[c] == opcol, (a, colour_to_string(cols[a]), b, colour_to_string(cols[b]), c, colour_to_string(cols[c]))
+                    # LEFT type, next door is  b
+                    a, b, c = b, c, a
+                    typ = LEFT
                 elif cols[c] == col or cols[c] == PURPLE:
-                    door = c
+                    assert cols[b] == opcol, (a, colour_to_string(cols[a]), b, colour_to_string(cols[b]), c, colour_to_string(cols[c]))
+                    # RIGHT type, next door is c
+                    a, b, c = c, a, b
+                    typ = RIGHT
                 else:
                     cyl = False
                     break
 
-            if cyl and (door == door0 or half_turn):
-                cylinders.append(cc)
+            if cyl:
+                assert a == a0 or half_turn, (a, a0, ep[a], ep[a0], half_turn)
+                cylinders.append((cc, rbdry, lbdry, half_turn))
 
         return cylinders
 

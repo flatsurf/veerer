@@ -423,8 +423,8 @@ class CoreAutomaton(object):
             sage: A = CoreAutomaton.from_triangulation(T)
 
             sage: vt = next(A.cylindrical_triangulations())
-            sage: sum(len(u) for u in vt.cylinders(BLUE)) == 6 or \
-            ....: sum(len(u) for u in vt.cylinders(RED)) == 6
+            sage: sum(len(u) for u,_,_,_ in vt.cylinders(BLUE)) == 6 or \
+            ....: sum(len(u) for u,_,_,_ in vt.cylinders(RED)) == 6
             True
 
             sage: sum(1 for _ in A.cylindrical_triangulations())

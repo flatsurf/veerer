@@ -430,7 +430,7 @@ class FlatVeeringTriangulationLayout(object):
 
         # set the cylinders
         if cylinders:
-            for cyl in cylinders:
+            for cyl,_,_,_ in cylinders:
                 xmin = xmax = ymin = ymax = self._K.zero()
                 a = cyl[0]
                 pos[a] = self._V((0,0))
