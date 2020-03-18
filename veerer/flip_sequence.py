@@ -43,7 +43,7 @@ class VeeringFlipSequence(object):
         sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
         sage: F = VeeringFlipSequence(T)
         sage: F
-        VeeringFlipSequence(VeeringTriangulation("(0,1,2)(~2,~0,~1)", "RRB"), "(0)(1)(2)(~2)(~1)(~0)")
+        VeeringFlipSequence(VeeringTriangulation("(0,1,2)(~2,~0,~1)", "RRB"), "", "(0)(1)(2)(~2)(~1)(~0)")
         sage: F.flip(1, RED)
         sage: F.flip(0, RED)
         sage: F
@@ -106,10 +106,8 @@ class VeeringFlipSequence(object):
             VeeringFlipSequence(VeeringTriangulation("(0,1,2)(~2,~0,~1)", "RPB"), "1R 0R", "(0,~0)(1,~2)(2,~1)")
         """
         args = [repr(self._start)]
-        if self._flips:
-            args.append("\"%s\"" % flip_sequence_to_string(self.flips()))
-        if self._relabelling is not None:
-            args.append("\"%s\"" % perm_cycle_string(self._relabelling, self._end._n, involution=self._end._ep))
+        args.append("\"%s\"" % flip_sequence_to_string(self.flips()))
+        args.append("\"%s\"" % perm_cycle_string(self._relabelling, self._end._n, involution=self._end._ep))
         return "VeeringFlipSequence({})".format(", ".join(args))
 
     # properties

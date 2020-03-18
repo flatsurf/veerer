@@ -3107,6 +3107,31 @@ class VeeringTriangulation(Triangulation):
                             T.train_track_polytope(HORIZONTAL).affine_dimension(),
                             T.train_track_polytope(VERTICAL).affine_dimension()))
 
+    def random_forward_flip_sequence(self, length=1, relabel=False):
+        V = self.copy()
+        cols = [RED, BLUE]
+        flips = []
+        for _ in range(length):
+            e = choice(V.forward_flippable_edges())
+            col = choice(cols)
+
+            # TODO: this is a bit annoying. There should be a method to
+            # test what are the valid colouring
+            V.flip(e, col, reduced=False)
+            if not V.edge_has_curve(e):
+                col = BLUE if col == RED else RED
+            V.flip_back(e, PURPLE)
+            V.flip(e, col)
+            flips.append((e, col))
+
+        if relabel:
+            relabelling = perm_random_centralizer(self._ep)
+        else:
+            relabelling = perm_id(self._n)
+
+        from .flip_sequence import VeeringFlipSequence
+        return VeeringFlipSequence(self, flips, relabelling)
+
     # TODO: this will not work with purple edges
     def random_forward_flip(self, repeat=1):
         r"""

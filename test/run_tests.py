@@ -8,7 +8,7 @@ directory = os.path.dirname(__file__)
 
 import veerer.env
 
-tests = ["permutation.py", "triangulation_comparison.py", "triangulation_reconstruction.py",
+tests = ["permutation.py", "triangulation_comparison.py", "reconstruction.py",
     "triangulation_relabel.py", "triangulation_isomorphism.py", "flip_sequence_arithmetic.py",
     "flip_sequence.py"]
 
