@@ -1250,6 +1250,19 @@ class VeeringTriangulation(Triangulation):
         E = self._ep[e]
         self._colouring[e] = self._colouring[E] = col
 
+    def set_colour(self, col):
+        r"""
+        Set all GREEN or PURPLE edges to ``col``.
+
+        The colour ``col`` must be RED or BLUE.
+        """
+        if col != RED and col != BLUE:
+            raise ValueError("'col' must be RED or BLUE")
+
+        for e in range(self._n):
+            if self._colouring[e] == GREEN or self._colouring[e] == PURPLE:
+                self._colouring[e] = col
+
     def best_relabelling(self, all=False):
         r"""
         Return a pair ``(r, (cols, fp, ep))`` where the triple ``(cols, fp,
@@ -1834,7 +1847,28 @@ class VeeringTriangulation(Triangulation):
             sage: T = VeeringTriangulation.from_string("RBRBBBRRBRBR_908274a531b6_ba9385764210")
             sage: T.cylinders(BLUE)
             [[5, 4, 3]]
+
+        Torus with PURPLE edge::
+
+            sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "PBR")
+            sage: T.cylinders(RED)
+            [[0, 3]]
+            sage: T.cylinders(BLUE)
+            [[0, 4]]
+
+            sage: R = T.copy()
+            sage: R.set_colour(RED)
+            sage: R.cylinders(RED)
+            [[0, 3]]
+
+            sage: B = T.copy()
+            sage: B.set_colour(BLUE)
+            sage: B.cylinders(BLUE)
+            [[0, 4]]
         """
+        if col != RED and col != BLUE:
+            raise ValueError("'col' must be RED or BLUE")
+
         n = self._n
         fp = self._fp
         ep = self._ep
@@ -1850,16 +1884,18 @@ class VeeringTriangulation(Triangulation):
             # compute the triangle (a,b,c)
             b = fp[a]
             c = fp[b]
-            if seen[a] or seen[b] or seen[c] or \
+            if seen[b] or seen[c]:
+                continue
+
+            if (cols[a] == PURPLE) + (cols[b] == PURPLE) + (cols[c] == PURPLE) + \
                (cols[a] == col) + (cols[b] == col) + (cols[c] == col) != 2:
                 seen[a] = seen[b] = seen[c] = True
                 continue
 
-
             # find the two edges that can be crossed
             doors = []
             for e in (a,b,c):
-                if cols[e] == col:
+                if cols[e] == col or cols[e] == PURPLE:
                     doors.append(e)
             door = door0 = doors[0]
 
@@ -1885,9 +1921,9 @@ class VeeringTriangulation(Triangulation):
                 a = ep[door]
                 b = fp[a]
                 c = fp[b]
-                if cols[b] == col:
+                if cols[b] == col or cols[b] == PURPLE:
                     door = b
-                elif cols[c] == col:
+                elif cols[c] == col or cols[c] == PURPLE:
                     door = c
                 else:
                     cyl = False
@@ -1903,8 +1939,12 @@ class VeeringTriangulation(Triangulation):
         Return whether this veering triangulation is cylindrical.
 
         A Veering triangulation is blue cylindrical (resp red cylindrical) if
-        all its triangles have two blue edges (resp red). It is purple
-        cylindrical if all its triangle are adjacent to a purple edge.
+        all its triangles have two blue edges (resp red). Here a purple edge
+        counts for both blue and red.
+
+        It is purple cylindrical if all its triangle are adjacent to a purple
+        edge. This is equivalent to say that both the red and blue colouring
+        of the purple edges are respectively red and blue cylindrical
 
         EXAMPLES::
 
@@ -1913,13 +1953,14 @@ class VeeringTriangulation(Triangulation):
             sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
             sage: T.is_cylindrical()
             True
+
             sage: T.forgot_forward_flippable_colour()
             sage: T.is_cylindrical(PURPLE)
             True
             sage: T.is_cylindrical(RED)
-            False
+            True
             sage: T.is_cylindrical(BLUE)
-            False
+            True
 
             sage: T = VeeringTriangulation("(0,3,4)(1,~3,5)(2,6,~4)", "PPPBRRB")
             sage: T.is_cylindrical(PURPLE)
@@ -1943,7 +1984,8 @@ class VeeringTriangulation(Triangulation):
                 if cols[a] != PURPLE and cols[b] != PURPLE and cols[c] != PURPLE:
                     return False
             else:
-                if (cols[a] == col) + (cols[b] == col) + (cols[c] == col) != 2:
+                if (cols[a] == PURPLE) + (cols[b] == PURPLE) + (cols[c] == PURPLE) + \
+                   (cols[a] == col) + (cols[b] == col) + (cols[c] == col) != 2:
                     return False
         return True
 
