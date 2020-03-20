@@ -578,6 +578,7 @@ class VeeringTriangulation(Triangulation):
     def __repr__(self):
         return str(self)
 
+    # TODO: this duplicates the method edge_colour
     def colour(self, e):
         e = int(e)
         return self._colouring[e]
@@ -897,6 +898,9 @@ class VeeringTriangulation(Triangulation):
             False
         """
         return Triangulation.is_flippable(self, e) and self.colours_about_edge(e) == [BLUE, RED, BLUE, RED]
+
+    def is_backward_flippable(self, e):
+        return Triangulation.is_flippable(self, e) and self.colours_about_edge(e) == [RED, BLUE, RED, BLUE]
 
     def forward_flippable_edges(self):
         r"""
@@ -1721,8 +1725,8 @@ class VeeringTriangulation(Triangulation):
             raise ValueError("'col' must be BLUE or RED")
 
         e = int(e)
-        if e < 0 or e >= self._n or not self.is_flippable(e):
-            raise ValueError("invalid half edge 'e' for flipping veering triangulation")
+        if e < 0 or e >= self._n or not self.is_forward_flippable(e):
+            raise ValueError("invalid half edge e={} for flipping veering triangulation".format(e))
 
         if reduced is None:
             reduced = self._colouring[e] == PURPLE
@@ -2191,7 +2195,7 @@ class VeeringTriangulation(Triangulation):
             True
         """
         e = int(e)
-        assert(self.is_flippable(e))
+        assert self.is_backward_flippable(e)
         E = self._ep[e]
 
         Triangulation.flip_back(self, e)
@@ -2827,11 +2831,15 @@ class VeeringTriangulation(Triangulation):
             sage: T = VeeringTriangulation(triangles, colours)
             sage: T.is_core()
             True
-            sage: T.flip(14,RED)
-            sage: T.is_core()
+
+            sage: U = T.copy()
+            sage: U.flip(10, BLUE)
+            sage: U.is_core()
             True
-            sage: T.flip(14,RED)
-            sage: T.is_core()
+
+            sage: U = T.copy()
+            sage: U.flip(10, RED)
+            sage: U.is_core()
             False
         """
         # TODO: could use v.has_curve for every edge?
@@ -2943,31 +2951,32 @@ class VeeringTriangulation(Triangulation):
             sage: T0.is_core()
             True
 
-        Flipping edge 1 in RED is fine (it remains a core triangulation)::
+        Flipping edge 3 in RED is fine (it remains a core triangulation)::
 
-            sage: T = T0.copy()
-            sage: T.flip(1, RED)
-            sage: T.edge_has_curve(1)
+            sage: T1 = T0.copy()
+            sage: T1.flip(3, RED)
+            sage: T1.edge_has_curve(3)
             True
-            sage: T.is_core()
+            sage: T1.is_core()
             True
 
-        However, flipping edge 1 in BLUE leads to a non-core triangulation
-        (both edges 1 and 3 degenerate)::
+        However, flipping edge 3 in BLUE leads to a non-core triangulation::
 
-            sage: T = T0.copy()
-            sage: T.flip(1,BLUE)
-            sage: T.edge_has_curve(1)
+            sage: T2 = T0.copy()
+            sage: T2.flip(3, BLUE)
+            sage: T2.edge_has_curve(3)
             False
-            sage: T.edge_has_curve(3)
+            sage: T2.is_core()
             False
 
-            sage: PH = T.train_track_polytope(HORIZONTAL)
-            sage: PH.affine_dimension()
+        Equivantly, the train track polytope is degenerate::
+
+            sage: P1 = T1.train_track_polytope(VERTICAL)
+            sage: P1.affine_dimension()
+            3
+            sage: P2 = T2.train_track_polytope(VERTICAL)
+            sage: P2.affine_dimension()
             2
-            sage: [g.coefficients() for g in PH.generators() if g.is_ray()]
-            [(mpz(0), mpz(0), mpz(0), mpz(0), mpz(1), mpz(1)),
-             (mpz(1), mpz(0), mpz(1), mpz(0), mpz(0), mpz(0))]
         """
         # TODO: we should only searching for vertex cylces; i.e. not allow more
         # than two pairs (i, ~i) to be both seen (barbell are fine but not more)
@@ -3150,31 +3159,6 @@ class VeeringTriangulation(Triangulation):
                     neighbours.append(Z)
 
         return neighbours
-
-    def _check_edge_has_curve(self):
-        r"""
-        Check the function ``edge_has_curve``
-
-        EXAMPLES::
-
-            sage: from veerer import *
-            sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
-            sage: T._check_edge_has_curve()
-        """
-        dim = self.stratum_dimension()
-        assert self.is_core()
-        for slope in [HORIZONTAL, VERTICAL]:
-            for e in self.mostly_sloped_edges(slope):
-                for col in [BLUE, RED]:
-                    T = self.copy()
-                    T.flip(e, col)
-                    test1 = T.edge_has_curve(e)
-                    test2 = T.train_track_polytope(slope).affine_dimension() == dim
-                    if test1 != test2:
-                        T.edge_has_curve(e, verbose=True)
-                        raise RuntimeError("failed\nT = {}\nedge = {}\ncolour = {}\nhas curve={}\nstratum dim={}\nhoriz tt dim={}\nvert tt dim={}".format(T, e, col, test1, dim,
-                            T.train_track_polytope(HORIZONTAL).affine_dimension(),
-                            T.train_track_polytope(VERTICAL).affine_dimension()))
 
     def random_forward_flip_sequence(self, length=1, relabel=False):
         V = self.copy()
