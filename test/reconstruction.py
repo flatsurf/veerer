@@ -21,7 +21,7 @@ import sys
 import pytest
 
 import random
-from veerer.constants import RED, BLUE
+from veerer.constants import RED, BLUE, PURPLE
 from veerer.triangulation import Triangulation
 from veerer.veering_triangulation import VeeringTriangulation
 from veerer.flip_sequence import VeeringFlipSequence
@@ -48,17 +48,26 @@ def test_triangulation_reconstruction(fp, repeat):
  ("(0,~5,4)(3,5,6)(1,2,~6)", "PPBPRBR", 30)])
 def test_veering_triangulation_reconstruction(fp, cols, repeat):
     V = VeeringTriangulation(fp, cols)
+
+    # NOTE 1: is_core does not support PURPLE edges...
+    # NOTE 2: is_core needs ppl...
+    # W = V.copy()
+    # W.set_colour(RED)
+    # assert W.is_core()
+
     for _ in range(repeat):
         assert eval(repr(V)) == V, V
         e = random.choice(V.forward_flippable_edges())
+        assert V.is_forward_flippable(e)
         col = random.choice([RED, BLUE])
 
         # test flip validity
-        oldcol = V.edge_colour(e)
         V.flip(e, col, reduced=False)
         if not V.edge_has_curve(e):
             col = BLUE if col == RED else RED
-            V.flip_back(e, oldcol)
+        V.flip_back(e, PURPLE) # NOTE: the old colour does not matter
+
+        assert V.is_forward_flippable(e)
 
         # do flip
         V.flip(e, col)

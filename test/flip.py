@@ -45,9 +45,12 @@ def test_flip(fp, cols, repeat):
 
     for _ in range(repeat):
         e = random.choice(V.forward_flippable_edges())
+        oldcol = V.edge_colour(e)
         col = random.choice([RED, BLUE])
+
         W = V.copy()
         W.flip(e, col)
+        assert W.is_backward_flippable(e)
         test1 = W.edge_has_curve(e)
         test2 = W.is_core()
         assert test1 == test2, (V, W, e, col)
@@ -57,8 +60,16 @@ def test_flip(fp, cols, repeat):
         test3 = X.train_track_polytope(VERTICAL).affine_dimension() == X.stratum_dimension()
         assert test1 == test3, (W, X)
 
+        Y = V.copy()
+        Y.forgot_forward_flippable_colour()
+        Y.flip(e, col, reduced=False)
+        assert Y.is_backward_flippable(e)
+
         if test1:
             V = W
+        else:
+            W.flip_back(e, oldcol)
+            assert V == W
 
 @pytest.mark.parametrize("fp, cols, repeat",
 [("(0,8,~7)(1,11,~10)(2,10,~9)(3,9,~8)(4,~1,~11)(5,~2,~4)(6,~3,~5)(7,~0,~6)", "RRRRBBBBBBBB", 50),
