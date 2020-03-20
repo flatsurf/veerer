@@ -423,8 +423,6 @@ class Triangulation(object):
 
         return curver.create_triangulation(F)
 
-
-
     def face_permutation(self, copy=True):
         if copy:
             return self._fp[:]
@@ -943,13 +941,99 @@ class Triangulation(object):
 
         return a,b,c,d
 
+    def swap(self, e):
+        r"""
+        Change the orientation of the edge ``e``.
+
+        EXAMPLES::
+
+            sage: from veerer import Triangulation
+
+            sage: T = Triangulation("(0,1,2)(~0,~1,~2)")
+            sage: T.swap(0)
+            sage: T
+            Triangulation("(0,~1,~2)(1,2,~0)")
+            sage: T.swap(1)
+            sage: T
+            Triangulation("(0,1,~2)(2,~0,~1)")
+            sage: T.swap(2)
+            sage: T
+            Triangulation("(0,1,2)(~2,~0,~1)")
+
+            sage: T = Triangulation("(0,~5,4)(3,5,6)(1,2,~6)")
+            sage: T.swap(0)
+            sage: T
+            Triangulation("(0,~5,4)(1,2,~6)(3,5,6)")
+            sage: T.swap(5)
+            sage: T
+            Triangulation("(0,5,4)(1,2,~6)(3,~5,6)")
+
+        Also works for veering triangulations::
+
+            sage: from veerer import VeeringTriangulation
+
+            sage: fp = "(0,~1,2)(~0,1,~3)(4,~5,3)(~4,6,~2)(7,~6,8)(~7,5,~9)(10,~11,9)(~10,11,~8)"
+            sage: cols = "BRBBBRRBBBBR"
+            sage: V = VeeringTriangulation(fp, cols)
+            sage: V.swap(0)
+            sage: V.swap(10)
+            sage: V
+            VeeringTriangulation("(0,1,~3)(2,~0,~1)(3,4,~5)(5,~9,~7)(6,~2,~4)(7,~6,8)(9,~10,~11)(10,11,~8)", "BRBBBRRBBBBR")
+
+        One can alternatively use ``relabel``::
+
+            sage: T = Triangulation("(0,~5,4)(3,5,6)(1,2,~6)")
+            sage: T1 = T.copy()
+            sage: T1.swap(3)
+            sage: T1.swap(6)
+            sage: T2 = T.copy()
+            sage: T2.relabel("(3,~3)(6,~6)")
+            sage: T1 == T2
+            True
+        """
+        vp = self._vp
+        ep = self._ep
+        fp = self._fp
+        E = ep[e]
+
+        if e == E:
+            return
+
+        # images/preimages by vp
+        e_vp = vp[e]
+        E_vp = vp[E]
+        e_vp_inv = fp[E]
+        E_vp_inv = fp[e]
+        assert vp[e_vp_inv] == e
+        assert vp[E_vp_inv] == E
+
+        # images/preimages by fp
+        e_fp = fp[e]
+        E_fp = fp[E]
+        e_fp_inv = ep[e_vp]
+        E_fp_inv = ep[E_vp]
+        assert fp[e_fp_inv] == e
+        assert fp[E_fp_inv] == E
+
+        fp[e_fp_inv] = E
+        fp[E_fp_inv] = e
+        vp[e_vp_inv] = E
+        vp[E_vp_inv] = e
+        fp[e] = E_fp
+        fp[E] = e_fp
+        vp[e] = E_vp
+        vp[E] = e_vp
+
+        # TODO: remove check
+        self._check()
+
     def relabel(self, p):
         r"""
         Relabel this triangulation inplace according to the permutation ``p``.
 
         EXAMPLES::
 
-            sage: from veerer import *
+            sage: from veerer import Triangulation
 
             sage: T = Triangulation("(0,1,2)(~0,~1,~2)")
             sage: T.relabel("(0,~0)"); T
@@ -980,6 +1064,7 @@ class Triangulation(object):
         self._vp = perm_conjugate(self._vp, p)
         self._ep = perm_conjugate(self._ep, p)
         self._fp = perm_conjugate(self._fp, p)
+
 
     def flip(self, e):
         r"""
