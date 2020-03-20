@@ -2007,6 +2007,105 @@ class VeeringTriangulation(Triangulation):
 
         return cylinders
 
+    def dehn_twists(self, col):
+        r"""
+        Return the list of Dehn twists along the cylinders of colour ``col``.
+
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation, BLUE, RED
+
+            sage: T = VeeringTriangulation("(0,~4,5)(1,~0,6)(2,8,~1)(3,~7,~2)(4,~3,7)(~8,9,~11)(10,~5,~9)(11,~6,~10)", "BBBBBRRRRBBB")
+            sage: b1, b2 = T.dehn_twists(BLUE)
+            sage: b1
+            VeeringFlipSequence(VeeringTriangulation("(0,~4,5)...(11,~6,~10)", "BBBBBRRRRBBB"), "1B 0B 4B 2B 1B 0B", "(0,3,1,4,~2)(2,~0,~3,~1,~4)(5)(6)(7)(8)(9)(10)(11)(~11)(~10)(~9)(~8)(~7)(~6)(~5)")
+            sage: b2
+            VeeringFlipSequence(VeeringTriangulation("(0,~4,5)...(11,~6,~10)", "BBBBBRRRRBBB"), "9B 10B", "(0)(1)(2)(3)(4)(5)(6)(7)(8)(9,~10,11)(10,~11,~9)(~8)(~7)(~6)(~5)(~4)(~3)(~2)(~1)(~0)")
+
+            sage: T.rotate()
+            sage: r1, r2 = T.dehn_twists(RED)
+            sage: r1
+            VeeringFlipSequence(VeeringTriangulation("(0,~4,5)...(11,~6,~10)", "RRRRRBBBBRRR"), "3R 4R 0R 2R 3R 4R", "(0,2,4,1,3)(5)(6)(7)(8)(9)(10)(11)(~11)(~10)(~9)(~8)(~7)(~6)(~5)(~4,~1,~3,~0,~2)")
+            sage: r2
+            VeeringFlipSequence(VeeringTriangulation("(0,~4,5)...(11,~6,~10)", "RRRRRBBBBRRR"), "11R 10R", "(0)(1)(2)(3)(4)(5)(6)(7)(8)(9,11,10)(~11,~10,~9)(~8)(~7)(~6)(~5)(~4)(~3)(~2)(~1)(~0)")
+
+        A (purple) square-tiled surface corresponds to a Penner system. A
+        product associated to the Dehn twists is of pseudo-Anosov type if and
+        only if all twists appear at least once::
+
+            sage: T = VeeringTriangulation("(0,~2,1)(2,~11,~3)(3,10,~4)(4,~15,~5)(5,14,~6)(6,~10,~7)(7,9,~8)(8,17,~9)(11,15,~12)(12,~17,~13)(13,~16,~14)(16,~1,~0)", "PRBPRBPRBPBRBPRPBR")
+            sage: b1,b2 = T.dehn_twists(BLUE)
+            sage: r1,r2,r3 = T.dehn_twists(RED)
+
+            sage: (r1 * r3 * b1 * b2).is_pseudo_anosov()
+            False
+            sage: (r1 * r3 * b1 * b2 * r2).is_pseudo_anosov()
+            True
+        """
+        if col != RED and col != BLUE:
+            raise ValueError("'col' must be RED or BLUE")
+
+        from .flip_sequence import VeeringFlipSequence
+        twists = []
+
+        opcol = BLUE if col == RED else RED
+        vp = self._vp
+        ep = self._ep
+        cols = self._colouring
+        for mid, rbdry, lbdry, half in self.cylinders(col):
+            if half:
+                raise NotImplementedError
+
+            # count packets
+            edges = []
+            packets = []
+            p = []
+            for r in lbdry:
+                assert cols[r] == opcol
+                s = vp[r]
+                del p[:]
+                while cols[s] != opcol:
+                    p.append(s)
+                    s = vp[s]
+                edges.extend(p)
+                packets.append(len(p))
+
+            # for as many times as there are saddle connection
+            # in the bdry twist
+            F = VeeringFlipSequence(self)
+            m = len(lbdry)
+            n = len(edges)
+            flipsmod2 = [0] * n
+            for shift in range(m):
+                j = shift if col == BLUE else -shift
+                for i in range(m):
+                    K = range(packets[i] - 1, 0, -1) if col == BLUE else range(0, packets[i] - 1, 1)
+                    for k in K:
+                        l = (j + k) % n
+                        F.flip(edges[l], col)
+                        flipsmod2[l] = 1 - flipsmod2[l]
+                    j += packets[i]
+            r = perm_id(self._n)
+            for i in range(n):
+                j = (i-m)%n if col == BLUE else (i+m)%n
+                e = edges[i]
+                f = edges[j]
+                if col == BLUE and flipsmod2[i]:
+                    r[e] = ep[f]
+                    r[ep[e]] = f
+                else:
+                    r[e] = f
+                    r[ep[e]] = ep[f]
+            from .permutation import perm_cycle_string
+            F.relabel(r)
+
+            # TODO: remove assertion check
+            assert F.start() == F.end()
+
+            twists.append(F)
+
+        return twists
+
     def is_cylindrical(self, col=None):
         r"""
         Return whether this veering triangulation is cylindrical.
