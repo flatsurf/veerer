@@ -156,6 +156,15 @@ class VeeringTriangulation(Triangulation):
             self._check(ValueError)
 
     def _check(self, error=RuntimeError):
+        """
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation
+            sage: V = VeeringTriangulation("(0,1,2)", "GBR")
+            Traceback (most recent call last):
+            ...
+            ValueError: invalid triangle (0, 1, 2) with colours (green, blue, red)
+        """
         Triangulation._check(self, error)
         n = self.num_half_edges()
         ep = self._ep
@@ -167,35 +176,55 @@ class VeeringTriangulation(Triangulation):
            any(cols[e] != cols[ep[e]] for e in range(self._n)):
             raise error('bad colouring attribute')
 
-        # no monochromatic face
-        allowed = [set([BLUE,RED]),
-                   set([PURPLE,GREEN,BLUE]),
-                   set([PURPLE,GREEN,RED]),
-                   set([PURPLE,BLUE,RED]),
-                   set([GREEN,BLUE,RED])]
-        for f in self.faces():
-            fcols = set(cols[e] for e in f)
-            if not (PURPLE in fcols and GREEN in fcols) and \
-               not (RED in fcols and BLUE in fcols):
-                raise error('monochromatic face {}'.format(f))
-
-        # no purple -> {blue,purple} or green -> {red,green} around a vertex
-        for e in range(n):
-            c0 = cols[e]
-            c1 = cols[ev[e]]
-            if c0 == PURPLE and c1 == PURPLE:
-                raise error('two consecutive purple edges in a vertex at {}'.format(e))
-            if c0 == GREEN and c1 == GREEN:
-                raise error('two consecutive green edges in a vertex at {}'.format(e))
-            if c0 == PURPLE and c1 == BLUE:
-                raise error('blue after purple in a vertex at {}'.format(e))
-            if c0 == GREEN and c1 == RED:
-                raise error('red after green in a vertex at {}'.format(e))
+        # faces must be of one of the following type (up to cyclic ordering)
+        # non-dgenerate: BBR (BLUE), RRB (RED)
+        # 1-degenerate: PBR (PURPLE), GRB (GREEN)
+        for a in range(n):
+            col, a, b, c = self.triangle(a)
+            good = False
+            if col == BLUE:
+                good = cols[a] == BLUE and cols[b] == BLUE and cols[c] == RED
+            elif col == RED:
+                good = cols[a] == RED and cols[b] == RED and cols[c] == BLUE
+            elif col == PURPLE:
+                good = cols[a] == PURPLE and cols[b] == BLUE and cols[c] == RED
+            elif col == GREEN:
+                good = cols[a] == GREEN and cols[b] == RED and cols[c] == BLUE
+            if not good:
+                raise error('invalid triangle ({}, {}, {}) with colours ({}, {}, {})'.format(a, b, c,
+                    colour_to_string(cols[a]), colour_to_string(cols[b]), colour_to_string(cols[c])))
 
         # no monochromatic vertex
         for v in self.vertices():
-            if len(set(self._colouring[e] for e in v)) == 1:
-                raise error('monochromatic vertex {}'.format(v))
+            col = cols[v[0]]
+            i = 1
+            while i < len(v) and cols[v[i]] == col:
+                i += 1
+            if i == len(v):
+                raise error('monochromatic vertex {} of colour {}'.format(v, colour_to_string(cols[v[0]])))
+
+    def triangle(self, a):
+        r"""
+        Return a quadruple ``(colour, e0, e1, e2)`` in canonical form for the triangle with half edge ``a``.
+        """
+        # non-dgenerate: BBR (BLUE), RRB (RED)
+        # degenerate: PBR (PURPLE), GRB (GREEN)
+        b = self._fp[a]
+        c = self._fp[b]
+        cols = self._colouring
+        if cols[a] == PURPLE or cols[a] == GREEN:
+            return (cols[a], a, b, c)
+        elif cols[b] == PURPLE or cols[b] == GREEN:
+            return (cols[b], b, c, a)
+        elif cols[c] == PURPLE or cols[c] == GREEN:
+            return (cols[c], c, a, b)
+        elif cols[a] == cols[b]:
+            return (cols[a], a, b, c)
+        elif cols[b] == cols[c]:
+            return (cols[b], b, c, a)
+        elif cols[c] == cols[a]:
+            return (cols[c], c, a, b)
+        return (None, None, None, None)
 
     @classmethod
     def from_pseudo_anosov(cls, h):
@@ -467,12 +496,12 @@ class VeeringTriangulation(Triangulation):
         r"""
         Make purple the colour of forward flippable edges.
 
-        The result of this operation determines is entirely determined by the
-        vertical train track (as only forward flippable edges have an undefined colour).
+        The result of this operation is entirely determined by the vertical
+        train track (as only forward flippable edges have an undefined colour).
 
         EXAMPLES::
 
-            sage: from veerer import *
+            sage: from veerer import VeeringTriangulation
             sage: t = VeeringTriangulation("(0,~6,~3)(1,7,~2)(2,~1,~0)(3,5,~4)(4,8,~5)(6,~8,~7)", "RBBBRBBRB")
             sage: t.forgot_forward_flippable_colour()
             sage: t
@@ -481,6 +510,32 @@ class VeeringTriangulation(Triangulation):
         ep = self._ep
         for e in self.forward_flippable_edges():
             self._colouring[e] = self._colouring[ep[e]] = PURPLE
+
+    def forgot_backward_flippable_colour(self):
+        r"""
+        Make green the colour of backward flippable edges.
+
+        The result of this operation is entirely determined by the horizontal
+        train track (as only forward flippable edges have an undefined colour).
+
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation
+            sage: t = VeeringTriangulation("(0,~6,~3)(1,7,~2)(2,~1,~0)(3,5,~4)(4,8,~5)(6,~8,~7)", "RBBBRBBRB")
+            sage: t.forgot_backward_flippable_colour()
+            sage: t
+            VeeringTriangulation("(0,~6,~3)(1,7,~2)(2,~1,~0)(3,5,~4)(4,8,~5)(6,~8,~7)", "RGBBRGBRB")
+
+            sage: t = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
+            sage: t.forgot_backward_flippable_colour()
+            sage: t._check()
+            sage: t = VeeringTriangulation("(0,12,~11)(1,13,~12)(2,14,~13)(3,15,~14)(4,17,~16)(5,~10,11)(6,~3,~17)(7,~2,~6)(8,~5,~7)(9,~0,~8)(10,~4,~9)(16,~15,~1)", "RRRRRRBBBBBBBBBBBB")
+            sage: t.forgot_backward_flippable_colour()
+            sage: t._check()
+        """
+        ep = self._ep
+        for e in self.backward_flippable_edges():
+            self._colouring[e] = self._colouring[ep[e]] = GREEN
 
     def __eq__(self, other):
         if type(self) != type(other):
@@ -667,60 +722,129 @@ class VeeringTriangulation(Triangulation):
             sage: T.is_abelian()
             False
 
-        Some examples with purple edges::
+        Examples with purple edges::
 
             sage: t = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
             sage: t.forgot_forward_flippable_colour()
             sage: t.is_abelian()
             True
 
-
             sage: t = VeeringTriangulation("(0,12,~11)(1,13,~12)(2,14,~13)(3,15,~14)(4,17,~16)(5,~10,11)(6,~3,~17)(7,~2,~6)(8,~5,~7)(9,~0,~8)(10,~4,~9)(16,~15,~1)", "RRRRRRBBBBBBBBBBBB")
-
             sage: t.forgot_forward_flippable_colour()
             sage: t.is_abelian()
             False
-        """
-        if self.num_folded_edges() > 0:
-            return False
 
+        Examples with green edges::
+
+            sage: t = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
+            sage: t.forgot_backward_flippable_colour()
+            sage: t.is_abelian()
+            True
+
+            sage: t = VeeringTriangulation("(0,12,~11)(1,13,~12)(2,14,~13)(3,15,~14)(4,17,~16)(5,~10,11)(6,~3,~17)(7,~2,~6)(8,~5,~7)(9,~0,~8)(10,~4,~9)(16,~15,~1)", "RRRRRRBBBBBBBBBBBB")
+            sage: t.forgot_backward_flippable_colour()
+            sage: t.is_abelian()
+            False
+        """
         ep = self._ep
         vp = self._vp
+        cols = self._colouring
 
-        # Perform BFS to check that we can coherently orient the
-        # real part of each edge
+        # Perform a BFS. We store an orientation for each edge that specifies
+        # its orientation in R^2: True if x > 0 or (x == 0 and y > 0)
+        #                         False if x < 0 or (x == 0 and y < 0)
         oris = [None] * self._n
-        oris[0] = True   # = going up
-        oris[ep[0]] = False # = going down
-        q = [0, ep[0]]
+        oris[0] = True
+        q = [0]
         while q:
-            e0 = q.pop()
+            e = e0 = q.pop()
             o = oris[e0]
-
-            e = e0
             f = vp[e]
             while f != e0:
-                if self._colouring[e] == RED and self._colouring[f] == BLUE:
-                    o = not o
-
-                if (self._colouring[f] == GREEN and self._colouring[e] != RED) or \
-                   (self._colouring[f] == PURPLE and self._colouring[e] != BLUE) or \
-                   (self._colouring[e] == GREEN and self._colouring[f] != BLUE) or \
-                   (self._colouring[e] == PURPLE and self._colouring[f] != RED):
-                    raise ValueError("invalid colouring")
-
-                if self._colouring[e] == GREEN or self._colouring[f] == GREEN:
-                    raise NotImplementedError("does not work with green edges")
+                if (cols[e] == RED and cols[f] == BLUE) or (cols[e] == GREEN):
+                       o = not o
 
                 oris[f] = o
                 if oris[ep[f]] is None:
                     q.append(ep[f])
-                    oris[ep[f]]= not o
+                    oris[ep[f]] = not o
                 elif oris[ep[f]] == oris[f]:
                     return (False, None) if certificate else False
-                e,f = f, vp[f]
+                e, f = f, vp[f]
+
+            if (cols[e] == RED and cols[f] == BLUE) or cols[e] == GREEN:
+                o = not o
+            if oris[e0] != o:
+                return (False, None) if certificate else False
 
         return (True, oris) if certificate else True
+
+    def abelian_cover(self):
+        r"""
+        Return the orientation double cover of this veering triangulation.
+
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation
+
+            sage: V = VeeringTriangulation("(0,1,2)", "BBR")
+            sage: V.abelian_cover().stratum()
+            H_1(0)
+
+            sage: V = VeeringTriangulation("(0,2,3)(1,4,~0)(5,6,~1)", "BRRBBBB")
+            sage: A = V.abelian_cover()
+            sage: A.stratum()
+            H_2(2)
+
+            sage: W = V.copy()
+            sage: W.forgot_forward_flippable_colour()
+            sage: B = A.copy()
+            sage: B.forgot_forward_flippable_colour()
+            sage: assert W.abelian_cover() == B
+
+            sage: W = V.copy()
+            sage: W.forgot_backward_flippable_colour()
+            sage: B = A.copy()
+            sage: B.forgot_backward_flippable_colour()
+            sage: assert W.abelian_cover() == B
+        """
+        n = self._n
+        ep = self._ep
+
+        # edge permutation
+        ep_cov = [None] * (2*n)
+        for e in range(n):
+            E = ep[e] + n
+            ep_cov[e] = E
+            ep_cov[E] = e
+
+        # face permutation
+        seen = [False] * n
+        fp_cov = [None] * (2*n)
+        for a in range(n):
+            if seen[a]:
+                continue
+            col, a, b, c = self.triangle(a)
+            seen[a] = seen[b] = seen[c] = True
+            a1 = a
+            a2 = a+n
+            if col == PURPLE or col == BLUE:
+                b1 = b+n; b2 = b
+                c1 = c+n; c2 = c
+            elif col == GREEN:
+                b1 = b+n; b2 = b
+                c1 = c; c2 = c+n
+            elif col == RED:
+                b1 = b+n; b2 = b
+                c1 = c; c2 = c+n
+            fp_cov[a1] = b1; fp_cov[b1] = c1; fp_cov[c1] = a1
+            fp_cov[a2] = b2; fp_cov[b2] = c2; fp_cov[c2] = a2
+
+        colouring_cov = self._colouring * 2
+        # TODO: remove the check argument
+        V = self.from_face_edge_perms(colouring_cov, array('l', fp_cov), array('l', ep_cov), check=True)
+        V.relabel(V._relabelling_from(0))
+        return V
 
     def stratum(self):
         r"""
