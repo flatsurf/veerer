@@ -38,10 +38,7 @@ def test_flip(fp, cols, repeat):
     V = VeeringTriangulation(fp, cols)
     assert V.is_core()
 
-    if V.is_abelian():
-        d = 2*V.genus() + V.num_vertices() - 1
-    else:
-        d = 2*V.genus() + V.num_vertices() - 2
+    d = V.stratum_dimension()
 
     for _ in range(repeat):
         e = random.choice(V.forward_flippable_edges())
