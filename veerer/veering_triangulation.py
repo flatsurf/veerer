@@ -179,6 +179,7 @@ class VeeringTriangulation(Triangulation):
         # faces must be of one of the following type (up to cyclic ordering)
         # non-dgenerate: BBR (BLUE), RRB (RED)
         # 1-degenerate: PBR (PURPLE), GRB (GREEN)
+        # 2-degenerate: BPG (BLUE|PURPLE|GREEN), RGP (RED|GREEN|PURPLE)
         for a in range(n):
             col, a, b, c = self.triangle(a)
             good = False
@@ -190,6 +191,10 @@ class VeeringTriangulation(Triangulation):
                 good = cols[a] == PURPLE and cols[b] == BLUE and cols[c] == RED
             elif col == GREEN:
                 good = cols[a] == GREEN and cols[b] == RED and cols[c] == BLUE
+            elif col == BLUE | PURPLE | GREEN:
+                good = cols[a] == BLUE and cols[b] == GREEN and cols[c] == PURPLE
+            elif col == RED | PURPLE | GREEN:
+                good = cols[a] == RED and cols[b] == PURPLE and cols[c] == GREEN
             if not good:
                 raise error('invalid triangle ({}, {}, {}) with colours ({}, {}, {})'.format(a, b, c,
                     colour_to_string(cols[a]), colour_to_string(cols[b]), colour_to_string(cols[c])))
@@ -206,24 +211,64 @@ class VeeringTriangulation(Triangulation):
     def triangle(self, a):
         r"""
         Return a quadruple ``(colour, e0, e1, e2)`` in canonical form for the triangle with half edge ``a``.
+
+        The canonical form concerns the order of the colour as read counter-clockwise along the
+        triangle:
+
+        - ``RED`` triangle: ``(RED, RED, BLUE)``
+        - ``BLUE`` triangle: ``(BLUE, BLUE, RED)``
+        - ``PURPLE`` triangle: ``(PURPLE, BLUE, RED)``
+        - ``GREEN`` triangle: ``(GREEN, RED, BLUE)``
+        - ``RED|PURPLE|GREEN`` triangle: ``(RED, PURPLE, GREEN)``
+        - ``BLUE|GREEN|PURPLE`` triangle: ``(BLUE, GREEN, PURPLE)``
+
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation, RED, BLUE, PURPLE, GREEN
+
+            sage: V = VeeringTriangulation("(0,1,2)", "RRB")
+            sage: assert V.triangle(0) == V.triangle(1) == V.triangle(2) == (RED, 0, 1, 2)
+            sage: V = VeeringTriangulation("(0,1,2)", "BBR")
+            sage: assert V.triangle(0) == V.triangle(1) == V.triangle(2) == (BLUE, 0, 1, 2)
+            sage: V = VeeringTriangulation("(0,1,2)", "PBR")
+            sage: assert V.triangle(0) == V.triangle(1) == V.triangle(2) == (PURPLE, 0, 1, 2)
+            sage: V = VeeringTriangulation("(0,1,2)", "GRB")
+            sage: assert V.triangle(0) == V.triangle(1) == V.triangle(2) == (GREEN, 0, 1, 2)
+            sage: V = VeeringTriangulation("(0,1,2)", "RPG")
+            sage: assert V.triangle(0) == V.triangle(1) == V.triangle(2) == (RED|PURPLE|GREEN, 0, 1, 2)
+            sage: V = VeeringTriangulation("(0,1,2)", "BGP")
+            sage: assert V.triangle(0) == V.triangle(1) == V.triangle(2) == (BLUE|GREEN|PURPLE, 0, 1, 2)
         """
         # non-dgenerate: BBR (BLUE), RRB (RED)
-        # degenerate: PBR (PURPLE), GRB (GREEN)
+        # 1-degenerate: PBR (PURPLE), GRB (GREEN)
+        # 2-degenerate: RGP (RED|GREEN|PURPLE), BPG (BLUE|GREEN|PURPLE)
         b = self._fp[a]
         c = self._fp[b]
         cols = self._colouring
-        if cols[a] == PURPLE or cols[a] == GREEN:
-            return (cols[a], a, b, c)
-        elif cols[b] == PURPLE or cols[b] == GREEN:
-            return (cols[b], b, c, a)
-        elif cols[c] == PURPLE or cols[c] == GREEN:
-            return (cols[c], c, a, b)
-        elif cols[a] == cols[b]:
-            return (cols[a], a, b, c)
-        elif cols[b] == cols[c]:
-            return (cols[b], b, c, a)
-        elif cols[c] == cols[a]:
-            return (cols[c], c, a, b)
+        degenerate = PURPLE | GREEN
+        standard = RED | BLUE
+        ndegenerate = bool(cols[a] & degenerate) + bool(cols[b] & degenerate) + bool(cols[c] & degenerate)
+        if ndegenerate == 0:
+            if cols[a] == cols[b]:
+                return (cols[a], a, b, c)
+            elif cols[b] == cols[c]:
+                return (cols[b], b, c, a)
+            elif cols[c] == cols[a]:
+                return (cols[c], c, a, b)
+        elif ndegenerate == 1:
+            if cols[a] & degenerate:
+                return (cols[a], a, b, c)
+            elif cols[b] & degenerate:
+                return (cols[b], b, c, a)
+            elif cols[c] & degenerate:
+                return (cols[c], c, a, b)
+        elif ndegenerate == 2:
+            if cols[a] & standard:
+                return (cols[a] | degenerate, a, b, c)
+            elif cols[b] & standard:
+                return (cols[b] | degenerate, b, c, a)
+            elif cols[c] & standard:
+                return (cols[c] | degenerate, c, a, b)
         return (None, None, None, None)
 
     @classmethod
@@ -685,11 +730,13 @@ class VeeringTriangulation(Triangulation):
 
             a = 0
             col = self._colouring[e]
+            # NOTE: we count by multiples of pi/2 and then divide by 2
             while not seen[e]:
                 seen[e] = True
                 ee = vp[e]
                 ccol = self._colouring[ee]
-                a += col != ccol and col != PURPLE and col != GREEN
+                a += bool(col != ccol and (((col & (BLUE|RED)) and (ccol & (BLUE|RED))) or
+                                           (col & (GREEN|PURPLE))))
                 e = ee
                 col = ccol
             a += col != ccol
@@ -788,12 +835,12 @@ class VeeringTriangulation(Triangulation):
             sage: from veerer import VeeringTriangulation
 
             sage: V = VeeringTriangulation("(0,1,2)", "BBR")
-            sage: V.abelian_cover().stratum()
+            sage: V.abelian_cover().stratum()                   # optional - surface_dynamics
             H_1(0)
 
             sage: V = VeeringTriangulation("(0,2,3)(1,4,~0)(5,6,~1)", "BRRBBBB")
             sage: A = V.abelian_cover()
-            sage: A.stratum()
+            sage: A.stratum()                                   # optional - surface_dynamics
             H_2(2)
 
             sage: W = V.copy()
@@ -837,6 +884,14 @@ class VeeringTriangulation(Triangulation):
             elif col == RED:
                 b1 = b+n; b2 = b
                 c1 = c; c2 = c+n
+            elif col == RED|PURPLE|GREEN:
+                b1 = b+n; b2 = b
+                c1 = c+n; c2 = c
+            elif col == BLUE|PURPLE|GREEN:
+                b1 = b; b2 = b+n
+                c1 = c+n; c2 = c
+            else:
+                raise RuntimeError
             fp_cov[a1] = b1; fp_cov[b1] = c1; fp_cov[c1] = a1
             fp_cov[a2] = b2; fp_cov[b2] = c2; fp_cov[c2] = a2
 
@@ -2919,8 +2974,8 @@ class VeeringTriangulation(Triangulation):
             if det2(vectors[k], vectors[i]) < 0:
                 raise RuntimeError
 
-        from .layout import FlatVeeringTriangulationLayout
-        return FlatVeeringTriangulationLayout(self, vectors)
+        from .flat_structure import FlatVeeringTriangulation
+        return FlatVeeringTriangulation(self, vectors)
 
     def flat_structure_middle(self):
         r"""
@@ -2936,13 +2991,13 @@ class VeeringTriangulation(Triangulation):
 
             sage: T = VeeringTriangulation("(0,1,2)", "RRB")
             sage: T.flat_structure_middle()
-            Flat Triangulation made of 1 triangles
+            FlatVeeringTriangulation(Triangulation("(0,1,2)"), [(1, 2), (-2, -1), (1, -1)])
 
             sage: from surface_dynamics import *              # optional - surface_dynamics
             sage: Q = QuadraticStratum({1:4, -1:4})           # optional - surface_dynamics
             sage: CT = VeeringTriangulation.from_stratum(Q)   # optional - surface_dynamics
             sage: CT.flat_structure_middle()                  # optional - surface_dynamics
-            Flat Triangulation made of 16 triangles
+            FlatVeeringTriangulation(Triangulation("(0,18,~17)(1,20,~19)...(19,~18,~0)"), [(3, 3), (1, 1), ..., (-3, -3)])
 
         TESTS::
 
@@ -2977,13 +3032,16 @@ class VeeringTriangulation(Triangulation):
             sage: Q = QuadraticStratum({1:4, -1:4})          # optional - surface_dynamics
             sage: CT = VeeringTriangulation.from_stratum(Q)  # optional - surface_dynamics
             sage: CT.flat_structure_min()                    # optional - surface_dynamics
-            Flat Triangulation made of 16 triangles
+            FlatVeeringTriangulation(Triangulation("(0,18,~17)(1,20,~19)...(19,~18,~0)"), [(3, 3), (1, 1), ..., (-3, -3)])
 
         By allowing degenerations you can get a simpler solution but
         with some of the edges horizontal or vertical::
 
-            sage: CT.flat_structure_min(True)                 # optional - surface_dynamics
-            Flat Triangulation made of 16 triangles
+            sage: F = CT.flat_structure_min(True)                 # optional - surface_dynamics
+            sage: F                                               # optional - surface_dynamics
+            FlatVeeringTriangulation(Triangulation("(0,18,~17)(1,20,~19)...(19,~18,~0)"), [(3, 3), (1, 1), ..., (-3, -3)])
+            sage: F.to_veering_triangulation()                    # optional - surface_dynamics
+            VeeringTriangulation("(0,18,~17)(1,20,~19)...(19,~18,~0)", "RRRRRRRRBBBBBBBBBGBBBBBP")
         """
         require_package('sage', 'flat_structure_min')
 
@@ -3013,7 +3071,7 @@ class VeeringTriangulation(Triangulation):
 
             sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
             sage: T.flat_structure_geometric_middle()
-            Flat Triangulation made of 2 triangles
+            FlatVeeringTriangulation(Triangulation("(0,1,2)(~2,~0,~1)"), [(4, 9), (-9, -4), (5, -5), (-5, 5), (9, 4), (-4, -9)])
         """
         n = self.num_edges()
 

@@ -6,7 +6,7 @@ Delaunay decomposition of surfaces.
 """
 from __future__ import absolute_import
 
-from .constants import RED, BLUE, PURPLE, HORIZONTAL, VERTICAL
+from .constants import RED, BLUE, PURPLE, GREEN, HORIZONTAL, VERTICAL
 from .triangulation import Triangulation
 from .cover import TriangulationCover
 from .veering_triangulation import VeeringTriangulation, VeeringTriangulations
