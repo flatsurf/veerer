@@ -457,6 +457,9 @@ def perm_base64_str(p):
         '00010203...v+v-'
         sage: perm_from_base64_str(s, 2048) == array('l', range(2048))
         True
+
+        sage: perm_from_base64_str('vdh0keigmcjfpxtnrwsouyqba987654321zl', 36)
+        array('l', [31, 13, 17, 0, 20, 14, 18, 16, 22, 12, 19, 15, 25, 33, 29, 23, 27, 32, 28, 24, 30, 34, 26, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 35, 21])
     """
     n = len(p)
     l = int(log(n, 64)) + 1 # number of digits used for each entry

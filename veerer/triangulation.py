@@ -1502,6 +1502,12 @@ class Triangulation(object):
             Triangulation("(0,3,~1)(1,4,~2)(2,~4,~3)")
             sage: TT.iso_sig() == T.iso_sig()
             True
+
+            sage: T = Triangulation("(0,10,~6)(1,12,~2)(2,14,~3)(3,16,~4)(4,~13,~5)(5,~1,~0)(6,~17,~7)(7,~14,~8)(8,13,~9)(9,~11,~10)(11,~15,~12)(15,17,~16)")
+            sage: T.iso_sig()
+            'A_lkp9ijfmcvegq0osnyutxdrbaw87654321zh_zyxwvutsrqponmlkjihgfedcba9876543210'
+            sage: Triangulation.from_string(T.iso_sig())
+            Triangulation("(0,~14,13)(1,~15,~2)(2,~10,~3)(3,9,~4)(4,~17,~5)(5,~16,~6)(6,15,~7)(7,~13,~8)(8,12,~9)(10,14,~11)(11,16,~12)(17,~1,~0)")
         """
         n = self._n
         _, (fp, ep) = self.best_relabelling()
@@ -1509,7 +1515,7 @@ class Triangulation(object):
         fp = perm_base64_str(fp)
         ep = perm_base64_str(ep)
 
-        return str(n) + '_' + fp + '_' + ep
+        return uint_base64_str(n) + '_' + fp + '_' + ep
 
     def is_isomorphic_to(self, other, certificate=False):
         r"""
