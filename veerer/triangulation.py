@@ -301,11 +301,11 @@ class Triangulation(object):
         n = self._n
 
         if not perm_check(self._fp, n):
-            raise error('fp is not a permutation')
+            raise error('fp is not a permutation: {}'.format(self._fp))
         if not perm_check(self._ep, n):
-            raise error('ep is not permutation')
+            raise error('ep is not permutation: {}'.format(self._ep))
         if not perm_check(self._vp, n):
-            raise error('vp is not a permutation')
+            raise error('vp is not a permutation: {}'.format(self._vp))
         if not perms_are_transitive([self._fp, self._ep, self._vp]):
             raise error('(fp, ep, vp) do not generate a transitive group')
 
