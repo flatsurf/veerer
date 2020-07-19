@@ -373,8 +373,6 @@ class VeeringFlipSequence(object):
         r"""
         Test whether the flip sequence defines a pseudo-Anosov mapping class.
 
-        If ``certificate``
-
         EXAMPLES::
 
             sage: from veerer import VeeringTriangulation, VeeringFlipSequence
@@ -401,6 +399,23 @@ class VeeringFlipSequence(object):
         return not self.unflipped_edges()
 
     def self_similar_surface(self):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation, BLUE, RED
+            sage: V = VeeringTriangulation("(0,~2,1)(2,~8,~3)(3,~7,~4)(4,6,~5)(5,8,~6)(7,~1,~0)", "PRBPRBPBR")
+            sage: R0, R1 = V.dehn_twists(RED)
+            sage: B0, B1 = V.dehn_twists(BLUE)
+            sage: f = B0*R0*B1*R1
+            sage: f.self_similar_surface()
+            (a,
+             FlatVeeringTriangulation(Triangulation("(0,~2,1)(2,~8,~3)(3,~7,~4)(4,6,~5)(5,8,~6)(7,~1,~0)"), [(1, 1), (a^3 - 7*a^2 + 13*a - 7, -a), ..., (-a^3 + 7*a^2 - 13*a + 7, a), (-1, -1)]))
+
+            sage: f = B1*B0*R0*B1*R1*R1*R1*R0*B1*R0*B1
+            sage: f.self_similar_surface()
+            (a,
+             FlatVeeringTriangulation(Triangulation("(0,~2,1)(2,~8,~3)(3,~7,~4)(4,6,~5)(5,8,~6)(7,~1,~0)"), [(1, 1), ..., (-1/183*a^3 + 8/61*a^2 - 42/61*a + 274/183, 4/183*a^3 - 30/61*a^2 + 119/61*a + 8/183), (-1, -1)]))
+        """
         if not self.is_pseudo_anosov():
             raise ValueError("flip sequence is not pseudo-Anosov")
 
@@ -408,41 +423,48 @@ class VeeringFlipSequence(object):
         from sage.rings.qqbar import AA
         hm = self.matrix() # matrix: heights_start -> heights_end
         hp = hm.charpoly()
-        hroots = hp.roots(AA, multiplicities=True)
         himax = hrmax = None
-        for i,(x,m) in enumerate(hroots):
-            if hrmax is None or (x > 0 and x > hrmax):
-                hrmax = x
-                himax = i
+        for (fac,mult) in hp.factor():
+            for (x,m) in fac.roots(AA):
+                if hrmax is None or (x > 0 and x > hrmax):
+                    hrmax = x
+                    hmmax = mult * m
+                    hfacmax = fac
         assert hrmax is not None, hroots
-        assert hroots[himax][1] == 1, hroots
         r = hrmax
-
-        h = (hm - r).right_kernel_matrix()[0]
-        if h[0] < 0:
-            h = -h
-        assert all(y > 0 for y in h), h
 
         # TODO: it is a bit stupid to do twice the same computation
         wm = self.inverse().matrix() # matrix: widths_end -> widths_start
         wp = wm.charpoly()
         wroots = wp.roots(AA, multiplicities=True)
         wimax = wrmax = None
-        for i,(x,m) in enumerate(wroots):
-            if wrmax is None or (x > 0 and x > wrmax):
-                wrmax = x
-                wimax = i
+        for (fac,mult) in wp.factor():
+            for (x,m) in fac.roots(AA):
+                if wrmax is None or (x > 0 and x > wrmax):
+                    wrmax = x
+                    wmmax = mult * m
+                    wfacmax = fac
         assert wrmax is not None, wroots
-        assert wroots[wimax][1] == 1, wroots
 
         assert wrmax == r, (hroots, wroots)
 
+        # NOTE: the polynomials are apparently not always equal
+        # assert wp == hp, (wp, hp)
+
+        from sage.rings.number_field.number_field import NumberField
+        K = NumberField(wfacmax, 'a', embedding=wrmax)
+        r = K.gen()
+
+        h = (hm - r).right_kernel_matrix()[0]
+        if h[0] < 0:
+            h = -h
         w = (wm - r).right_kernel_matrix()[0]
         if w[0] < 0:
             w = -w
-        assert all(x > 0 for x in w), v
+        assert all(x > 0 for x in w), (w, h)
+        assert all(y > 0 for y in h), (w, h)
 
-        return r, self.coloured_start()._flat_structure_from_train_track_lengths(h, w, base_ring=AA)
+        return r, self.coloured_start()._flat_structure_from_train_track_lengths(h, w, base_ring=K)
 
     # change
     def flip(self, e, col):
@@ -459,6 +481,18 @@ class VeeringFlipSequence(object):
             if E < e:
                 e = E
         self._flips.append((e, col, oldcol))
+
+    def swap(self, e):
+        r"""
+        Swap the orientation of the edge ``e`` by modifying the relabelling of this flip sequence.
+        """
+        E = self._end._ep[e]
+        self._end.swap(e)
+        self._relabelling[e] = E
+        self._relabelling[E] = e
+
+        # TODO: remove check
+        self._check()
 
     def relabel(self, r):
         end = self._end
