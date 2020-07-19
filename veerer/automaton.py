@@ -10,6 +10,7 @@ from time import time
 from .veering_triangulation import VeeringTriangulation
 from .constants import *
 
+from . import env
 from .env import sage, require_package
 
 class CoreAutomaton(object):
@@ -450,7 +451,7 @@ class CoreAutomaton(object):
         return sum(vt.is_cylindrical() for vt in self)
 
     @classmethod
-    def from_triangulation(self, T, reduced=False, verbosity=0):
+    def from_triangulation(self, T, reduced=False, max_size=None, verbosity=0):
         r"""
         Build the core automaton of ``T``.
 
@@ -463,12 +464,14 @@ class CoreAutomaton(object):
         - ``verbosity`` - integer (default ``0``) - the verbosity level. If nonzero print
           information during the computation.
         """
+        # TODO: if we have boundaries we also need to go backward!
         assert T.is_core()
         if reduced:
             T.forgot_forward_flippable_colour()
 
             # TODO: check to be removed
-            T._check()
+            if env.CHECK:
+                T._check()
 
         if verbosity:
             print('[automaton] stratum: %s' % T.stratum())
@@ -491,6 +494,7 @@ class CoreAutomaton(object):
             assert ffe == T.forward_flippable_edges()
         else:
             ffe = T.forward_flippable_edges()
+
         ffe_orb = []
         branch.append([])
         branch[-1].extend((x,BLUE) for x in ffe)
@@ -499,9 +503,10 @@ class CoreAutomaton(object):
         recol = None
         old_size = 0
         t0 = time()
-        while True:
+        while max_size is None or len(graph) < max_size:
             # TODO: check to be removed
-            T._check()
+            if env.CHECK:
+                T._check()
 
             if verbosity >= 2:
                 print('[automaton] NEW LOOP')
@@ -631,7 +636,8 @@ class CoreAutomaton(object):
                     T._colouring[T._ep[ee]] = ccol
             T.flip_back(e, old_col)
             # TODO: check to be removed
-            T._check()
+            if env.CHECK:
+                T._check()
             assert T.iso_sig() == iso_sigs[-1], (T.iso_sig(), iso_sigs[-1])
 
             while flips and not branch[-1]:
@@ -666,5 +672,11 @@ class CoreAutomaton(object):
             sage: from surface_dynamics import *                 # optional - surface_dynamics
             sage: CoreAutomaton.from_stratum(AbelianStratum(2))  # optional - surface_dynamics
             Core veering automaton with 86 vertices
+
+            sage: Q = QuadraticStratum(8)                         # optional - surface_dynamics
+            sage: A = CoreAutomaton.from_stratum(Q, max_size=100) # optional - surface_dynamics
+            sage: A                                               # optional - surface_dynamics
+            Core veering automaton with 100 vertices
+
         """
         return self.from_triangulation(VeeringTriangulation.from_stratum(stratum), reduced=reduced, **kwds)
