@@ -1,3 +1,10 @@
+2020-03-17
+
+We now have VeeringFlipSequence that allow to construct pseudo-Anosov
+directly without relying on flipper/curver. It also works in the framework
+of reduced veering triangulation (forward flippable edges are coloured
+PURPLE).
+
 2019-03-23
 
 Some more properties of veering triangulations
