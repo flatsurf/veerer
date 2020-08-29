@@ -38,7 +38,7 @@ python3-optional:
   before_script:
     - export PYTHON="python3" PIP="pip3"
     - apt-get update
-    - apt-get install -y python3 python3-pip python3-pytest python3-numpy python3-pandas python3-cysignals-pari python3-ppl cython libgmp-dev libmpfr-dev libmpc-dev libppl-dev
+    - apt-get install -y python3 python3-pip python3-pytest python3-numpy python3-pandas python3-cysignals-pari python3-ppl cython3 libgmp-dev libmpfr-dev libmpc-dev libppl-dev
     - ${PIP} install .
     - ${PIP} install networkx flipper curver
   script:
