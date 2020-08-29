@@ -537,7 +537,7 @@ class VeeringTriangulation(Triangulation):
         cols = array('l', [colour_from_char(c) for c in cols])
         return VeeringTriangulation.from_face_edge_perms(cols, fp, ep, check=check)
 
-    def forgot_forward_flippable_colour(self):
+    def forgot_forward_flippable_colour(self, folded=True):
         r"""
         Make purple the colour of forward flippable edges.
 
@@ -553,7 +553,7 @@ class VeeringTriangulation(Triangulation):
             VeeringTriangulation("(0,~6,~3)(1,7,~2)(2,~1,~0)(3,5,~4)(4,8,~5)(6,~8,~7)", "RBPBRBPRB")
         """
         ep = self._ep
-        for e in self.forward_flippable_edges():
+        for e in self.forward_flippable_edges(folded=folded):
             self._colouring[e] = self._colouring[ep[e]] = PURPLE
 
     def forgot_backward_flippable_colour(self):
@@ -1081,9 +1081,13 @@ class VeeringTriangulation(Triangulation):
     def is_backward_flippable(self, e):
         return Triangulation.is_flippable(self, e) and self.colours_about_edge(e) == [RED, BLUE, RED, BLUE]
 
-    def forward_flippable_edges(self):
+    def forward_flippable_edges(self, folded=True):
         r"""
         Return the set of forward flippable edges.
+
+        INPUT:
+
+        - ``folded`` - boolean (default ``True``) - whether to include folded edges
 
         EXAMPLES::
 
@@ -1109,9 +1113,11 @@ class VeeringTriangulation(Triangulation):
         """
         ep = self._ep
         n = self._n
-        return [e for e in range(n) if e <= ep[e] and self.is_forward_flippable(e)]
+        if folded:
+            return [e for e in range(n) if e <= ep[e] and self.is_forward_flippable(e)]
+        return [e for e in range(n) if e < ep[e] and self.is_forward_flippable(e)]
 
-    def purple_edges(self):
+    def purple_edges(self, folded=True):
         r"""
         EXAMPLES::
 
@@ -1122,7 +1128,9 @@ class VeeringTriangulation(Triangulation):
         """
         ep = self._ep
         n = self._n
-        return [e for e in range(n) if e <= ep[e] and self._colouring[e] == PURPLE]
+        if folded:
+            return [e for e in range(n) if e <= ep[e] and self._colouring[e] == PURPLE]
+        return [e for e in range(n) if e < ep[e] and self._colouring[e] == PURPLE]
 
     def is_backward_flippable(self, e):
         r"""
@@ -1432,6 +1440,26 @@ class VeeringTriangulation(Triangulation):
             raise ValueError("the new colour 'col' must be RED or BLUE")
         E = self._ep[e]
         self._colouring[e] = self._colouring[E] = col
+
+    def set_random_colours(self):
+        r"""
+        Set random colours to the GREEN and PURPLE edges.
+        """
+        ep = self._ep
+        recolour = []
+        cols = [BLUE, RED]
+        for e, col in enumerate(self._colouring):
+            if col == GREEN or col == PURPLE:
+                E = ep[e]
+                shuffle(cols)
+                oldcol = self._colouring[e]
+                self._colouring[e] = self._colouring[E] = cols[0]
+                if not self.edge_has_curve(e):
+                    self._colouring[e] = self._colouring[E] = cols[1]
+                    assert self.edge_has_curve(e)
+                recolour.append((e, oldcol))
+                if e != E:
+                    recolour.append((E, oldcol))
 
     def set_colour(self, col):
         r"""
@@ -2655,23 +2683,36 @@ class VeeringTriangulation(Triangulation):
             a, b, c, d = self.square_about_edge(e)
             insert(y[self._norm(e)] <= x[self._norm(a)] + x[self._norm(d)] - hw_bound)
 
-    def _set_balance_constraints(self, insert, x, slope):
+    def _set_balance_constraints(self, insert, x, slope, homogeneous):
         r"""
+        Linear constraints for the balanced polytope.
         """
-        if slope == VERTICAL:
-            for e in self.forward_flippable_edges():
-                insert(x[self._norm(e)] <= 1)
-            for e in self.backward_flippable_edges():
-                a, b, c, d = self.square_about_edge(e)
-                insert(x[self._norm(b)] + x[self._norm(c)] >= 1)
-        elif slope == HORIZONTAL:
-            for e in self.forward_flippable_edges():
-                a, b, c, d = self.square_about_edge(e)
-                insert(x[self._norm(b)] + x[self._norm(c)] >= 1)
-            for e in self.backward_flippable_edges():
-                insert(x[self._norm(e)] <= 1)
+        if homogeneous:
+            if slope == VERTICAL:
+                for eff, ebf in product(self.forward_flippable_edges(), self.backward_flippable_edges()):
+                    a, b, c, d = self.square_about_edge(ebf)
+                    insert(x[self._norm(b)] + x[self._norm(c)] >= x[self._norm(eff)])
+            elif slope == HORIZONTAL:
+                for eff, ebf in product(self.forward_flippable_edges(), self.backward_flippable_edges()):
+                    a, b, c, d = self.square_about_edge(eff)
+                    insert(x[self._norm(b)] + x[self._norm(c)] >= x[self._norm(ebf)])
+            else:
+                raise ValueError("slope must be HORIZONTAL or VERTICAL")
         else:
-            raise ValueError("slope must be HORIZONTAL or VERTICAL")
+            if slope == VERTICAL:
+                for e in self.forward_flippable_edges():
+                    insert(x[self._norm(e)] <= 1)
+                for e in self.backward_flippable_edges():
+                    a, b, c, d = self.square_about_edge(e)
+                    insert(x[self._norm(b)] + x[self._norm(c)] >= 1)
+            elif slope == HORIZONTAL:
+                for e in self.forward_flippable_edges():
+                    a, b, c, d = self.square_about_edge(e)
+                    insert(x[self._norm(b)] + x[self._norm(c)] >= 1)
+                for e in self.backward_flippable_edges():
+                    insert(x[self._norm(e)] <= 1)
+            else:
+                raise ValueError("slope must be HORIZONTAL or VERTICAL")
 
     def GL2R_span(self, lx, ly):
         require_package('ppl', 'GL2R_span')
@@ -3181,6 +3222,25 @@ class VeeringTriangulation(Triangulation):
         else:
             raise ValueError("method must be 'polytope', 'polytope2' or 'LP'")
 
+    def balanced_polytope(self, slope=VERTICAL, homogeneous=False):
+        r"""
+        Return the set of balanced coordinates for this veering triangulation
+
+        INPUT:
+
+        - ``slope`` - either ``VERTICAL`` (default) or ``HORIZONTAL``
+
+        - ``homogeneous`` - boolean. Default to ``False``.
+
+        OUTPUT: a ppl Polyhedron
+        """
+        ne = self.num_edges()
+        cs = ppl.Constraint_System()
+        x = [ppl.Variable(e) for e in range(ne)]
+        self._set_train_track_constraints(cs.insert, x, slope, False, False)
+        self._set_balance_constraints(cs.insert, x, slope, homogeneous)
+        return ppl.C_Polyhedron(cs)
+
     def is_balanced(self, slope=VERTICAL):
         r"""
         Check balanceness
@@ -3204,14 +3264,7 @@ class VeeringTriangulation(Triangulation):
             sage: T.is_balanced()
             True
         """
-        ne = self.num_edges()
-        cs = ppl.Constraint_System()
-        x = [ppl.Variable(e) for e in range(ne)]
-        self._set_train_track_constraints(cs.insert, x, slope, False, False)
-        self._set_balance_constraints(cs.insert, x, slope)
-        P = ppl.C_Polyhedron(cs)
-
-        return P.affine_dimension() == self.stratum_dimension()
+        return self.balanced_polytope().affine_dimension() == self.stratum_dimension()
 
     def edge_has_curve(self, e, verbose=False):
         r"""
