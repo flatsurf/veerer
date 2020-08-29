@@ -9,8 +9,8 @@ directory = os.path.dirname(__file__)
 import veerer.env
 
 tests = ["permutation.py", "triangulation_comparison.py", "reconstruction.py",
-    "triangulation_relabel.py", "triangulation_isomorphism.py", "flip_sequence_arithmetic.py",
-    "flip_sequence.py"]
+    "triangulation_relabel.py", "angles.py", "abelian_cover.py", "triangulation_isomorphism.py",
+    "flip_sequence_arithmetic.py", "flip_sequence.py"]
 
 if veerer.env.ppl is not None:
     tests.extend(["flip.py", "geometric_polytope.py"])
