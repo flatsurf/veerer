@@ -1,5 +1,5 @@
 r"""
-Display for veering triangulations.
+Display for ((flat) veering) triangulations.
 
 Note:
 
@@ -34,6 +34,7 @@ from .permutation import perm_init, perm_check, perm_on_list
 from .misc import flipper_edge, flipper_edge_perm, flipper_nf_to_sage, flipper_nf_element_to_sage, det2, flipper_face_edge_perms
 from .triangulation import Triangulation
 from .veering_triangulation import VeeringTriangulation
+from .flat_structure import FlatVeeringTriangulation
 
 _Fields = Fields()
 
@@ -56,33 +57,7 @@ TIKZ_FACE_COLORS = {
     RED: 'veeringred!20',
 }
 
-def vec_slope(v):
-    r"""
-    Return the slope of a 2d vector ``v``.
-
-    EXAMPLES::
-
-        sage: from veerer.constants import RED, BLUE, PURPLE, GREEN
-        sage: from veerer.layout import vec_slope
-
-        sage: vec_slope((1,0)) == PURPLE
-        True
-        sage: vec_slope((0,1)) == GREEN
-        True
-        sage: vec_slope((1,1)) == vec_slope((-1,-1)) == RED
-        True
-        sage: vec_slope((1,-1)) == vec_slope((1,-1)) == BLUE
-        True
-    """
-    if v[0].is_zero():
-        return GREEN
-    elif v[1].is_zero():
-        return PURPLE
-    elif v[0] * v[1] > 0:
-        return RED
-    else:
-        return BLUE
-
+from .flat_structure import vec_slope
 
 def has_intersection(triangles, new_triangle, pos):
     r"""
@@ -103,23 +78,9 @@ def has_intersection(triangles, new_triangle, pos):
 
     return False
 
-# TODO:
-# class FlatVeeringTriangulation(VeeringTriangulation)
-# in this class we do not choose the color after a flip.
-# it is entierly determined by the slopes of the vectors.
-
-# compute L^infinity Delaunay: inplace and return the
-# flip sequence given an L^infinity
-
-# given a pseudo-Anosov, generate its L^infinity Delaunay sequence
-# (as well as back and forth with flipper)
-
 class FlatVeeringTriangulationLayout(object):
     r"""
-    A flat triangulation.
-
-    The vectors are kept coherently within triangles (ie a+b+c = 0). A pair of
-    edges (e, E) can either be glued via translation or point symmetry.
+    A flat triangulation layout in the plane.
 
     EXAMPLES:
 
@@ -149,47 +110,21 @@ class FlatVeeringTriangulationLayout(object):
         sage: FlatVeeringTriangulationLayout.from_pseudo_anosov(h)  # optional - flipper
         Flat Triangulation made of 12 triangles
     """
-    def __init__(self, triangles, vectors,
-            blue_cylinders=None, red_cylinders=None):
+    def __init__(self, flat_triangulation, vectors=None):
         r"""
         INPUT:
 
-        - triangles - a triangulation
-
-        - vectors - a list of 2n vectors
-
-        - ``blue_cylinders`` and ``red_cylinders`` - optional list of edges
+        - flat_triangulation - a flat triangulation
         """
-        self._triangulation = Triangulation(triangles)
+        if vectors:
+            self._triangulation = FlatVeeringTriangulation(flat_triangulation, vectors)
+        else:
+            self._triangulation = FlatVeeringTriangulation(flat_triangulation)
 
         n = self._triangulation.num_half_edges()
         m = self._triangulation.num_edges()
 
-        if len(vectors) == m:
-            ep = self._triangulation.edge_permutation(copy=False)
-            for e in range(m):
-                E = ep[e]
-                if e != E and E < m:
-                    raise ValueError("edge perm not in standard form")
-            vectors = vectors + [vectors[ep[e]] for e in range(m,n)]
-        if len(vectors) != n:
-            raise ValueError('wrong number of vectors')
-
-        vectors = Sequence([vector(v) for v in vectors])
-        self._V = vectors.universe()
-        self._K = self._V.base_ring()
-
-        if self._K not in _Fields:
-            self._K = self._K.fraction_field()
-            self._V = self._V.change_ring(self._K)
-            vectors = [v.change_ring(self._K) for v in vectors]
-
-        self._vectors = list(vectors)        # edge vectors     (list of length n)
-
-        cols = [vec_slope(self._vectors[e]) for e in range(n)]
-        self._triangulation = VeeringTriangulation(self._triangulation, cols)
-
-        # for actual display. Isn't it dangerous to keep it?
+       # for actual display. Isn't it dangerous to keep it?
         self._pos = None                     # vertex positions (list of length n)
 
         self._check()
@@ -201,7 +136,7 @@ class FlatVeeringTriangulationLayout(object):
             sage: from veerer import *
             sage: T = VeeringTriangulation("(0,1,2)(~0,~1,3)", "BRRR")
             sage: assert T.is_core()
-            sage: F = T.flat_structure_min()
+            sage: F = T.flat_structure_min().layout()
             sage: F.set_pos()
             sage: F._check()
         """
@@ -209,7 +144,7 @@ class FlatVeeringTriangulationLayout(object):
 
         n = self._triangulation.num_half_edges()
         ep = self._triangulation.edge_permutation(copy=False)
-        vectors = self._vectors
+        vectors = self._triangulation._holonomies
 
         for a in range(n):
             A = ep[a]
@@ -246,9 +181,9 @@ class FlatVeeringTriangulationLayout(object):
     def copy(self):
         res = FlatVeeringTriangulationLayout.__new__(FlatVeeringTriangulationLayout)
         res._triangulation = self._triangulation.copy()
-        res._V = self._V
+        res._V = self._triangulation._V
         res._K = self._K
-        res._vectors = [v.__copy__() for v in self._vectors]
+        res._vectors = [v.__copy__() for v in self._triangulation._holonomies]
         if self._pos is not None:
             res._pos = [v.__copy__() for v in self._pos]
         else:
@@ -310,17 +245,17 @@ class FlatVeeringTriangulationLayout(object):
             sage: FlatVeeringTriangulationLayout.from_coloured_triangulation(T)
             Flat Triangulation made of 2 triangles
         """
-        return T.flat_structure_min()
+        return T.flat_structure_min().layout()
 
     def xy_scaling(self, sx, sy):
         r"""
         Apply Teichmueller flow to actually see things.
         """
-        for i,v in enumerate(self._vectors):
-            self._vectors[i] = self._V((sx*v[0], sy*v[1]))
+        for i,v in enumerate(self._triangulation._holonomies):
+            self._triangulation._holonomies[i] = self._triangulation._V((sx*v[0], sy*v[1]))
 
     def _edge_slope(self, e):
-        return vec_slope(self._vectors[e])
+        return vec_slope(self._triangulation._holonomies[e])
 
     def __repr__(self):
         return 'Flat Triangulation made of %s triangles' % self._triangulation.num_faces()
@@ -334,7 +269,7 @@ class FlatVeeringTriangulationLayout(object):
         fp = self._triangulation.face_permutation(copy=False)
         ep = self._triangulation.edge_permutation(copy=False)
         pos = self._pos
-        vectors = self._vectors
+        vectors = self._triangulation._holonomies
         E = ep[e]
         return pos[fp[e]] is None or pos[E] is None or pos[fp[e]] != pos[E] or vectors[e] != -vectors[E]
 
@@ -351,14 +286,14 @@ class FlatVeeringTriangulationLayout(object):
             sage: t = "(0,~10,9)(1,~14,~2)(2,13,~3)(3,14,~4)(4,~13,~5)(5,~11,~6)(6,10,~7)(7,~12,~8)(8,11,~9)(12,~1,~0)"
             sage: cols = "RBBBBBBRBBBRBRR"
             sage: T = VeeringTriangulation(t, cols)
-            sage: F = T.flat_structure_middle()
+            sage: F = T.flat_structure_middle().layout()
             sage: F.set_pos()
             sage: for _ in range(100):
             ....:     e = randrange(15)
             ....:     _ = F.glue_edge(e)
             ....:     F._check()
         """
-        vectors = self._vectors
+        vectors = self._triangulation._holonomies
         fp = self._triangulation.face_permutation(False)
         ep = self._triangulation.edge_permutation(False)
         a = ep[e]
@@ -387,6 +322,73 @@ class FlatVeeringTriangulationLayout(object):
 
             return xmin, xmax, ymin, ymax
 
+    def set_pos_outgoing_separatrices(self, x_space=1):
+        r"""
+        Set position according to ...
+        """
+        if not self._triangulation._translation:
+            raise ValueError("only available for translation surface, not for half-translation")
+
+        # determine outgoing separatrices
+        T = self._triangulation
+        V = T._V
+        n = T.num_half_edges()
+        pos = self._pos = [None] * n
+        vp = T.vertex_permutation(copy=False)
+        ep = T.edge_permutation(copy=False)
+        fp = T.face_permutation(copy=False)
+        hol = T._holonomies
+
+        wedges = []
+        bdries = [False] * n
+        for e in range(n):
+            f = vp[e]
+            if T.edge_colour(e) == RED and \
+               T.edge_colour(f) == BLUE and \
+               hol[e][1] > 0:
+                   assert hol[f][1] > 0
+                   wedges.append((e, f))
+                   bdries[e] = bdries[f] = bdries[ep[e]] = bdries[ep[f]] = True
+
+        x = 0   # current x coordinate
+        for er, el in wedges:
+            modif = []
+            xmin = x
+            xmax = x
+            v = V((x,0))
+            El = ep[el]
+            e = fp[er]
+            pos[er] = v
+            pos[El] = v + hol[el]
+            pos[e] = v + hol[er]
+            modif.extend((er, El, e))
+            xmax = max(xmax, pos[e][0])
+            xmin = min(xmin, pos[El][0])
+            todo = []
+            if not bdries[e]:
+                todo.append(ep[e])
+            while todo:
+                a = todo.pop()
+                b = fp[a]
+                c = fp[b]
+                A = ep[a]
+                pos[a] = pos[A] + hol[A]
+                pos[b] = pos[a] + hol[a]
+                pos[c] = pos[b] + hol[b]
+                modif.extend((a,b,c))
+                xmax = max([xmax, pos[a][0], pos[b][0], pos[c][0]])
+                xmin = min([xmin, pos[a][0], pos[b][0], pos[c][0]])
+                if not bdries[b]:
+                    todo.append(ep[b])
+                if not bdries[c]:
+                    todo.append(ep[c])
+            v = V((x - xmin, 0))
+            for e in modif:
+                pos[e] += v
+            x = x - xmin + xmax + x_space
+
+        self._pos = pos
+
     def set_pos(self, cylinders=None, y_space=0.1):
         r"""
         Set position randomly.
@@ -400,9 +402,9 @@ class FlatVeeringTriangulationLayout(object):
             sage: from veerer import *
 
             sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "BBR")
-            sage: F = T.flat_structure_min(allow_degenerations=True)
-            sage: F.set_pos(cylinders=T.cylinders(BLUE) + T.cylinders(RED))
-            sage: F.plot()
+            sage: F = T.flat_structure_min(allow_degenerations=True) # not tested
+            sage: F.set_pos(cylinders=T.cylinders(BLUE) + T.cylinders(RED)) # not tested
+            sage: F.plot() # not tested
             Graphics object consisting of 13 graphics primitives
 
         TO be tested
@@ -423,7 +425,7 @@ class FlatVeeringTriangulationLayout(object):
         face_seen = [False] * nf
         fp = self._triangulation.face_permutation(copy=False)
         ep = self._triangulation.edge_permutation(copy=False)
-        vectors = self._vectors
+        vectors = self._triangulation._holonomies
         pos = self._pos = [None] * (3*nf)
 
         y = 0   # current height
@@ -433,7 +435,7 @@ class FlatVeeringTriangulationLayout(object):
             for cyl,_,_,_ in cylinders:
                 xmin = xmax = ymin = ymax = self._K.zero()
                 a = cyl[0]
-                pos[a] = self._V((0,0))
+                pos[a] = self._triangulation._V((0,0))
 
                 if a == ep[a]:
                     cyl = cyl[:-1]
@@ -448,7 +450,7 @@ class FlatVeeringTriangulationLayout(object):
 
                 # 2. translate positions according to bounding box
                 #    and the current height position
-                t = self._V((-xmin, y-ymin))
+                t = self._triangulation._V((-xmin, y-ymin))
                 for e in cyl:
                     a = ep[e]
                     b = fp[a]
@@ -476,7 +478,7 @@ class FlatVeeringTriangulationLayout(object):
 
             # sets its position
             a, b, c = faces[start]
-            pos[a] = self._V.zero()
+            pos[a] = self._triangulation._V.zero()
             pos[b] = pos[a] + vectors[a]
             pos[c] = pos[b] + vectors[b]
             xmin = xmax = ymin = ymax = 0
@@ -484,9 +486,6 @@ class FlatVeeringTriangulationLayout(object):
             xmax = max(xmax, pos[a][0], pos[b][0], pos[c][0])
             ymin = min(ymin, pos[a][1], pos[b][1], pos[c][1])
             ymax = max(ymax, pos[a][1], pos[b][1], pos[c][1])
-#            print('pos[%s] = %s  pos[%s] = %s  pos[%s] = %s' % (
-#                edge_label(a), pos[a], edge_label(b), pos[b],
-#                edge_label(c), pos[c]))
 
             # spanning tree
             edges = {t:[] for t in range(nf)}
@@ -517,7 +516,7 @@ class FlatVeeringTriangulationLayout(object):
 
 
             # translate
-            t = self._V((-xmin, y-ymin))
+            t = self._triangulation._V((-xmin, y-ymin))
             for f in q:
                 a,b,c = faces[f]
                 pos[a] += t
@@ -539,7 +538,7 @@ class FlatVeeringTriangulationLayout(object):
 
             sage: import veerer
             sage: T = veerer.VeeringTriangulation("(0,1,2)(~0,~1,~2)", [1, 2, 2])
-            sage: F = T.flat_structure_middle()
+            sage: F = T.flat_structure_middle().layout()
             sage: F.set_pos()
             sage: F.relabel([0,1,3,2,5,4])
             sage: F._check()
@@ -551,7 +550,7 @@ class FlatVeeringTriangulationLayout(object):
                 raise ValueError('invalid relabeling permutation')
 
         self._triangulation.relabel(p)
-        perm_on_list(p, self._vectors)
+        perm_on_list(p, self._triangulation._holonomies)
         if self._pos is not None:
             perm_on_list(p, self._pos)
 
@@ -591,7 +590,7 @@ class FlatVeeringTriangulationLayout(object):
         # now update
         a = fp[e]; b = fp[a]
         c = fp[E]; d = fp[c]
-        vectors = self._vectors
+        vectors = self._triangulation._holonomies
         assert (vectors[a] + vectors[b] + vectors[e]).is_zero()
         assert (vectors[c] + vectors[d] + vectors[E]).is_zero()
         # x<----------x
@@ -630,7 +629,7 @@ class FlatVeeringTriangulationLayout(object):
         assert self._pos is not None
 
         pos = self._pos
-        vectors = self._vectors
+        vectors = self._triangulation._holonomies
         fp = self._triangulation._fp
         ep = self._triangulation._ep
 
@@ -663,7 +662,7 @@ class FlatVeeringTriangulationLayout(object):
         assert edge_label is True or edge_label is False
 
         pos = self._pos
-        vectors = self._vectors
+        vectors = self._triangulation._holonomies
         fp = self._triangulation._fp
         ep = self._triangulation._ep
 
@@ -701,7 +700,7 @@ class FlatVeeringTriangulationLayout(object):
         fp = self._triangulation.face_permutation(copy=False)
         ep = self._triangulation.edge_permutation(copy=False)
         pos = self._pos
-        vectors = self._vectors
+        vectors = self._triangulation._holonomies
 
         b = fp[a]
         c = fp[b]
@@ -731,7 +730,7 @@ class FlatVeeringTriangulationLayout(object):
         else:
             lab = str(a)
 
-        x, y = self._vectors[a]
+        x, y = self._triangulation._holonomies[a]
         if y.is_zero():
             angle=0
         elif x.is_zero():
@@ -819,7 +818,7 @@ class FlatVeeringTriangulationLayout(object):
 
     def _plot_train_track(self, slope):
         pos = self._pos
-        vectors = self._vectors
+        vectors = self._triangulation._holonomies
 
         V2 = VectorSpace(RDF, 2)
         G = Graphics()
@@ -896,7 +895,7 @@ class FlatVeeringTriangulationLayout(object):
             sage: faces = "(0, ~3, 4)(1, 2, ~7)(3, ~1, ~2)(5, ~8, ~4)(6, ~5, 8)(7, ~6, ~0)"
             sage: colours = 'RBRRBRBRB'
             sage: T = VeeringTriangulation(faces, colours)
-            sage: FS = T.flat_structure_min()
+            sage: FS = T.flat_structure_min().layout()
             sage: FS.plot(horizontal_train_track=True)
             Graphics object consisting of 49 graphics primitives
             sage: FS.plot(vertical_train_track=True)
@@ -972,7 +971,7 @@ class FlatVeeringTriangulationLayout(object):
 
             sage: from veerer import *
             sage: T = VeeringTriangulation("(0,1,2)(~0,~1,3)", "BRRR")
-            sage: F = T.flat_structure_min()
+            sage: F = T.flat_structure_min().layout()
             sage: F.train_track()
             MeasuredTrainTrack(Triangulation("(0,1,2)(3,~0,~1)"), (1, 1, 2, 2, 1, 1))
             sage: F.train_track(HORIZONTAL)
@@ -981,9 +980,9 @@ class FlatVeeringTriangulationLayout(object):
 
         from .measured_train_track import MeasuredTrainTrack
         if slope == VERTICAL:
-            return MeasuredTrainTrack(self._triangulation, [x.abs() for x,y in self._vectors])
+            return MeasuredTrainTrack(self._triangulation, [x.abs() for x,y in self._triangulation._holonomies])
         elif slope == HORIZONTAL:
-            return MeasuredTrainTrack(self._triangulation, [y.abs() for x,y in self._vectors])
+            return MeasuredTrainTrack(self._triangulation, [y.abs() for x,y in self._triangulation._holonomies])
 
     def plot_orbit(self, p, n, slope=VERTICAL, **kwds):
         r"""
@@ -993,7 +992,7 @@ class FlatVeeringTriangulationLayout(object):
 
             sage: from veerer import *
             sage: T = VeeringTriangulation("(0,1,2)(~0,~1,3)", "BRRR")
-            sage: F = T.flat_structure_min()
+            sage: F = T.flat_structure_min().layout()
             sage: F.plot() + F.plot_orbit((0,1/4),4)
             Graphics object consisting of 19 graphics primitives
         """
@@ -1004,7 +1003,7 @@ class FlatVeeringTriangulationLayout(object):
 
         tt = self.train_track(slope)
         L = tt.lengths()
-        V = self._vectors
+        V = self._triangulation._holonomies
 
         O = [q for q in itertools.islice(tt.orbit(p), 2*n)]
 

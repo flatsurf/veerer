@@ -84,6 +84,8 @@ class FlatVeeringTriangulation(Triangulation):
             self._holonomies = triangulation._holonomies[:]
             self._base_ring = triangulation._K
             self._V = triangulation._V
+            self._K = triangulation._K
+            self._translation = triangulation._translation
             return 
 
         if base_ring is None:
@@ -99,7 +101,7 @@ class FlatVeeringTriangulation(Triangulation):
         if self._K not in _Fields:
             self._K = self._K.fraction_field()
             self._V = self._V.change_ring(self._K)
-            holonomies = [v.change_ring(self._K) for v in self._holonomies]
+            holonomies = [v.change_ring(self._K) for v in holonomies]
 
         n = self._n
         m = self.num_edges()
@@ -302,3 +304,22 @@ class FlatVeeringTriangulation(Triangulation):
 
     def edge_colour(self, e):
         return vec_slope(self._holonomies[e])
+
+    def layout(self):
+        r"""
+        Return a layout object that can be used to produce various plots of the surface.
+        """
+        from .layout import FlatVeeringTriangulationLayout
+        return FlatVeeringTriangulationLayout(self)
+
+    def plot(self):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: T = VeeringTriangulation("(0,1,2)(~0,~1,3)", "BRRR")
+            sage: F = T.flat_structure_min()
+            sage: F.plot()
+            Graphics object consisting of 15 graphics primitives
+        """
+        return self.layout().plot()
