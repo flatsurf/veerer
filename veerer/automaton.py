@@ -121,8 +121,8 @@ class CoreAutomaton(object):
             G = Graph(loops=loops, multiedges=multiedges)
 
         for g, neighb in self._graph.items():
-            for gg,_,_ in neighb:
-                G.add_edge(g, gg)
+            for gg,e,old_col,col in neighb:
+                G.add_edge(g, gg, (e, old_col, col))
 
         return G
 
@@ -262,7 +262,7 @@ class CoreAutomaton(object):
             else:
                  f.write('    %s [label="%d" color="%s"];\n' % (g, aut_size, colour))
 
-            for gg, old_col, new_col in self._graph[g]:
+            for gg, e, old_col, new_col in self._graph[g]:
                 f.write('    %s -> %s [color="%s;%f:%s"];\n' % (g, gg, old_col, 0.5, new_col))
         f.write('}\n')
 
@@ -592,7 +592,7 @@ class CoreAutomaton(object):
                     # new core
                     flips.append((e,old_col,recol))
                     graph[new_iso_sig] = []
-                    graph[iso_sig].append((new_iso_sig, old_col, col))
+                    graph[iso_sig].append((new_iso_sig, e, old_col, col))
 
                     # assertion to be removed
                     assert not reduced or old_col == PURPLE
@@ -620,7 +620,7 @@ class CoreAutomaton(object):
                         sys.stdout.flush()
                    # assertion to be removed
                     assert not reduced or old_col == PURPLE
-                    graph[iso_sig].append((new_iso_sig, old_col, col))
+                    graph[iso_sig].append((new_iso_sig, e, old_col, col))
 
             else:  # = T is not core
                 if reduced:
