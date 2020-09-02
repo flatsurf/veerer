@@ -109,19 +109,23 @@ Some pseudo-Anosov with small dilatation in H(2)
     sage: f = R1 * R5
     sage: assert f.is_pseudo_anosov()
     sage: f.self_similar_surface()
-    (1.722083805739043?, Flat Triangulation made of 3 triangles)
+    (a,
+     FlatVeeringTriangulation(Triangulation("(0,6,5)(1,2,~6)(3,4,~5)"), [(1, -1), (a, a^3 - a^2 - a - 1), (a^3 - 2*a - 2, a^2), (-a^3 + a^2 + a + 1, -a), (2*a^3 - a^2 - 2*a - 2, a^3 - 2), (-a^3 + a + 1, -a^3 + a + 2), (a^3 - a - 2, a^3 - a - 1), (-a^3 + a + 2, -a^3 + a + 1), (-a^3 + a + 1, -a^3 + a + 2)]))
 
     sage: f = R1 * R1 * R5
     sage: assert f.is_pseudo_anosov()
     sage: f.self_similar_surface()
-    (2.296630262886538?, Flat Triangulation made of 3 triangles)
+    (a,
+     FlatVeeringTriangulation(Triangulation("(0,6,5)(1,2,~6)(3,4,~5)"), [(1, -1), (a^2, 2*a^3 - 3*a^2 - 2*a - 4), (a^3 - 2*a^2 - 2, a), (a, a^3 - 2*a^2 - 2), (a^3 - a^2 - a - 1, a^3 - a^2 - a - 3), (-a^3 + a^2 + 1, -2*a^3 + 3*a^2 + a + 5), (a^3 - a^2 - 2, 2*a^3 - 3*a^2 - a - 4), (-a^3 + a^2 + 2, -2*a^3 + 3*a^2 + a + 4), (-a^3 + a^2 + 1, -2*a^3 + 3*a^2 + a + 5)]))
 
     sage: f = R3 * R1 * R2 * CL5
     sage: assert f.is_pseudo_anosov()
     sage: f.self_similar_surface()
-    (3.732050807568878?, Flat Triangulation made of 3 triangles)
+    (a,
+     FlatVeeringTriangulation(Triangulation("(0,~5,4)(1,2,~6)(3,5,6)"), [(1, 1), (1, 1), (-1/2*a + 3/2, 1/2*a - 1/2), (1/2*a - 1/2, -1/2*a + 3/2), (a - 4, -a), (-a + 3, a - 1), (1/2*a - 5/2, -1/2*a - 1/2), (1/2*a - 5/2, -1/2*a - 1/2), (-a + 3, a - 1)]))
 
     sage: f = R3 * R1 * R2 * CL5 * CR5
     sage: assert f.is_pseudo_anosov()
     sage: f.self_similar_surface()
-    (4.309326438416744?, Flat Triangulation made of 3 triangles)
+    (a,
+     FlatVeeringTriangulation(Triangulation("(0,~5,4)(1,2,~6)(3,5,6)"), [(1, 1), (7/33*a^3 - 23/33*a^2 - 19/33*a - 25/33, -10/33*a^3 + 32/33*a^2 + 37/33*a + 16/33), (-20/33*a^3 + 61/33*a^2 + 92/33*a + 62/33, 5/33*a^3 - 16/33*a^2 - 2/33*a - 8/33), (-1/33*a^3 + 8/33*a^2 - 2/33*a - 20/33, -8/33*a^3 + 19/33*a^2 + 56/33*a + 26/33), (4/11*a^3 - 10/11*a^2 - 25/11*a - 30/11, -1/11*a^3 + 1/11*a^2 + 7/11*a - 5/11), (-4/11*a^3 + 10/11*a^2 + 25/11*a + 19/11, 1/11*a^3 - 1/11*a^2 - 7/11*a - 6/11), (13/33*a^3 - 38/33*a^2 - 73/33*a - 37/33, 5/33*a^3 - 16/33*a^2 - 35/33*a - 8/33), (13/33*a^3 - 38/33*a^2 - 73/33*a - 37/33, 5/33*a^3 - 16/33*a^2 - 35/33*a - 8/33), (-4/11*a^3 + 10/11*a^2 + 25/11*a + 19/11, 1/11*a^3 - 1/11*a^2 - 7/11*a - 6/11)]))
