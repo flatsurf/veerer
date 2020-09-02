@@ -3420,30 +3420,30 @@ class VeeringTriangulation(Triangulation):
             sage: from veerer import *
             sage: T, s, t = VeeringTriangulations.L_shaped_surface(1,1,1,1)
             sage: Gx = matrix(QQ, [s, t])
-            sage: T.geometric_flips(Gx=Gx)
-            [[(3, 2), (4, 2), (5, 2)], [(3, 1), (4, 1), (5, 1)]]
+            sage: sorted(T.geometric_flips(Gx=Gx))
+            [[(3, 1), (4, 1), (5, 1)], [(3, 2), (4, 2), (5, 2)]]
 
         To be compared with the geometric flips in the ambient stratum::
 
-            sage: T.geometric_flips()
-            [[(3, 2)], [(3, 1)], [(4, 2)], [(4, 1)], [(5, 2)], [(5, 1)]]
+            sage: sorted(T.geometric_flips())
+            [[(3, 1)], [(3, 2)], [(4, 1)], [(4, 2)], [(5, 1)], [(5, 2)]]
 
         Alternatively, instead of the generators ``Gx`` one can use the
         defining equations::
 
             sage: Lx = Gx.right_kernel_matrix()
-            sage: T.geometric_flips(Lx=Lx)
-            [[(3, 2), (4, 2), (5, 2)], [(3, 1), (4, 1), (5, 1)]]
+            sage: sorted(T.geometric_flips(Lx=Lx))
+            [[(3, 1), (4, 1), (5, 1)], [(3, 2), (4, 2), (5, 2)]]
 
         A more complicated example::
 
             sage: T, s, t = VeeringTriangulations.L_shaped_surface(2,3,5,2,1,1)
             sage: Gx = matrix(QQ, [s, t])
-            sage: T.geometric_flips(Gx=Gx)
-            [[(4, 2)], [(5, 2)], [(5, 1)]]
+            sage: sorted(T.geometric_flips(Gx=Gx))
+            [[(4, 2)], [(5, 1)], [(5, 2)]]
             sage: Lx = Gx.right_kernel_matrix()
-            sage: T.geometric_flips(Lx=Lx)
-            [[(4, 2)], [(5, 2)], [(5, 1)]]
+            sage: sorted(T.geometric_flips(Lx=Lx))
+            [[(4, 2)], [(5, 1)], [(5, 2)]]
         """
         require_package('ppl', 'geometric_flips')
 
