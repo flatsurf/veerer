@@ -312,7 +312,7 @@ class FlatVeeringTriangulation(Triangulation):
         from .layout import FlatVeeringTriangulationLayout
         return FlatVeeringTriangulationLayout(self)
 
-    def plot(self):
+    def plot(self, *args, **kwds):
         r"""
         EXAMPLES::
 
@@ -321,5 +321,12 @@ class FlatVeeringTriangulation(Triangulation):
             sage: F = T.flat_structure_min()
             sage: F.plot()
             Graphics object consisting of 15 graphics primitives
+
+            sage: F.plot(horizontal_train_track=True)
+            Graphics object consisting of 19 graphics primitives
+            sage: F.plot(vertical_train_track=True)
+            Graphics object consisting of 19 graphics primitives
+            sage: F.plot(horizontal_train_track=True, vertical_train_track=True)
+            Graphics object consisting of 23 graphics primitives
         """
-        return self.layout().plot()
+        return self.layout().plot(*args, **kwds)
