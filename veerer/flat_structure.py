@@ -147,6 +147,31 @@ class FlatVeeringTriangulation(Triangulation):
         if check:
             self._check()
 
+    @classmethod
+    def from_coloured_triangulation(cls, T):
+        r"""
+        Construct a flat triangulation associated to a given coloured triangulation.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
+            sage: FlatVeeringTriangulation.from_coloured_triangulation(T)
+            FlatVeeringTriangulation(Triangulation("(0,1,2)(~2,~0,~1)"), [(1, 2), (-2, -1), (1, -1), (-1, 1), (2, 1), (-1, -2)])
+        """
+        return T.flat_structure_min()
+
+    def colours_about_edge(self, e):
+        e = int(e)
+        return [self.edge_colour(f) for f in self.square_about_edge(e)]
+
+    def is_forward_flippable(self, e):
+        return Triangulation.is_flippable(self, e) and self.colours_about_edge(e) == [BLUE, RED, BLUE, RED]
+
+    def is_backward_flippable(self, e):
+        return Triangulation.is_flippable(self, e) and self.colours_about_edge(e) == [RED, BLUE, RED, BLUE]
+
     def swap(self, e):
         r"""
         Swap the orientation of the edge ``e``.
@@ -199,7 +224,7 @@ class FlatVeeringTriangulation(Triangulation):
             sage: h = T.mapping_class('s_0S_1s_2S_3s_1S_2').canonical()     # optional - flipper
             sage: F = FlatVeeringTriangulation.from_flipper_pseudo_anosov(h)  # optional - flipper
             sage: F                                                         # optional - flipper
-            FlatVeeringTriangulation
+            FlatVeeringTriangulation(Triangulation("(0,4,~1)(1,5,3)(2,~0,~3)(~5,~4,~2)"), [(-2, -1), (-2*a + 4, a - 1), (-2*a + 4, a - 1), (2*a - 2, -a + 2), (2*a - 2, -a + 2), (-2, -1), (-2, -1), (2*a - 2, -a + 2), (2*a - 2, -a + 2), (-2*a + 4, a - 1), (-2*a + 4, a - 1), (-2, -1)])
 
         The flipper and veerer triangulations carry the same edge labels::
 
@@ -296,10 +321,7 @@ class FlatVeeringTriangulation(Triangulation):
         res._V = self._V
         res._K = self._K
         res._holonomies = [v.__copy__() for v in self._holonomies]
-        if self._pos is not None:
-            res._pos = [v.__copy__() for v in self._pos]
-        else:
-            res._pos = None
+        res._translation = self._translation
         return res
 
     def edge_colour(self, e):

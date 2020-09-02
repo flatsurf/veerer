@@ -86,29 +86,19 @@ class FlatVeeringTriangulationLayout(object):
 
         sage: from veerer import *
 
-    A flat triangulation can either be built from a list of triangles and
-    vectors::
+    A can be built from a list of triangles and vectors::
 
         sage: triangles = [(0, 1, 2), (-1, -2, -3)]
         sage: vecs = [(1, 2), (-2, -1), (1, -1), (1, -1), (-2, -1), (1, 2)]
         sage: FlatVeeringTriangulationLayout(triangles, vecs)
         Flat Triangulation made of 2 triangles
 
-    Or a coloured triangulation (in that situation the "smallest" integral
-    solution is picked)::
+    Or from a preexisting flat surface::
 
         sage: T = VeeringTriangulation("(0,1,2)(~0,~1,3)", "BRBB")
-        sage: FlatVeeringTriangulationLayout.from_coloured_triangulation(T)
+        sage: F = FlatVeeringTriangulation.from_coloured_triangulation(T)
+        sage: F.layout()
         Flat Triangulation made of 2 triangles
-
-    Or a pseudo-Anosov homeomorphism from flipper::
-
-        sage: from flipper import *           # optional - flipper
-
-        sage: T = flipper.load('S_2_1')       # optional - flipper
-        sage: h = T.mapping_class('abCeF')    # optional - flipper
-        sage: FlatVeeringTriangulationLayout.from_pseudo_anosov(h)  # optional - flipper
-        Flat Triangulation made of 12 triangles
     """
     def __init__(self, flat_triangulation, vectors=None):
         r"""
@@ -181,71 +171,11 @@ class FlatVeeringTriangulationLayout(object):
     def copy(self):
         res = FlatVeeringTriangulationLayout.__new__(FlatVeeringTriangulationLayout)
         res._triangulation = self._triangulation.copy()
-        res._V = self._triangulation._V
-        res._K = self._K
-        res._vectors = [v.__copy__() for v in self._triangulation._holonomies]
         if self._pos is not None:
             res._pos = [v.__copy__() for v in self._pos]
         else:
             res._pos = None
         return res
-
-    @classmethod
-    def from_pseudo_anosov(cls, h):
-        r"""
-        Construct the flat structure from a pseudo-Anosov homeomorphism.
-
-        EXAMPLES::
-
-            sage: from flipper import *  # optional - flipper
-            sage: from veerer import *
-
-            sage: T = flipper.load('SB_4')  # optional - flipper
-            sage: h = T.mapping_class('s_0S_1s_2S_3s_1S_2').canonical()     # optional - flipper
-            sage: F = FlatVeeringTriangulationLayout.from_pseudo_anosov(h)  # optional - flipper
-            sage: F                                                         # optional - flipper
-            Flat Triangulation made of 4 triangles
-
-        The flipper and veerer triangulations carry the same edge labels::
-
-            sage: F._triangulation         # optional - flipper
-            VeeringTriangulation("(0,4,~1)(1,5,3)(2,~0,~3)(~5,~4,~2)", "RBBBBR")
-            sage: h.source_triangulation   # optional - flipper
-            [(~5, ~4, ~2), (~3, 2, ~0), (~1, 0, 4), (1, 5, 3)]
-        """
-        Fh = h.flat_structure()
-        Th = Fh.triangulation
-        n = 3 * Th.num_triangles # number of half edges
-
-        fp, ep = flipper_face_edge_perms(Th)
-        T = Triangulation.from_face_edge_perms(fp, ep)
-
-        # extract flat structure
-        x = next(iter(Fh.edge_vectors.values())).x
-        K = flipper_nf_to_sage(x.field)
-        V = VectorSpace(K, 2)
-        # translate into Sage number field
-        Vec = {flipper_edge(Th,e): V((flipper_nf_element_to_sage(v.x, K),
-                               flipper_nf_element_to_sage(v.y, K)))
-                  for e,v in Fh.edge_vectors.items()}
-        vectors = [Vec[i] for i in range(n)]
-
-        return FlatVeeringTriangulationLayout(T, vectors)
-
-    @classmethod
-    def from_coloured_triangulation(cls, T):
-        r"""
-        Construct a flat triangulation associated to a given coloured triangulation.
-
-        EXAMPLES::
-
-            sage: from veerer import *
-
-            sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
-            sage: FlatVeeringTriangulationLayout.from_coloured_triangulation(T)
-            Flat Triangulation made of 2 triangles
-        """
-        return T.flat_structure_min().layout()
 
     def xy_scaling(self, sx, sy):
         r"""
@@ -571,7 +501,7 @@ class FlatVeeringTriangulationLayout(object):
             sage: from veerer.misc import flipper_isometry_to_perm
             sage: S21 = flipper.load('S_2_1')  # optional - flipper
             sage: h = S21.mapping_class('abCeF').canonical()  # optional - flipper
-            sage: F0 = veerer.FlatVeeringTriangulationLayout.from_pseudo_anosov(h)  # optional - flipper
+            sage: F0 = veerer.FlatVeeringTriangulation.from_flipper_pseudo_anosov(h).layout()  # optional - flipper
 
             sage: F = F0.copy()  # optional - flipper
             sage: for flip in h.sequence[:-1]:  # optional - flipper
@@ -610,7 +540,7 @@ class FlatVeeringTriangulationLayout(object):
         vectors[e] = vectors[d] + vectors[a]
         vectors[E] = vectors[b] + vectors[c]
 
-        self._triangulation.flip(e, vec_slope(vectors[e]))
+        self._triangulation.flip(e)
 
         if self._pos is not None:
             self._pos[e] = self._pos[d]
