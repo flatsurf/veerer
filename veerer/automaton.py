@@ -141,7 +141,7 @@ class CoreAutomaton(object):
             sage: rot = A.rotation_automorphism()
 
             sage: G = A.to_graph()
-            sage: all(G.has_edge(rot[b], rot[a]) for a,b in G.edges(False))
+            sage: all(G.has_edge(rot[b], rot[a]) for a,b in G.edges(labels=False))
             True
         """
         aut = {}
@@ -164,7 +164,7 @@ class CoreAutomaton(object):
             sage: conj = A.conjugation_automorphism()
 
             sage: G = A.to_graph()
-            sage: all(G.has_edge(conj[a], conj[b]) for a,b in G.edges(False))
+            sage: all(G.has_edge(conj[a], conj[b]) for a,b in G.edges(labels=False))
             True
 
         Conjugation and rotation commutes::
