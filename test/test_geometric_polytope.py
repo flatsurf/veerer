@@ -20,6 +20,8 @@
 import sys
 import pytest
 
+pytest.importorskip('ppl')
+
 import random
 from veerer import VeeringTriangulation
 

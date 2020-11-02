@@ -4,18 +4,18 @@ python2:
   before_script:
     - export PYTHON="python2" PIP="pip2"
     - ${PIP} install .
-    - ${PIP} install pytest
+    - ${PIP} install pytest pytest-xdist
   script:
-    - ${PYTHON} test/run_tests.py
+    - ${PYTHON} -m pytest test/
 
 python3:
   image: python:3-alpine
   before_script:
     - export PYTHON="python3" PIP="pip3"
     - ${PIP} install .
-    - ${PIP} install pytest
+    - ${PIP} install pytest pytest-xdist
   script:
-    - ${PYTHON} test/run_tests.py
+    - ${PYTHON} -m pytest test/
 
 # debian based tests (between 3 and 5 min)
 python3-optional:
@@ -23,11 +23,11 @@ python3-optional:
   before_script:
     - export PYTHON="python3" PIP="pip3"
     - apt-get update
-    - apt-get install -y python3 python3-pip python3-pytest python3-numpy python3-pandas python3-cysignals-pari python3-ppl cython3 libgmp-dev libmpfr-dev libmpc-dev libppl-dev
+    - apt-get install -y python3 python3-pip python3-pytest python3-pytest-xdist python3-numpy python3-pandas python3-cysignals-pari python3-ppl cython3 libgmp-dev libmpfr-dev libmpc-dev libppl-dev
     - ${PIP} install .
     - ${PIP} install networkx flipper curver
   script:
-    - ${PYTHON} test/run_tests.py
+    - ${PYTHON} -m pytest test/
 
 # sagemath based tests (around 10min)
 sage:
@@ -36,9 +36,9 @@ sage:
     - export PYTHON="sage -python" PIP="sage -pip"
     - sage -c 'import sage.env; print(sage.env.SAGE_VERSION)'
     - ${PIP} install .
-    - ${PIP} install pytest
+    - ${PIP} install pytest pytest-xdist
   script:
-    - ${PYTHON} test/run_tests.py
+    - ${PYTHON} -m pytest test/
     # NOTE: the sage doctester refuses to execute from the repository because
     # of "wrong" permissions. For that reason we cd to the home directory before
     # running them.
@@ -54,9 +54,9 @@ sage-optional:
     - sage -c 'import sage.env; print(sage.env.SAGE_VERSION)'
     - for pkg in "flipper curver surface_dynamics"; do sage -pip install ${pkg}; done
     - ${PIP} install .
-    - ${PIP} install pytest
+    - ${PIP} install pytest pytest-xdist
   script:
-    - ${PYTHON} test/run_tests.py
+    - ${PYTHON} -m pytest test/
     # NOTE: the sage doctester refuses to execute from the repository because
     # of "wrong" permissions. For that reason we cd to the home directory before
     # running them.
