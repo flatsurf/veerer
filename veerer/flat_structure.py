@@ -112,7 +112,7 @@ class FlatVeeringTriangulation(Triangulation):
                 E = ep[e]
                 if e != E and E < m:
                     raise ValueError("edge perm not in standard form")
-            holonomies.extend(vectors[ep[e]] for e in range(m,n))
+            holonomies.extend([-holonomies[ep[e]] for e in range(m,n)])
         if len(holonomies) != n:
             raise ValueError('wrong number of vectors')
         self._holonomies = holonomies
@@ -162,15 +162,50 @@ class FlatVeeringTriangulation(Triangulation):
         """
         return T.flat_structure_min()
 
+    def triangle_upside_down(self, e):
+        r"""
+        Apply a 180 degree rotation to the triangle containing the edge ``e``.
+        """
+        f = self._fp[e]
+        g = self._fp[f]
+        self._holonomies[e] = -self._holonomies[e]
+        self._holonomies[f] = -self._holonomies[f]
+        self._holonomies[g] = -self._holonomies[g]
+
+        self._check()
+
     def colours_about_edge(self, e):
         e = int(e)
         return [self.edge_colour(f) for f in self.square_about_edge(e)]
 
+    def alternating_square(self, e):
+        r"""
+        Return whether there is an alternating square around the edge ``e``.
+        """
+        e = int(e)
+        colours = self.colours_about_edge(e)
+        if any(colours[f] == GREEN or colours[f] == PURPLE for f in range(4)):
+            return False
+        return all(colours[f] != colours[(f+1) % 4] for f in range(4))
+
+    def is_flippable(self):
+        return Triangulation.is_flippable(self, e) and self.alternating_square()
+
     def is_forward_flippable(self, e):
         return Triangulation.is_flippable(self, e) and self.colours_about_edge(e) == [BLUE, RED, BLUE, RED]
 
+    def forward_flippable_edges(self):
+        ep = self._ep
+        n = self._n
+        return [e for e in range(n) if e <= ep[e] and self.is_forward_flippable(e)]
+
     def is_backward_flippable(self, e):
         return Triangulation.is_flippable(self, e) and self.colours_about_edge(e) == [RED, BLUE, RED, BLUE]
+
+    def backward_flippable_edges(self):
+        ep = self._ep
+        n = self._n
+        return [e for e in range(n) if e <= ep[e] and self.is_backward_flippable(e)]
 
     def swap(self, e):
         r"""
@@ -352,3 +387,49 @@ class FlatVeeringTriangulation(Triangulation):
             Graphics object consisting of 23 graphics primitives
         """
         return self.layout().plot(*args, **kwds)
+
+    def flip(self, e):
+        r"""
+        Flip the edge ``e``.
+
+        EXAMPLES::
+
+            sage: from veerer import Triangulation, FlatVeeringTriangulation
+            sage: T = Triangulation("(0,1,2)(3,4,~0)(5,6,~1)")
+            sage: fl = FlatVeeringTriangulation(T, [(-47, 51), (-27, -67), (74, 16), (22, 79), (-69, -28), (-61, -31), (34, -36)])
+            sage: fl.flip(2)
+            sage: fl.flip(4)
+            sage: fl.flip(0)
+            sage: fl
+            FlatVeeringTriangulation(Triangulation("(0,1,4)(2,~0,3)(5,6,~1)"), [(2, 197), (-27, -67), (-20, 118), (22, 79), (25, -130), (-61, -31), (34, -36), (27, 67), (-2, -197)])
+        """
+        if not self.is_forward_flippable(e):
+            raise ValueError
+
+        E = self._ep[e]
+        if e == E:
+            # folded edge
+            a = self._fp[e]
+            b = self._fp[a]
+            self._holonomies[a] = -self._holonomies[a]
+            self._holonomies[e] = -(self._holonomies[a] + self._holonomies[b])
+            Triangulation.flip(self, e)
+
+        else:
+            if self._holonomies[e] == self._holonomies[E]:
+                # Make it so that e is well oriented
+                self.triangle_upside_down(e)
+            assert self._holonomies[e] == -self._holonomies[E]
+
+            a = self._fp[e]
+            b = self._fp[a]
+            c = self._fp[E]
+            d = self._fp[c]
+
+            assert self._holonomies[d] + self._holonomies[a] + self._holonomies[b] + self._holonomies[c] == 0
+
+            Triangulation.flip(self, e)
+            self._holonomies[e] = self._holonomies[d] + self._holonomies[a]
+            self._holonomies[E] = -self._holonomies[e]
+
+        self._check()

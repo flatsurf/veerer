@@ -954,6 +954,9 @@ class VeeringTriangulation(Triangulation):
         return [self._colouring[f] for f in self.square_about_edge(e)]
 
     def alternating_square(self, e):
+        r"""
+        Return whether there is an alternating square around the edge ``e``.
+        """
         e = int(e)
         colours = self.colours_about_edge(e)
         if any(colours[f] == GREEN or colours[f] == PURPLE for f in range(4)):
