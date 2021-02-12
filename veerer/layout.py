@@ -680,35 +680,38 @@ class FlatVeeringTriangulationLayout(object):
 
         return text(lab, pos, rotation=angle, color='black')
 
-    def _plot_face(self, a, edge_labels=True):
+    def _plot_face(self, a, edge_labels=True, fill=True):
         r"""
         Plot the face that contains the edge ``a``.
         """
         assert self._pos is not None
 
-        G = Graphics()
         fp = self._triangulation.face_permutation(copy=False)
         b = fp[a]
         c = fp[b]
-        pos = self._pos
 
-        # computing slopes in order to determine filling color
-        nred = nblue = 0
-        for e in (a,b,c):
-            slope = self._edge_slope(e)
-            if slope == RED:
-                nred += 1
-            elif slope == BLUE:
-                nblue += 1
+        G = Graphics()
 
-        if nred == 2:
-            color = (.75, 0.5, 0.5)
-        elif nblue == 2:
-            color = (.5, 0.5, .75)
-        else:
-            color = (.5, 0.5, 0.5)
+        if fill:
+            # computing slopes in order to determine filling color
+            pos = self._pos
 
-        G += polygon2d([pos[a], pos[b], pos[c], pos[a]], alpha=0.41, color=color)
+            nred = nblue = 0
+            for e in (a,b,c):
+                slope = self._edge_slope(e)
+                if slope == RED:
+                    nred += 1
+                elif slope == BLUE:
+                    nblue += 1
+
+            if nred == 2:
+                color = (.75, 0.5, 0.5)
+            elif nblue == 2:
+                color = (.5, 0.5, .75)
+            else:
+                color = (.5, 0.5, 0.5)
+
+            G += polygon2d([pos[a], pos[b], pos[c], pos[a]], alpha=0.41, color=color)
 
         if edge_labels:
             G += self._plot_edge_label(a)
@@ -809,7 +812,7 @@ class FlatVeeringTriangulationLayout(object):
     def _tikz_train_track(self, slope):
         raise NotImplementedError
 
-    def plot(self, horizontal_train_track=False, vertical_train_track=False, edge_labels=True):
+    def plot(self, horizontal_train_track=False, vertical_train_track=False, edge_labels=True, fill=True):
         r"""
         Return a graphics.
 
@@ -828,6 +831,10 @@ class FlatVeeringTriangulationLayout(object):
             sage: colours = 'RBRRBRBRB'
             sage: T = VeeringTriangulation(faces, colours)
             sage: FS = T.flat_structure_min().layout()
+            sage: FS.plot(fill=False)
+            Graphics object consisting of 31 graphics primitives
+            sage: FS.plot(fill=True)
+            Graphics object consisting of 37 graphics primitives
             sage: FS.plot(horizontal_train_track=True)
             Graphics object consisting of 49 graphics primitives
             sage: FS.plot(vertical_train_track=True)
@@ -844,7 +851,7 @@ class FlatVeeringTriangulationLayout(object):
         # 1. plot faces
         for e in range(n):
             if e < fp[e] and e < fp[fp[e]]:
-                G += self._plot_face(e, edge_labels=edge_labels)
+                G += self._plot_face(e, edge_labels=edge_labels, fill=fill)
 
         # 2. plot edges
         for e in range(n):
