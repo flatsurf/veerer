@@ -2004,7 +2004,7 @@ class VeeringTriangulation(Triangulation):
 
     def cylinders(self, col):
         r"""
-        Return the cylinders of colour ``col``.
+        Return the list of cylinders of colour ``col``.
 
         Each cylinder is given as a quadruple ``(edges, rbdry, lbdry, half)`` where
 
@@ -2090,7 +2090,7 @@ class VeeringTriangulation(Triangulation):
             sage: B.cylinders(BLUE)
             [([0, 4], [2], [3], False)]
 
-        A longer example::
+        Longer examples::
 
             sage: T = VeeringTriangulation("(~0,5,1)(~1,6,2)(~2,3,9)(~3,4,8)(~4,7,0)", "BBBBBRRRRR")
             sage: T.cylinders(BLUE)
@@ -2102,6 +2102,16 @@ class VeeringTriangulation(Triangulation):
             sage: T.rotate()
             sage: T.cylinders(RED)
             [([0, 1, 2, 3, 4], [7, 5, 6], [9, 8], False)]
+
+            sage: V = VeeringTriangulation("(0,3,8)(1,~4,2)(4,5,~11)(6,~5,7)(9,~8,11)(10,~2,~1)(~10,~7,~9)(~6,~0,~3)", "PBPBRPRBRBRB")
+            sage: V.cylinders(BLUE)
+            [([0, 20], [8], [17], False),
+             ([2, 22], [19], [10], False),
+             ([5, 7, 14, 11], [4, 15], [6, 13], False)]
+
+            sage: V = VeeringTriangulation("(0,12,~11)(1,13,~12)(2,3,14)(4,10,9)(5,~10,11)(6,~5,~17)(7,~0,~6)(8,~4,~7)(15,~13,~14)(16,17,~2)(~16,~3,~15)(~9,~8,~1)", "RRRBRRBBBBPBBBRRPB")
+            sage: V.cylinders(BLUE)
+            []
         """
         if col != RED and col != BLUE:
             raise ValueError("'col' must be RED or BLUE")
@@ -2192,18 +2202,18 @@ class VeeringTriangulation(Triangulation):
                     typ = LEFT
                     continue
 
-                # triangle across the door
+                # go to triangle across the door
                 a = ep[a]
                 b = fp[a]
                 c = fp[b]
-                assert cols[a] == col or cols[a] == PURPLE, (a, colour_to_string(cols[a]), b, colour_to_string(cols[b]), c, colour_to_string(cols[c]))
+                assert cols[a] == col or cols[a] == PURPLE, (self, a, colour_to_string(cols[a]), b, colour_to_string(cols[b]), c, colour_to_string(cols[c]))
                 if cols[b] == col or cols[b] == PURPLE:
-                    assert cols[c] == opcol, (a, colour_to_string(cols[a]), b, colour_to_string(cols[b]), c, colour_to_string(cols[c]))
+                    assert cols[c] == opcol, (self, a, colour_to_string(cols[a]), b, colour_to_string(cols[b]), c, colour_to_string(cols[c]))
                     # LEFT type, next door is  b
                     a, b, c = b, c, a
                     typ = LEFT
                 elif cols[c] == col or cols[c] == PURPLE:
-                    assert cols[b] == opcol, (a, colour_to_string(cols[a]), b, colour_to_string(cols[b]), c, colour_to_string(cols[c]))
+                    assert cols[b] == opcol, (self, a, colour_to_string(cols[a]), b, colour_to_string(cols[b]), c, colour_to_string(cols[c]))
                     # RIGHT type, next door is c
                     a, b, c = c, a, b
                     typ = RIGHT
@@ -2211,8 +2221,7 @@ class VeeringTriangulation(Triangulation):
                     cyl = False
                     break
 
-            if cyl:
-                assert a == a0 or half_turn, (a, a0, ep[a], ep[a0], half_turn)
+            if cyl and (a == a0 or half_turn):
                 cylinders.append((cc, rbdry, lbdry, half_turn))
 
         return cylinders
@@ -2292,7 +2301,7 @@ class VeeringTriangulation(Triangulation):
                     K = range(packets[i] - 1, 0, -1) if col == BLUE else range(0, packets[i] - 1, 1)
                     for k in K:
                         l = (j + k) % n
-                        F.flip(edges[l], col)
+                        F.append_flip(edges[l], col)
                         flipsmod2[l] = 1 - flipsmod2[l]
                     j += packets[i]
             r = perm_id(self._n)
@@ -2307,7 +2316,7 @@ class VeeringTriangulation(Triangulation):
                     r[e] = f
                     r[ep[e]] = ep[f]
             from .permutation import perm_cycle_string
-            F.relabel(r)
+            F.append_relabelling(r)
 
             # TODO: remove assertion check
             assert F.start() == F.end()
@@ -2528,10 +2537,14 @@ class VeeringTriangulation(Triangulation):
             LAR = PURPLE
             POS = BLUE
             NEG = RED
+            if any(c == GREEN for c in self._colouring):
+                raise NotImplementedError('no vertical train track with green edges')
         elif slope == HORIZONTAL:
             LAR = GREEN
             POS = RED
             NEG = BLUE
+            if any(c == PURPLE for c in self._colouring):
+                raise NotImplementedError('no horizontal train track with purple edges')
         else:
             raise ValueError('bad slope parameter')
 
@@ -2552,8 +2565,10 @@ class VeeringTriangulation(Triangulation):
                 # j is large
                 l,s1,s2 = j,k,i
             else:
-                raise ValueError('can not determine the large edge on triangle (%s, %s, %s)' %
-                                 (self._edge_rep(i), self._edge_rep(j), self._edge_rep(k)))
+                raise ValueError('can not determine the large edge for the %s track in triangle (%s, %s, %s) with colors (%s, %s, %s)' %
+                                 ('horizontal' if slope == HORIZONTAL else 'vertical',
+                                   self._edge_rep(i), self._edge_rep(j), self._edge_rep(k),
+                                  colour_to_string(self._colouring[i]), colour_to_string(self._colouring[j]), colour_to_string(self._colouring[k])))
 
             insert(x[self._norm(l)] == x[self._norm(s1)] + x[self._norm(s2)])
 
@@ -3167,6 +3182,9 @@ class VeeringTriangulation(Triangulation):
             sage: U.is_core()
             False
         """
+        if any(c == PURPLE or c == GREEN for c in self._colouring):
+            raise ValueError('core not implemented with PURPLE or GREEN colour')
+
         # TODO: could use v.has_curve for every edge?
         # In theory LP should be much faster but in practice (in small dimensions)
         # polytope is much better

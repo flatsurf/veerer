@@ -10,7 +10,7 @@ from sage.modules.free_module import VectorSpace
 from sage.modules.free_module_element import vector
 
 from .constants import BLUE, RED, PURPLE, GREEN
-from .permutation import perm_cycles
+from .permutation import perm_cycles, perm_check, perm_init, perm_conjugate, perm_on_list
 from .triangulation import Triangulation
 from .veering_triangulation import VeeringTriangulation
 from .misc import flipper_edge, flipper_edge_perm, flipper_nf_to_sage, flipper_nf_element_to_sage, det2, flipper_face_edge_perms
@@ -86,7 +86,7 @@ class FlatVeeringTriangulation(Triangulation):
             self._V = triangulation._V
             self._K = triangulation._K
             self._translation = triangulation._translation
-            return 
+            return
 
         if base_ring is None:
             S = Sequence([vector(v) for v in holonomies])
@@ -433,3 +433,45 @@ class FlatVeeringTriangulation(Triangulation):
             self._holonomies[E] = -self._holonomies[e]
 
         self._check()
+
+    def relabel(self, p):
+        r"""
+        Relabel the flat structure with te permutation `p`.
+
+        EXAMPLES:
+
+            sage: from veerer import Triangulation, FlatVeeringTriangulation
+            sage: T = Triangulation("(0,1,2)(3,4,~0)(5,6,~1)")
+            sage: fl = FlatVeeringTriangulation(T, [(-47, 51), (-27, -67), (74, 16), (22, 79), (-69, -28), (-61, -31), (34, -36)])
+            sage: fl.relabel('(1,0)(3,5,4,6)')
+            sage: fl
+            FlatVeeringTriangulation(Triangulation("(0,2,1)(3,~0,4)(5,6,~1)"), [(-27, -67), (-47, 51), (74, 16), (34, -36), (-61, -31), (22, 79), (-69, -28), (47, -51), (27, 67)])
+        """
+        n = self._n
+        if not perm_check(p, n):
+            p = perm_init(p, n, self._ep)
+            if not perm_check(p, n, self._ep):
+                raise ValueError('invalid relabeling permutation')
+
+        self._vp = perm_conjugate(self._vp, p)
+        self._ep = perm_conjugate(self._ep, p)
+        self._fp = perm_conjugate(self._fp, p)
+
+        perm_on_list(p, self._holonomies)
+
+        self._check()
+
+    def xy_scaling(self, a, b):
+        r"""
+        Rescale the horizontal direction by `a` and the vertical one by `b`.
+
+        EXAMPLES::
+
+            sage: from veerer import Triangulation, FlatVeeringTriangulation
+            sage: T = Triangulation("(0,1,2)(3,4,~0)(5,6,~1)")
+            sage: fl = FlatVeeringTriangulation(T, [(-47, 51), (-27, -67), (74, 16), (22, 79), (-69, -28), (-61, -31), (34, -36)])
+            sage: fl.xy_scaling(2, 1/3)
+            sage: fl
+            FlatVeeringTriangulation(Triangulation("(0,1,2)(3,4,~0)(5,6,~1)"), [(-94, 17), (-54, -67/3), (148, 16/3), (44, 79/3), (-138, -28/3), (-122, -31/3), (68, -12), (54, 67/3), (94, -17)])
+        """
+        self._holonomies = [self._V((a*x, b*y)) for x,y in self._holonomies]

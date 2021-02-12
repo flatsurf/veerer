@@ -464,13 +464,16 @@ class FlatVeeringTriangulationLayout(object):
 
     def relabel(self, p):
         r"""
+        Relabel according to the permutation ``p``.
+
         EXAMPLES::
 
             sage: import veerer
             sage: T = veerer.VeeringTriangulation("(0,1,2)(~0,~1,~2)", [1, 2, 2])
             sage: F = T.flat_structure_middle().layout()
             sage: F.set_pos()
-            sage: F.relabel([0,1,3,2,5,4])
+            sage: F._check()
+            sage: F.relabel('(0,1,2)')
             sage: F._check()
         """
         n = self._triangulation._n
@@ -480,7 +483,6 @@ class FlatVeeringTriangulationLayout(object):
                 raise ValueError('invalid relabeling permutation')
 
         self._triangulation.relabel(p)
-        perm_on_list(p, self._triangulation._holonomies)
         if self._pos is not None:
             perm_on_list(p, self._pos)
 

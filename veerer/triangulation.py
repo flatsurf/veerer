@@ -1057,7 +1057,7 @@ class Triangulation(object):
         if not perm_check(p, n):
             # if the input is not a valid permutation, we assume that half-edges
             # are not separated
-            p = perm_init(p, self._n, self._ep)
+            p = perm_init(p, n, self._ep)
             if not perm_check(p, n, self._ep):
                 raise ValueError('invalid relabeling permutation')
 

@@ -1,5 +1,34 @@
 r"""
 Dynamical forward flip sequences (and relabeling) in veering triangulations.
+
+EXAMPLES:
+
+The golden mean pseudo-Anosov realized on the sphere::
+
+    sage: from veerer import VeeringTriangulation, VeeringFlipSequence, BLUE, RED
+    sage: T = VeeringTriangulation("(0,1,2)", "BBR")
+    sage: fp = VeeringFlipSequence(T)
+    sage: fp.append_flip(0, RED)
+    sage: fp.append_flip(2, BLUE)
+    sage: fp.append_relabelling(fp.find_closure())
+    sage: fp.is_pseudo_anosov()
+    True
+
+    sage: a, fs = fp.self_similar_surface()
+    sage: fs
+    FlatVeeringTriangulation(Triangulation("(0,1,2)"), [(1, -1), (a - 3, a), (-a + 2, -a + 1)])
+    sage: fs.flip(0)
+    sage: fs.flip(2)
+    sage: fs.relabel(fp._relabelling)
+    sage: fs.xy_scaling(a, 1/a)
+    sage: fs
+    FlatVeeringTriangulation(Triangulation("(0,1,2)"), [(-1, 1), (-a + 3, -a), (a - 2, a - 1)])
+
+The same flip sequence defined in one line::
+
+    sage: fp2 = VeeringFlipSequence(VeeringTriangulation("(0,1,2)", "BBR"), "0R 2B", "(0,2,1)")
+    sage: fp == fp2
+    True
 """
 ######################################################################
 # This file is part of veering.
@@ -22,7 +51,7 @@ Dynamical forward flip sequences (and relabeling) in veering triangulations.
 
 from __future__ import absolute_import
 
-from .constants import colour_from_char, colour_to_char, RED, BLUE, PURPLE, GREEN
+from .constants import colour_from_char, colour_to_char, RED, BLUE, PURPLE, GREEN, HORIZONTAL, VERTICAL
 from .permutation import perm_init, perm_check, perm_id, perm_is_one, perm_preimage, perm_invert, perm_cycle_string, perm_compose, perm_pow, perm_conjugate
 from .veering_triangulation import VeeringTriangulation
 from .env import require_package, sage
@@ -44,8 +73,8 @@ class VeeringFlipSequence(object):
         sage: F = VeeringFlipSequence(T)
         sage: F
         VeeringFlipSequence(VeeringTriangulation("(0,1,2)(~2,~0,~1)", "RRB"), "", "(0)(1)(2)(~2)(~1)(~0)")
-        sage: F.flip(1, RED)
-        sage: F.flip(0, RED)
+        sage: F.append_flip(1, RED)
+        sage: F.append_flip(0, RED)
         sage: F
         VeeringFlipSequence(VeeringTriangulation("(0,1,2)(~2,~0,~1)", "RRB"), "1R 0R", "(0)(1)(2)(~2)(~1)(~0)")
 
@@ -77,9 +106,18 @@ class VeeringFlipSequence(object):
             if isinstance(sequence, str):
                 sequence = flip_sequence_from_string(sequence)
             for e, col in sequence:
-                self.flip(e, col)
+                self.append_flip(e, col)
         if relabelling is not None:
-            self.relabel(relabelling)
+            self.append_relabelling(relabelling)
+
+    def __iter__(self):
+        r"""
+        Iteration through triples ``(veering triangulation, edge, color)``.
+        """
+        V = self._start.copy()
+        for e, col, _ in self._flips:
+            yield (V, e, col)
+            V.flip(e, col)
 
     def _check(self):
         T = VeeringFlipSequence(self._start, [f[:2] for f in self._flips], self._relabelling)
@@ -157,10 +195,8 @@ class VeeringFlipSequence(object):
         from sage.rings.all import ZZ
         from sage.matrix.special import identity_matrix
         m = identity_matrix(ZZ, self._start.num_edges())
-        V = self._start.copy()
-        for e, col, _ in self._flips:
+        for V, e, col in self:
             V.flip_homological_action(e, m, twist)
-            V.flip(e, col)
         V.relabel_homological_action(self._relabelling, m, twist)
         return m
 
@@ -467,7 +503,10 @@ class VeeringFlipSequence(object):
         return r, self.coloured_start()._flat_structure_from_train_track_lengths(h, w, base_ring=K)
 
     # change
-    def flip(self, e, col):
+    def append_flip(self, e, col):
+        r"""
+        Append the flip ``(e, col)`` to this flip sequence.
+        """
         ep = self._end._ep
         oldcol = self._end._colouring[e]
         E = ep[e]
@@ -494,7 +533,29 @@ class VeeringFlipSequence(object):
         # TODO: remove check
         self._check()
 
-    def relabel(self, r):
+    def find_closure(self):
+        r"""
+        Return a relabelling closure if it exists and ``None`` otherwise.
+
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation, VeeringFlipSequence, BLUE, RED
+            sage: T = VeeringTriangulation("(0,1,2)", "BBR")
+            sage: fp = VeeringFlipSequence(T)
+            sage: fp.append_flip(0, RED)
+            sage: fp.find_closure() is None
+            True
+            sage: fp.append_flip(2, BLUE)
+            sage: fp.find_closure()
+            array('l', [2, 0, 1])
+        """
+        ans, r = self._end.is_isomorphic_to(self._start, certificate=True)
+        return r if ans else None
+
+    def append_relabelling(self, r):
+        r"""
+        Append the relabelling ``r`` to this flip sequence.
+        """
         end = self._end
         if not perm_check(r, end._n):
             r = perm_init(r, end._n, end._ep)
@@ -512,7 +573,7 @@ class VeeringFlipSequence(object):
 
             sage: V0 = VeeringTriangulation("(0,3,4)(1,~3,5)(2,6,~4)", "PPPBRRB")
             sage: F = VeeringFlipSequence(V0, "2B", "(2,6)")
-            sage: assert F.is_closed()       
+            sage: assert F.is_closed()
             sage: F *= F
             sage: F
             VeeringFlipSequence(VeeringTriangulation("(0,3,4)(1,~3,5)(2,6,~4)", "PPPBRRB"), "2B 6B", "(0)(1)(2)(3)(4)(5)(6)(~4)(~3)")
