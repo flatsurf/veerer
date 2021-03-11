@@ -5,6 +5,7 @@ Utility functions.
 from __future__ import print_function, absolute_import
 from six.moves import range, map, filter, zip
 
+from .env import ppl
 
 def det2(u, v):
     return u[0]*v[1] - u[1]*v[0]
@@ -103,3 +104,9 @@ def flipper_nf_element_to_sage(x, K=None):
         coeffs.extend([0] * (K.degree() - len(coeffs)))
     return K(list(map(QQ, coeffs)))
 
+def rays_to_ppl_cone(rays):
+    gs = ppl.Generator_System()
+    gs.insert(ppl.point())
+    for r in rays:
+        gs.insert(ppl.ray(sum(coeff * ppl.Variable(i) for i,coeff in enumerate(r) if coeff)))
+    return ppl.C_Polyhedron(gs)

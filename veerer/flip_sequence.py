@@ -1,6 +1,12 @@
 r"""
 Dynamical forward flip sequences (and relabeling) in veering triangulations.
 
+.. TODO::
+
+    It would be convenient to have backward and forward flip (ie a point
+    in the middle of an induction) so that we get non-trivial widths and
+    heights.
+
 EXAMPLES:
 
 The golden mean pseudo-Anosov realized on the sphere::
@@ -54,7 +60,7 @@ from __future__ import absolute_import
 from .constants import colour_from_char, colour_to_char, RED, BLUE, PURPLE, GREEN, HORIZONTAL, VERTICAL
 from .permutation import perm_init, perm_check, perm_id, perm_is_one, perm_preimage, perm_invert, perm_cycle_string, perm_compose, perm_pow, perm_conjugate
 from .veering_triangulation import VeeringTriangulation
-from .env import require_package, sage
+from .env import require_package, sage, ppl
 
 def flip_sequence_to_string(sequence):
     return " ".join("%d%s" % (e, colour_to_char(col)) for e,col in sequence)
@@ -433,6 +439,64 @@ class VeeringFlipSequence(object):
         if self._start != self._end:
             return False
         return not self.unflipped_edges()
+
+    def train_track_polytope(self, slope=VERTICAL):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation, VeeringFlipSequence
+            sage: F = VeeringFlipSequence(VeeringTriangulation("(0,3,4)(1,~3,5)(2,6,~4)", "BRBBRRB"), "0B 1B")
+            sage: F.train_track_polytope()
+        """
+        if slope == HORIZONTAL:
+            return self._start.train_track_polytope(HORIZONTAL)
+        else:
+            from sage.modules.free_module_element import vector
+            from sage.rings.integer_ring import ZZ
+            from .misc import rays_to_ppl_cone
+
+            wm = self.inverse().matrix() # matrix: widths_end -> widths_start
+            P = self._end.train_track_polytope(VERTICAL)
+            rays = [wm * vector(ZZ, r.coefficients()) for r in P.generators() if r.is_ray()]
+            return rays_to_ppl_cone(rays)
+
+    def flat_structure_middle(self):
+        r"""
+        Return a flat structure that admits this sequence of flips as forward flips.
+
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation, VeeringFlipSequence, BLUE, RED
+            sage: V = VeeringTriangulation("(0,3,4)(1,~3,5)(2,6,~4)", "RBRBRRB")
+            sage: VeeringFlipSequence(V, "0B 1B").flat_structure_middle()
+            FlatVeeringTriangulation(Triangulation("(0,3,4)(1,~3,5)(2,6,~4)"), [(6, 2), (6, -2), (3, 3), (-4, 4), (-2, -6), (-2, -2), (-1, 3), (-2, -6), (-4, 4)])
+
+            sage: fs = VeeringFlipSequence(V, "0B 1R 2B 5R 6B", "(3,4)(1,5,6)")
+            sage: fl = fs.flat_structure_middle()
+            sage: fl.forward_flippable_edges()
+            [0, 1, 2]
+            sage: fl.flip(0); fl.flip(1); fl.flip(2)
+            sage: assert fl.edge_colour(0) == BLUE
+            sage: assert fl.edge_colour(1) == RED
+            sage: assert fl.edge_colour(2) == BLUE
+            sage: fl.forward_flippable_edges()
+            [5, 6]
+            sage: fl.flip(5); fl.flip(6)
+            sage: assert fl.edge_colour(5) == RED
+            sage: assert fl.edge_colour(6) == BLUE
+        """
+        n = self._start.num_edges()
+
+        PH = self.train_track_polytope(HORIZONTAL)
+        PV = self.train_track_polytope(VERTICAL)
+
+        # pick sum of rays
+        VH = [g.coefficients() for g in PH.generators() if g.is_ray()]
+        VH = [sum(v[i] for v in VH) for i in range(n)]
+        VV = [g.coefficients() for g in PV.generators() if g.is_ray()]
+        VV = [sum(v[i] for v in VV) for i in range(n)]
+
+        return self._start._flat_structure_from_train_track_lengths(VH, VV)
 
     def self_similar_surface(self):
         r"""
