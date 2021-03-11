@@ -1,5 +1,9 @@
 r"""
-Display for ((flat) veering) triangulations.
+Flat veering triangulations layout in the plane
+
+This module is mostly intended for plotting features. A layout is defined by a
+choice of a rooted spanning forest together with a coordinate for each root.
+Each tree in the spanning forest corresponds to triangulated polygon.
 
 Note:
 
@@ -29,7 +33,7 @@ from sage.plot.text import text
 from sage.plot.bezier_path import bezier_path
 from sage.plot.point import point2d
 
-from .constants import BLUE, RED, PURPLE, GREEN, HORIZONTAL, VERTICAL
+from .constants import BLUE, RED, PURPLE, GREEN, HORIZONTAL, VERTICAL, RIGHT, LEFT
 from .permutation import perm_init, perm_check, perm_on_list
 from .misc import flipper_edge, flipper_edge_perm, flipper_nf_to_sage, flipper_nf_element_to_sage, det2, flipper_face_edge_perms
 from .triangulation import Triangulation
@@ -89,33 +93,34 @@ class FlatVeeringTriangulationLayout(object):
     A can be built from a list of triangles and vectors::
 
         sage: triangles = [(0, 1, 2), (-1, -2, -3)]
-        sage: vecs = [(1, 2), (-2, -1), (1, -1), (1, -1), (-2, -1), (1, 2)]
-        sage: FlatVeeringTriangulationLayout(triangles, vecs)
-        Flat Triangulation made of 2 triangles
+        sage: holonomies = [(1, 2), (-2, -1), (1, -1), (1, -1), (-2, -1), (1, 2)]
+        sage: fvt = FlatVeeringTriangulation(triangles, holonomies)
+        sage: layout = FlatVeeringTriangulationLayout(fvt)
+        sage: layout
+        FlatTriangulationLayout(FlatVeeringTriangulation(Triangulation("(0,1,2)(~2,~0,~1)"), [(1, 2), (-2, -1), (1, -1), (-1, 1), (2, 1), (-1, -2)]))
+        sage: layout.set_pos()
+        sage: layout
+        FlatTriangulationLayout(FlatVeeringTriangulation(Triangulation("(0,1,2)(~2,~0,~1)"), [(1, 2), (-2, -1), (1, -1), (-1, 1), (2, 1), (-1, -2)]), [(2, 1), (3, 3), (1, 2), (2, 1), (0, 0), (1, 2)])
 
     Or from a preexisting flat surface::
 
         sage: T = VeeringTriangulation("(0,1,2)(~0,~1,3)", "BRBB")
         sage: F = FlatVeeringTriangulation.from_coloured_triangulation(T)
         sage: F.layout()
-        Flat Triangulation made of 2 triangles
+        FlatTriangulationLayout(FlatVeeringTriangulation(Triangulation("(0,1,2)(3,~0,~1)"), [(1, -2), (1, 1), (-2, 1), (2, -1), (-1, -1), (-1, 2)]))
     """
-    def __init__(self, flat_triangulation, vectors=None):
+    def __init__(self, flat_triangulation, pos=None):
         r"""
         INPUT:
 
         - flat_triangulation - a flat triangulation
         """
-        if vectors:
-            self._triangulation = FlatVeeringTriangulation(flat_triangulation, vectors)
-        else:
-            self._triangulation = FlatVeeringTriangulation(flat_triangulation)
-
+        self._triangulation = FlatVeeringTriangulation(flat_triangulation)
         n = self._triangulation.num_half_edges()
         m = self._triangulation.num_edges()
 
-       # for actual display. Isn't it dangerous to keep it?
-        self._pos = None                     # vertex positions (list of length n)
+        # for actual display.
+        self._pos = pos     # vertex positions (list of length n)
 
         self._check()
 
@@ -157,9 +162,9 @@ class FlatVeeringTriangulationLayout(object):
         pos = self._pos
         if pos is not None:
             for a,b,c in self._triangulation.faces():
-                if pos[a] + vectors[a] != pos[b] or \
-                   pos[b] + vectors[b] != pos[c] or \
-                   pos[c] + vectors[c] != pos[a]:
+                if (pos[a] is not None and pos[b] is not None and pos[a] + vectors[a] != pos[b]) or \
+                    (pos[b] is not None and pos[c] is not None and pos[b] + vectors[b] != pos[c]) or \
+                    (pos[c] is not None and pos[a] is not None and pos[c] + vectors[c] != pos[a]):
                     raise ValueError('pos[%s] = %s, pos[%s] = %s, pos[%s] = %s while vec[%s] = %s, vec[%s] = %s, vec[%s] = %s' % (
                                    a, pos[a],
                                    b, pos[b],
@@ -188,7 +193,12 @@ class FlatVeeringTriangulationLayout(object):
         return vec_slope(self._triangulation._holonomies[e])
 
     def __repr__(self):
-        return 'Flat Triangulation made of %s triangles' % self._triangulation.num_faces()
+        if self._pos is None:
+            return 'FlatTriangulationLayout({})'.format(
+                    self._triangulation)
+        else:
+            return 'FlatTriangulationLayout({}, {})'.format(
+                    self._triangulation, self._pos)
 
     def _edge_is_boundary(self, e):
         r"""
@@ -223,18 +233,21 @@ class FlatVeeringTriangulationLayout(object):
             ....:     _ = F.glue_edge(e)
             ....:     F._check()
         """
-        vectors = self._triangulation._holonomies
+        holonomies = self._triangulation._holonomies
         fp = self._triangulation.face_permutation(False)
         ep = self._triangulation.edge_permutation(False)
         a = ep[e]
         b = fp[a]
         c = fp[b]
 
-        # point-symmetry applied to the triangle
-        if a != e and vectors[a] == vectors[e]:
-            vectors[a] *= -1
-            vectors[b] *= -1
-            vectors[c] *= -1
+        if a == e:
+            return
+
+        if a != e and holonomies[a] == holonomies[e]:
+            # apply point-symmetry to the triangle (a,b,c)
+            holonomies[a] *= -1
+            holonomies[b] *= -1
+            holonomies[c] *= -1
 
         if self._edge_is_boundary(e):
             pos = self._pos
@@ -242,15 +255,97 @@ class FlatVeeringTriangulationLayout(object):
                 raise RuntimeError
 
             if a != e:
-                pos[a] = pos[e] + vectors[e]
-            pos[b] = pos[a] + vectors[a]
-            pos[c] = pos[b] + vectors[b]
+                pos[a] = pos[e] + holonomies[e]
+            pos[b] = pos[a] + holonomies[a]
+            pos[c] = pos[b] + holonomies[b]
             xmin = min(pos[a][0], pos[b][0], pos[c][0])
             xmax = max(pos[a][0], pos[b][0], pos[c][0])
             ymin = min(pos[a][1], pos[b][1], pos[c][1])
             ymax = max(pos[a][1], pos[b][1], pos[c][1])
 
+            self._check()
             return xmin, xmax, ymin, ymax
+
+    def sublayout(self, e):
+        r"""
+        Return the edges of the connected part of the layout reachable from e
+        but not going through e
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+        """
+        if self._pos is None:
+            return
+
+        T = self._triangulation
+        n = T._n
+        ep = T._ep
+        fp = T._fp
+        holonomies = T._holonomies
+        pos = self._pos
+
+        triangle_list = []        # list of triangles
+        seen = [False] * n        # visited edges (not needed unless we have 2pi angles)
+        seen[e] = seen[ep[e]] = True
+        todo = [e]
+        while todo:
+            # run around triangle
+            e = todo.pop()
+            a = fp[e]
+            b = fp[a]
+            triangle_list.append((e,a,b))
+            # traverse a and b if needed
+            if not seen[a]:
+                A = ep[a]
+                seen[a] = seen[A] = True
+                if a != A and pos[A] == pos[a] + holonomies[a]:
+                    todo.append(A)
+            if not seen[b]:
+                B = ep[b]
+                seen[b] = seen[B] = True
+                if b != B and pos[B] == pos[b] + holonomies[b]:
+                    todo.append(B)
+
+        return triangle_list
+
+    def glue_subsurface(self, e):
+        r"""
+        Move the sublayout glued from `e` to its paired half edge.
+        """
+        if self._pos is None:
+            return
+
+        T = self._triangulation
+        n = T._n
+        ep = T._ep
+        holonomies = T._holonomies
+
+        pos = self._pos
+
+        E = ep[e]
+        if e == E or pos[E] == pos[e] + holonomies[e]:
+            # self-glued or already glued edge
+            return
+
+        if holonomies[e] == holonomies[E]:
+            # reflection
+            s = -1
+            t = pos[E] + holonomies[E] + pos[e]
+        else:
+            # translation
+            s = 1
+            t = pos[E] + holonomies[E] - pos[e]
+
+        for (a,b,c) in self.sublayout(e):
+            if s == -1:
+                T.triangle_upside_down(a)
+            pos[a] = s * pos[a] + t
+            pos[b] = s * pos[b] + t
+            pos[c] = s * pos[c] + t
+
+        self._check()
 
     def set_pos_outgoing_separatrices(self, x_space=1):
         r"""
@@ -492,22 +587,31 @@ class FlatVeeringTriangulationLayout(object):
     def backward_flippable_edges(self):
         return self._triangulation.backward_flippable_edges()
 
-    def flip(self, e):
+    def flip(self, e, folded_edge_convention=RIGHT):
         r"""
-        Flip an edge of this flat triangulation.
+        Flip an edge of the layout of a flat triangulation.
 
         EXAMPLES::
 
-            sage: import veerer
-            sage: import flipper  # optional - flipper
-            sage: from veerer.misc import flipper_isometry_to_perm
-            sage: S21 = flipper.load('S_2_1')  # optional - flipper
-            sage: h = S21.mapping_class('abCeF').canonical()  # optional - flipper
-            sage: F0 = veerer.FlatVeeringTriangulation.from_flipper_pseudo_anosov(h).layout()  # optional - flipper
+            sage: from veerer import Triangulation, FlatVeeringTriangulation, LEFT, RIGHT
+            sage: t = Triangulation("(0,~5,4)(1,2,~6)(3,5,6)")
+            sage: holonomies = [(8, 1), (7, 2), (-4, 2), (9, 2), (-2, -3), (-6, 2), (-3, -4), (-3, -4), (-6, 2)]
+            sage: l = FlatVeeringTriangulation(t, holonomies).layout()
+            sage: l.set_pos()
+            sage: l.flip(0, folded_edge_convention=RIGHT)
 
-            sage: F = F0.copy()  # optional - flipper
-            sage: for flip in h.sequence[:-1]:  # optional - flipper
-            ....:     F.flip(flip.edge_index)
+            sage: l = FlatVeeringTriangulation(t, holonomies).layout()
+            sage: l.set_pos()
+            sage: l.flip(0, folded_edge_convention=LEFT)
+            sage: l._check()
+
+            sage: t = Triangulation("(0,1,2)(~0,3,4)(~1,5,6)")
+            sage: holonomies = [(-47,51), (-27, -67), (74, 16), (22, 79),
+            ....:               (-69, -28), (-61, -31), (34, -36)]
+            sage: l = FlatVeeringTriangulation(t, holonomies).layout()
+            sage: l.set_pos()
+            sage: l.flip(2)
+            sage: l._check()
         """
         if not self._triangulation.is_forward_flippable(e):
             raise ValueError("not flippable")
@@ -516,37 +620,76 @@ class FlatVeeringTriangulationLayout(object):
         # for the layout
         ep = self._triangulation.edge_permutation(copy=False)
         fp = self._triangulation.face_permutation(copy=False)
+        pos = self._pos
+        holonomies = self._triangulation._holonomies
         E = ep[e]
-        self.glue_edge(E)
 
-        # now update
-        a = fp[e]; b = fp[a]
-        c = fp[E]; d = fp[c]
-        vectors = self._triangulation._holonomies
-        assert (vectors[a] + vectors[b] + vectors[e]).is_zero()
-        assert (vectors[c] + vectors[d] + vectors[E]).is_zero()
-        # x<----------x
-        # |     a    ^^
-        # |         / |
-        # |        /  |
-        # |       /   |
-        # |b    e/   d|
-        # |     /     |
-        # |    /      |
-        # |   /       |
-        # |  /        |
-        # | /         |
-        # v/    c     |
-        # x---------->x
+        if e != E and pos[e] + holonomies[e] != pos[E]:
+            raise ValueError("can not flip an unglued edge")
 
-        vectors[e] = vectors[d] + vectors[a]
-        vectors[E] = vectors[b] + vectors[c]
+        # -------------
+        # \       e  /
+        #  \a       /
+        #   \      /
+        #    \   b/
+        #     \  /
+        a = fp[e]; A = ep[a]
+        b = fp[a]; B = ep[b]
 
-        self._triangulation.flip(e)
+        aglued = (a != A) and (pos[A] == pos[a] + holonomies[a])
+        bglued = (b != B) and (pos[B] == pos[b] + holonomies[b])
 
-        if self._pos is not None:
-            self._pos[e] = self._pos[d]
-            self._pos[E] = self._pos[b]
+        # Do the flip on the triangulation first
+        self._triangulation.flip(e, folded_edge_convention=folded_edge_convention)
+
+        if pos is not None:
+            holonomies = self._triangulation._holonomies
+            fp = self._triangulation.face_permutation(copy=False)
+            if e == E:
+                # folded edge
+                #                          /  |      |  \
+                #                         /b  |      |   \
+                #                        /    |      |e  a\
+                #   E                   /     |      |     \
+                # -------------               |      |
+                # \       e  /          \     |  or  |     /
+                #  \a       /     ->     \a   |      |    /
+                #   \      /              \  e|      |   /
+                #    \   b/                \  |      | b/
+                #     \  /                  \ |      | /
+                #                        LEFT        RIGHT
+                assert fp[e] == b and fp[b] == a
+                if folded_edge_convention == RIGHT:
+                    # we should move the a neighbors
+                    A = ep[a]
+                    pos[a] = pos[e]
+                    pos[e] = pos[a] + holonomies[a]
+                    if aglued:
+                        self.glue_subsurface(A)
+                else:
+                    # we should move the b neighbors
+                    B = ep[b]
+                    pos[e] = pos[b]
+                    pos[b] = pos[e] + holonomies[e]
+                    if bglued:
+                        self.glue_subsurface(B)
+
+            else:
+                # normal edge
+                #    /  \             / | \
+                #   /b   \           /b |  \
+                #  /     a\         /   |E a\
+                # /  e     \       /    |    \
+                # ----------   ->       |
+                # \     E  /       \   e|    /
+                #  \c     /         \c  |   /
+                #   \   d/           \  | d/
+                #    \  /             \ | /
+                b = fp[e]
+                d = fp[E]
+
+                pos[e] = pos[d]
+                pos[E] = pos[b]
 
         self._check()
 
