@@ -99,9 +99,13 @@ def properties_to_string(p):
     else:
         return 'none'
 
-# slopes
+# slopes and directions
 HORIZONTAL = 1
 VERTICAL   = 2
+RIGHT = HORIZONTAL | 4
+LEFT = HORIZONTAL | 8
+UP = VERTICAL | 4
+DOWN = VERTICAL | 8
 
 SLOPES = [HORIZONTAL, VERTICAL]
 
