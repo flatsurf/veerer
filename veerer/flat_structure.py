@@ -9,7 +9,7 @@ from sage.rings.polynomial.polynomial_ring_constructor import PolynomialRing
 from sage.modules.free_module import VectorSpace
 from sage.modules.free_module_element import vector
 
-from .constants import BLUE, RED, PURPLE, GREEN
+from .constants import BLUE, RED, PURPLE, GREEN, LEFT, RIGHT
 from .permutation import perm_cycles, perm_check, perm_init, perm_conjugate, perm_on_list
 from .triangulation import Triangulation
 from .veering_triangulation import VeeringTriangulation
@@ -188,10 +188,24 @@ class FlatVeeringTriangulation(Triangulation):
             return False
         return all(colours[f] != colours[(f+1) % 4] for f in range(4))
 
-    def is_flippable(self):
-        return Triangulation.is_flippable(self, e) and self.alternating_square()
+    def is_flippable(self, e):
+        return Triangulation.is_flippable(self, e) and self.alternating_square(e)
 
     def is_forward_flippable(self, e):
+        r"""
+        Return whether ``e`` is a forward flippable edge
+
+        EXAMPLES::
+
+            sage: from veerer import Triangulation, FlatVeeringTriangulation
+            sage: T = Triangulation("(0,4,3)(1,~3,5)(2,6,~4)")
+            sage: hols = [(-2, 10), (6, -2), (3, 3), (4, -4), (-2, -6), (-2, -2), (-1, 3), (-2, -6), (-4, 4)]
+            sage: fl = FlatVeeringTriangulation(T, hols)
+            sage: fl.is_forward_flippable(1)
+            True
+            sage: fl.is_forward_flippable(3)
+            False
+        """
         return Triangulation.is_flippable(self, e) and self.colours_about_edge(e) == [BLUE, RED, BLUE, RED]
 
     def forward_flippable_edges(self):
@@ -388,13 +402,13 @@ class FlatVeeringTriangulation(Triangulation):
         """
         return self.layout().plot(*args, **kwds)
 
-    def flip(self, e):
+    def flip(self, e, folded_edge_convention=RIGHT):
         r"""
         Flip the edge ``e``.
 
         EXAMPLES::
 
-            sage: from veerer import Triangulation, FlatVeeringTriangulation
+            sage: from veerer import Triangulation, FlatVeeringTriangulation, RIGHT, LEFT
             sage: T = Triangulation("(0,1,2)(3,4,~0)(5,6,~1)")
             sage: fl = FlatVeeringTriangulation(T, [(-47, 51), (-27, -67), (74, 16), (22, 79), (-69, -28), (-61, -31), (34, -36)])
             sage: fl.flip(2)
@@ -402,16 +416,45 @@ class FlatVeeringTriangulation(Triangulation):
             sage: fl.flip(0)
             sage: fl
             FlatVeeringTriangulation(Triangulation("(0,1,4)(2,~0,3)(5,6,~1)"), [(2, 197), (-27, -67), (-20, 118), (22, 79), (25, -130), (-61, -31), (34, -36), (27, 67), (-2, -197)])
+
+            sage: T = Triangulation("(0,1,2)")
+            sage: fl = FlatVeeringTriangulation(T, [(13,8), (-21, -3), (8,-5)])
+            sage: fl.flip(1, folded_edge_convention=RIGHT)
+            sage: fl
+            FlatVeeringTriangulation(Triangulation("(0,2,1)"), [(13, 8), (-5, -13), (-8, 5)])
+            sage: fl = FlatVeeringTriangulation(T, [(13,8), (-21, -3), (8,-5)])
+            sage: fl.flip(1, folded_edge_convention=LEFT)
+            sage: fl
+            FlatVeeringTriangulation(Triangulation("(0,2,1)"), [(-13, -8), (5, 13), (8, -5)])
         """
         if not self.is_forward_flippable(e):
             raise ValueError
 
         E = self._ep[e]
         if e == E:
-            # folded edge
+            # folded edge: two possible choices
+            #
+            #                          /  |      |  \
+            #                         /b  |      |   \
+            #                        /    |      |e  a\
+            #                       /     |      |     \
+            # -------------               |      |
+            # \       e  /          \     |  or  |     /
+            #  \a       /     ->     \a   |      |    /
+            #   \      /              \  e|      |   /
+            #    \   b/                \  |      | b/
+            #     \  /                  \ |      | /
+            #                         LEFT        RIGHT
             a = self._fp[e]
             b = self._fp[a]
-            self._holonomies[a] = -self._holonomies[a]
+
+            if folded_edge_convention == RIGHT:
+                self._holonomies[a] = -self._holonomies[a]
+            elif folded_edge_convention == LEFT:
+                self._holonomies[b] = -self._holonomies[b]
+            else:
+                raise ValueError('folded_edge_convention must be RIGHT (={}) or LEFT (={})'.format(RIGHT, LEFT))
+
             self._holonomies[e] = -(self._holonomies[a] + self._holonomies[b])
             Triangulation.flip(self, e)
 
