@@ -447,6 +447,7 @@ class VeeringFlipSequence(object):
             sage: from veerer import VeeringTriangulation, VeeringFlipSequence
             sage: F = VeeringFlipSequence(VeeringTriangulation("(0,3,4)(1,~3,5)(2,6,~4)", "BRBBRRB"), "0B 1B")
             sage: F.train_track_polytope()
+            A 4-dimensional polyhedron in QQ^7 defined as the convex hull of 1 point, 5 rays
         """
         if slope == HORIZONTAL:
             return self._start.train_track_polytope(HORIZONTAL)
