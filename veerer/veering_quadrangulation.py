@@ -52,47 +52,6 @@ RIGHT = 1
 LEFT = 2
 
 
-def least_rotation(S):
-    """
-    Return the pair ``(index of smallest rotation, period)``.
-    
-    Implementation of Booth's algorithm.
-
-    EXAMPLES::
-
-        sage: least_rotation([1,0])
-        1
-        sage: least_rotation([0,1,0])
-        2
-        sage: least_rotation([0,1,1,0,1])
-        3
-        sage: least_rotation([0,1,0,1,1])
-        0
-    """
-    l = len(S)
-    S = S + S
-    f = [-1] * len(S)  # failure function
-    k = 0              # least rotation of string found so far
-    period = 0
-    for j in range(1, len(S)):
-        sj = S[j]
-        i = f[j - k - 1]
-        while i != -1 and sj != S[k + i + 1]:
-            if sj < S[k + i + 1]:
-                k = j - i - 1
-            i = f[i]
-        if sj != S[k + i + 1]:  # if sj != S[k+i+1], then i == -1
-            if sj < S[k]:  # better index
-                k = j
-            f[j - k] = -1
-        else:
-            f[j - k] = i + 1
-    # NOTE: the loop below could probably be included in the above loop
-    for period in range(l):
-        if f[period+l] == l:
-            return (k, period)
-    return (k, l)
-
 @functools.total_ordering
 class VeeringQuadrangulation:
     r"""
