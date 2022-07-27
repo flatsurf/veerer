@@ -679,6 +679,25 @@ def perm_orbit(p, i):
         j = p[j]
     return res
 
+def perm_orbit_size(p, i):
+    r"""
+    Return the size of the orbit of ``i`` under the permutation ``p``.
+
+    EXAMPLES::
+
+        sage: from veerer.permutation import perm_orbit_size
+        sage: perm_orbit_size([0,3,1,2], 2)
+        3
+        sage: perm_orbit_size([0,3,1,2], 0)
+        1
+    """
+    s = 1
+    j = p[i]
+    while j != i:
+        s += 1
+        j = p[j]
+    return s
+
 def perm_preimage(p, i):
     r"""
     Return the preimage of ``i`` under ``p``.
