@@ -137,7 +137,7 @@ def perm_is_one(p, n=None):
 
 def perm_init(data, n=None, involution=None):
     """
-    Returns a permutation from the given data.
+    Return a permutation from the given data.
 
     If data is a list of integers, then they are considered to be
     the images of the permutation. If ``data`` is a list of list
@@ -220,7 +220,7 @@ def perm_init(data, n=None, involution=None):
 
 def perm_from_cycles(t, n=None, involution=None):
     r"""
-    Returns a permutation on `[0, n-1]` from a list of cycles on `[0, n-1]`
+    Return a permutation on `[0, n-1]` from a list of cycles on `[0, n-1]`
 
     INPUT:
 
@@ -284,7 +284,7 @@ def perm_from_cycles(t, n=None, involution=None):
 
 def str_to_cycles(s):
     """
-    Returns a list of cycles from a string.
+    Return a list of cycles from a string.
 
     EXAMPLES::
 
@@ -644,7 +644,7 @@ def perm_cycle_type(p, n=None):
 
 def perm_cycle_string(p, singletons=True, n=None, involution=None):
     r"""
-    Returns a string representing the cycle decomposition of `p`
+    Return a string representing the cycle decomposition of `p`
 
     EXAMPLES::
 
@@ -664,7 +664,7 @@ def perm_cycle_string(p, singletons=True, n=None, involution=None):
 
 def perm_orbit(p, i):
     r"""
-    Returns the orbit of an integer `i` under the permutation `p`
+    Return the orbit of ``i`` under the permutation ``p``.
 
     EXAMPLES::
 
@@ -798,7 +798,7 @@ def perm_on_cyclic_list(p, t):
 
 def perm_invert(l, n=None):
     r"""
-    Returns the inverse of the permutation ``l``.
+    Return the inverse of the permutation ``l``.
 
     EXAMPLES::
 
@@ -822,7 +822,7 @@ def perm_invert(l, n=None):
 
 def perm_compose(p1, p2, n=None):
     r"""
-    Returns the product ``p1 p2``.
+    Return the product ``p1 p2``.
 
     In the notation ``p1 p2`` we use the right action, in other words
     ``p1`` is applied first.
