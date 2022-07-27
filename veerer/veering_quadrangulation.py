@@ -39,9 +39,10 @@ Veering quadrangulations generalize Penner construction.
 import functools
 import numbers
 
-from sage.rings.all import ZZ, QQ
+from sage.rings.all import ZZ, QQ, AA
 from sage.rings.qqbar import number_field_elements_from_algebraics
 from sage.matrix.constructor import matrix
+from sage.modules.free_module_element import vector
 from sage.matrix.special import identity_matrix, zero_matrix, block_matrix
 from sage.libs.gap.libgap import libgap
 
@@ -55,13 +56,28 @@ LEFT = 2
 @functools.total_ordering
 class VeeringQuadrangulation:
     r"""
+    A Veering quadrangulation.
+
+    The class stores three attributes
+
+    - ``_n`` -- the number of quadrilaterals
+
+    - ``_pr`` -- the right permutation
+
+    - ``_pl`` -- the left permutation
     """
-    __slots__ = ['_n', '_pl', '_pr']
+    __slots__ = ['_n', '_pr', '_pl']
 
     def __init__(self, pr, pl, n=None, check=True):
         self._pr = perm_init(pr, n)  # right permutation
+
         if n is None:
             n = len(self._pr)
+        elif isinstance(n, numbers.Integral):
+            n = int(n)
+        else:
+            raise ValueError('invalid n')
+
         self._pl = perm_init(pl, n)  # left permutation
         self._n = n                  # number of quadrilaterals
         if check:
@@ -76,6 +92,9 @@ class VeeringQuadrangulation:
             raise ValueError('invalid left permutation')
 
     def copy(self):
+        r"""
+        Return a copy of this veering quadrangulation.
+        """
         V = VeeringQuadrangulation.__new__(VeeringQuadrangulation)
         V._n = self._n
         V._pr = self._pr[:]
@@ -205,15 +224,75 @@ class VeeringQuadrangulation:
         return hash((tuple(self._pr), tuple(self._pl)))
 
     def r_cycles(self):
+        r"""
+        Return the cycles of the right permutation.
+
+        EXAMPLES::
+
+            sage: from veerer.veering_quadrangulation import VeeringQuadrangulation
+            sage: q = VeeringQuadrangulation("(0,1)(2)", "(0,2)(1)")
+            sage: q.r_cycles()
+            [[0, 1], [2]]
+        """
         return perm_cycles(self._pr, self._n)
 
+    def l_cycles(self):
+        r"""
+        Return the cycles of the left permutation.
+        """
+        return perm_cycles(self._pl, self._n)
+
     def r_orbit(self, i):
+        r"""
+        Return the orbit of ``i`` under the right permutation.
+
+        EXAMPLES::
+
+            sage: from veerer.veering_quadrangulation import VeeringQuadrangulation
+            sage: q = VeeringQuadrangulation("(0,1)(2)", "(0,2)(1)")
+            sage: q.r_orbit(1)
+            [1, 0]
+        """
         return perm_orbit(self._pr, i)
+
+    def r_orbit_size(self, i):
+        r"""
+        Return the size of the orbit of ``i`` under the right permutation.
+
+        EXAMPLES::
+
+            sage: from veerer.veering_quadrangulation import VeeringQuadrangulation
+            sage: q = VeeringQuadrangulation("(0,1)(2)", "(0,2)(1)")
+            sage: q.r_orbit_size(1)
+            2
+        """
+        return perm_orbit_size(self._pr, i)
+
+    def l_orbit(self, i):
+        r"""
+        Return the orbit of ``i`` under the left permutation.
+
+        EXAMPLES::
+
+            sage: from veerer.veering_quadrangulation import VeeringQuadrangulation
+            sage: q = VeeringQuadrangulation("(0,1)(2)", "(0,2)(1)")
+            sage: q.l_orbit(2)
+            [2, 0]
+        """
+        return perm_orbit(self._pl, i)
 
     def r_cycles_representatives(self, representatives=None):
         r"""
-        Return the cycle representatives and cycle lengths whose ``pr``-orbit
-        intersect the ``pl``-orbit of ``representatives``.
+        Return the cycle representatives and cycle lengths of the right
+        permutation.
+
+        If the argument ``representatives`` is given, then only return the
+        indices whose ``pr``-orbit intersect the ``pl``-orbit of
+        ``representatives``.
+
+        OUTPUT: a pair of lists ``(elements, sizes)`` where ``elements``
+        are the minimum in the cycle of the right permutation and ``sizes``
+        are the size of the corresponding orbit.
 
         EXAMPLES::
 
@@ -222,6 +301,10 @@ class VeeringQuadrangulation:
             sage: Q = VeeringQuadrangulation('(0,1)(2)', '(0,1,2)')
             sage: Q.r_cycles_representatives([0])
             ([0, 2], [2, 1])
+
+            sage: Q = VeeringQuadrangulation('(0,1)(2,3)(4,5)(6,7)', '(0,3,5,7)')
+            sage: Q.r_cycles_representatives()
+            ([0, 3, 5, 7], [2, 2, 2, 2])
 
             sage: Q = VeeringQuadrangulation('(0,1)(2,3)', '(0,1,2)(3)')
             sage: Q.r_cycles_representatives([0])
@@ -257,14 +340,26 @@ class VeeringQuadrangulation:
                 i = pl[i]
         return ans, sizes
 
-    def l_cycles(self):
-        return perm_cycles(self._pl, self._n)
-
     def symmetry(self):
+        r"""
+        Exchange inplace the right and left permutations.
+
+        EXAMPLES::
+
+            sage: from veerer.veering_quadrangulation import VeeringQuadrangulation
+            sage: Q = VeeringQuadrangulation('(0,1)(2,3,4)(5,6,7)', '(0,5,3)(1)(2,6,7)')
+            sage: Q
+            VeeringQuadrangulation("(0,1)(2,3,4)(5,6,7)", "(0,5,3)(1)(2,6,7)(4)")
+            sage: Q.symmetry()
+            sage: Q
+            VeeringQuadrangulation("(0,5,3)(1)(2,6,7)(4)", "(0,1)(2,3,4)(5,6,7)")
+        """
         self._pl, self._pr = self._pr, self._pl
 
     def relabel(self, p):
         r"""
+        Relabel according to the permutation ``p``.
+
         EXAMPLES::
 
             sage: from veerer.veering_quadrangulation import VeeringQuadrangulation
@@ -289,6 +384,14 @@ class VeeringQuadrangulation:
 
     def r_staircase_move(self, i, m=1):
         r"""
+        Perform a right staircase move in the cylinder containing the quadrilateral number ``i``.
+
+        INPUT:
+
+        - ``i`` -- index of a quadrilateral
+
+        - ``m`` (integer, default 1) -- multiplicity of the staircase move to perform
+
         EXAMPLES::
 
             sage: from veerer.veering_quadrangulation import VeeringQuadrangulation
@@ -296,20 +399,16 @@ class VeeringQuadrangulation:
             sage: Q = VeeringQuadrangulation('(0,1)', '(0,2)', n=3)
             sage: Q.r_staircase_move(0)
             sage: Q
-            VeeringQuadrangulation((0,1)(2), (0,1,2))
+            VeeringQuadrangulation("(0,1)(2)", "(0,1,2)")
             sage: Q.r_staircase_move(0)
             sage: Q
-            VeeringQuadrangulation((0,1)(2), (0,2)(1))
+            VeeringQuadrangulation("(0,1)(2)", "(0,2)(1)")
         """
         pr = self._pr
         pl = self._pl
 
         # compute orbit size
-        s = 1
-        j = pr[i]
-        while j != i:
-            s += 1
-            j = pr[j]
+        s = perm_orbit_size(pr, i)
 
         # not very efficient... we would better go by step of size m
         # and count how many of them we need (gcd computation)
@@ -324,6 +423,27 @@ class VeeringQuadrangulation:
             pl[j] = pli
 
     def r_matrix(self, representatives, multiplicities):
+        r"""
+        Return the matrix associated with the right staircase moves given
+        by ``representatives`` and ``multiplicities``.
+
+        EXAMPLES::
+
+            sage: from veerer.veering_quadrangulation import VeeringQuadrangulation
+            sage: Q = VeeringQuadrangulation('(0,1)', '(0,2)', n=3)
+            sage: Q.r_matrix([0, 2], [1, 0])
+            [0 0 1]
+            [0 1 0]
+            [0 0 0]
+            sage: Q.r_matrix([0, 2], [0, 1])
+            [0 0 0]
+            [0 0 0]
+            [1 0 0]
+            sage: Q.r_matrix([0, 2], [1, 1])
+            [0 0 1]
+            [0 1 0]
+            [1 0 0]
+        """
         pr = self._pr
         pl = self._pl
         A = matrix(ZZ, self._n)
@@ -332,12 +452,7 @@ class VeeringQuadrangulation:
                 continue
 
             # compute the pr-orbit size
-            s = 1
-            j = pr[i]
-            while j != i:
-                s += 1
-                j = pr[j]
-
+            s = perm_orbit_size(pr, i)
             a = m // s
             mm = m - a * s
             assert mm >= 0
@@ -424,6 +539,7 @@ class VeeringQuadrangulation:
         else:
             return o1.is_isomorphic(o2)
 
+
 class FlatVeeringQuadrangulation:
     r"""
     A flat structure on a veering quadrangulation.
@@ -456,6 +572,7 @@ class FlatVeeringQuadrangulation:
             n = len(self._pr)
         self._pl = perm_init(pl, n)
         if base_ring is None:
+            from sage.structure.sequence import Sequence
             S = Sequence([vector(v) for v in zr] + [vector(v) for v in zl])
             self._V = S.universe()
             self._K = self._V.base_ring()
@@ -536,6 +653,7 @@ class FlatVeeringQuadrangulation:
         r"""
         EXAMPLES::
 
+            sage: from veerer.veering_quadrangulation import VeeringQuadrangulation
             sage: Q1 = VeeringQuadrangulation('(0,1)(2,3,4)(5,6,7)', '(0,5,3)(1)(2,6,7)')
             sage: Q2 = VeeringQuadrangulation('(0,1,7)(2,6,4)(3,5)', '(0,4,2)(1,3,6)(5)(7)')
             sage: Q1.is_isomorphic(Q2)
@@ -545,6 +663,7 @@ class FlatVeeringQuadrangulation:
             sage: Q1 == Q2
             True
 
+            sage: from veerer.veering_quadrangulation import FlatVeeringQuadrangulation
             sage: zr = [(5,7), (3,2), (5,7)]
             sage: zl = [(-3,2), (-3,2), (-2,5)]
             sage: pir = '(0,1)(2)'
@@ -571,7 +690,6 @@ class FlatVeeringQuadrangulation:
         r"""
         Perform one step of induction and return the combinatorics.
         """
-        self._normalized = False
         representatives = []
         multiplicities = []
         for c in perm_cycles(self._pr, self._n):
@@ -644,6 +762,10 @@ class FlatVeeringQuadrangulation:
             self._zl[i][1] /= sy
 
     def plot(self):
+        from sage.plot.graphics import Graphics
+        from sage.plot.line import line2d
+        from sage.plot.polygon import polygon2d
+        from sage.plot.plot import graphics_array
         output = []
         n = self._n
         for i in range(n):
@@ -798,20 +920,22 @@ class VeeringQuadrangulationFlipSequence:
 
         EXAMPLES::
 
+            sage: from veerer.veering_quadrangulation import VeeringQuadrangulation, VeeringQuadrangulationFlipSequence
             sage: V = VeeringQuadrangulation("(0,1,2,3,4)", "(0)(1,4)(2,3)")
             sage: fp = VeeringQuadrangulationFlipSequence(V)
-            sage: fp.flip([0], [1])
-            sage: fp.flip([2], [1])
+            sage: fp.append_flip([0], [1])
+            sage: fp.append_flip([2], [1])
             sage: fp.append_relabelling("(0,3,1,4,2)")
             sage: assert fp.is_loop() and fp.is_complete()
 
             sage: V = VeeringQuadrangulation("(0)(1,2)", "(0,1,2)")
             sage: fp = VeeringQuadrangulationFlipSequence(V)
-            sage: fp.flip([0],[1])
-            sage: fp.flip([0],[1])
+            sage: fp.append_flip([0],[1])
+            sage: fp.append_flip([0],[1])
             sage: fp.append_relabelling(fp.find_closure())
             sage: assert fp.is_loop() and fp.is_complete()
             sage: fp.num_flips()
+            4
         """
         self._normalized = False
         n = self._start._n
@@ -861,12 +985,12 @@ class VeeringQuadrangulationFlipSequence:
 
             sage: V = VeeringQuadrangulation("(0,1)(2)", "(0,2)(1)")
             sage: fp = VeeringQuadrangulationFlipSequence(V)
-            sage: fp.flip([1,2],[2,0])
-            sage: fp.flip([0,1],[0,1])
-            sage: fp.flip([0,2],[0,1])
-            sage: fp.flip([2,1],[2,0])
+            sage: fp.append_flip([1,2],[2,0])
+            sage: fp.append_flip([0,1],[0,1])
+            sage: fp.append_flip([0,2],[0,1])
+            sage: fp.append_flip([2,1],[2,0])
             sage: fp
-            VeeringQuadrangulationFlipSequence(VeeringQuadrangulation("(0,1)(2)", "(0,2)(1)"), [((0, 2), (2, 0)), ((0, 1), (0, 1)), ((0, 2), (0, 1)), ((0, 1), (2, 0))], "(0)(1)(2)")
+            VeeringQuadrangulationFlipSequence(VeeringQuadrangulation("(0,1)(2)", "(0,2)(1)"), [((1, 2), (2, 0)), ((0, 1), (0, 1)), ((0, 2), (0, 1)), ((2, 1), (2, 0))], "(0)(1)(2)")
 
             sage: fp.matrix()
             [2 1 1|0 1 1]
@@ -975,7 +1099,7 @@ class VeeringQuadrangulationFlipSequence:
             if ans:
                 return (True, (jmin - imin + k * period, p)) if certificate else True
             rother.rotate(period)
-        
+
         return (False, None) if certificate else False
 
 
@@ -1071,7 +1195,38 @@ class VeeringQuadrangulationFlipSequence:
         res.append_relabelling(other._relabelling)
         return res
 
+    def __pow__(self, n):
+        r"""
+        TESTS::
+
+            sage: from veerer.veering_quadrangulation import VeeringQuadrangulation, VeeringQuadrangulationFlipSequence
+            sage: V = VeeringQuadrangulation("(0,1)(2)", "(0,2)(1)")
+            sage: fp = VeeringQuadrangulationFlipSequence(V)
+            sage: fp.append_flip([0,2],[2,1])
+            sage: fp.append_flip([0,1],[2,1])
+            sage: fp**0
+            VeeringQuadrangulationFlipSequence(VeeringQuadrangulation("(0,1)(2)", "(0,2)(1)"), [], "(0)(1)(2)")
+            sage: fp**1 == fp
+            True
+            sage: fp**2 == fp * fp
+            True
+        """
+        if self._end != self._start:
+            raise ValueError('can not take power of a non-loop')
+        n = int(n)
+        if n < 0:
+            raise ValueError
+        if n == 0:
+            return VeeringQuadrangulationFlipSequence(self._start)
+        res = self.copy()
+        for _ in range(n - 1):
+            res = res * self
+        return res
+
     def num_blocks(self):
+        r"""
+        Return the number of blocks.
+        """
         return len(self._flips)
 
     def num_flips(self):
@@ -1080,7 +1235,7 @@ class VeeringQuadrangulationFlipSequence:
 
         EXAMPLES::
 
-            sage: from veerer.veering_quadrangulation import VeeringQuadrangulationFlipSequence
+            sage: from veerer.veering_quadrangulation import VeeringQuadrangulation, VeeringQuadrangulationFlipSequence
 
             sage: V = VeeringQuadrangulation("(0,1)(2)", "(0,2)(1)")
             sage: fp = VeeringQuadrangulationFlipSequence(V)
@@ -1107,9 +1262,23 @@ class VeeringQuadrangulationFlipSequence:
                 ans += m * len(perm_orbit(q._pr, i))
         return ans
 
-    def num_flips_per_blocks(self):
+    def num_staircase_moves(self):
         r"""
+        Return the number of staircase moves.
+
         EXAMPLES::
+
+            sage: from veerer.veering_quadrangulation import VeeringQuadrangulation, VeeringQuadrangulationFlipSequence
+
+            sage: V = VeeringQuadrangulation("(0,1)(2)", "(0,2)(1)")
+            sage: fp = VeeringQuadrangulationFlipSequence(V)
+            sage: fp.append_flip([0,2],[2,1])
+            sage: fp.append_flip([0,1],[7,3])
+            sage: fp.num_staircase_moves()
+            13
+
+        The pseudo-Anosov with minimal dilatation in `H(2)` is also the one
+        with the least possible number of staircase moves::
 
             sage: V = VeeringQuadrangulation("(0)(1,2)", "(0,1,2)")
             sage: fp = VeeringQuadrangulationFlipSequence(V)
@@ -1117,8 +1286,27 @@ class VeeringQuadrangulationFlipSequence:
             sage: fp.append_flip([0],[1])
             sage: fp.append_relabelling(fp.find_closure())
             sage: assert fp.is_loop() and fp.is_complete()
+            sage: fp.num_staircase_moves()
+            2
+        """
+        ans = 0
+        for q, representatives, multiplicities in self:
+            ans += sum(multiplicities)
+        return ans
+
+    def num_flips_per_blocks(self):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer.veering_quadrangulation import VeeringQuadrangulation, VeeringQuadrangulationFlipSequence
+            sage: V = VeeringQuadrangulation("(0)(1,2)", "(0,1,2)")
+            sage: fp = VeeringQuadrangulationFlipSequence(V)
+            sage: fp.append_flip([0],[1])
+            sage: fp.append_flip([0],[1])
+            sage: fp.append_relabelling(fp.find_closure())
+            sage: assert fp.is_loop() and fp.is_complete()
             sage: fp.num_flips_per_blocks()
-            [((1, 1),), ((3, 1),)]
+            [((1, (3,)),), ((1, (1, 2, 2)),)]
         """
         q = self._start.copy()
         ans = []
@@ -1143,10 +1331,11 @@ class VeeringQuadrangulationFlipSequence:
 
         EXAMPLES::
 
+            sage: from veerer.veering_quadrangulation import VeeringQuadrangulation, VeeringQuadrangulationFlipSequence
             sage: V = VeeringQuadrangulation("(0,1)(2)", "(0,2)(1)")
             sage: fp = VeeringQuadrangulationFlipSequence(V)
-            sage: fp.flip([0,2],[2,1])
-            sage: fp.flip([0,1],[2,1])
+            sage: fp.append_flip([0,2],[2,1])
+            sage: fp.append_flip([0,1],[2,1])
             sage: assert fp.is_loop() and fp.is_complete()
             sage: sorted(fp.matrix().eigenvalues())
             [0.2277771042343813?, 0.5441132198971334?, 1, 1, 1.837852791352972?, 4.390256884515514?]
@@ -1177,7 +1366,7 @@ class VeeringQuadrangulationFlipSequence:
             sage: assert fp.is_loop() and fp.is_complete()
             sage: poly = fp.matrix().charpoly()
             sage: fp.rotate()
-            sage: assert p.matrix().charpoly() = poly
+            sage: assert fp.matrix().charpoly() == poly
         """
         if not self.is_loop():
             raise ValueError
@@ -1243,19 +1432,19 @@ class VeeringQuadrangulationFlipSequence:
 
         EXAMPLES::
 
-            sage: from veerer.quadrangulation import VeeringQuadrangulation, VeeringQuadrangulationFlipSequence
+            sage: from veerer.veering_quadrangulation import VeeringQuadrangulation, VeeringQuadrangulationFlipSequence
 
             sage: V = VeeringQuadrangulation("(0,1)(2)", "(0,2)(1)")
             sage: fp = VeeringQuadrangulationFlipSequence(V)
-            sage: fp.flip([0],[2])
-            sage: fp.flip([0],[2])
+            sage: fp.append_flip([0],[2])
+            sage: fp.append_flip([0],[2])
             sage: assert fp.is_loop()
             sage: fp.is_complete()
             False
             sage: fp.matrix().is_primitive()
             False
-            sage: fp.flip([2],[1])
-            sage: fp.flip([1],[1])
+            sage: fp.append_flip([2],[1])
+            sage: fp.append_flip([1],[1])
             sage: assert fp.is_loop()
             sage: fp.is_complete()
             True
@@ -1264,10 +1453,10 @@ class VeeringQuadrangulationFlipSequence:
 
             sage: V = VeeringQuadrangulation("(0,1,2)", "(0,1)(2)")
             sage: fp = VeeringQuadrangulationFlipSequence(V)
-            sage: fp.flip([0], [2])
-            sage: fp.flip([1], [1])
-            sage: fp.flip([1], [1])
-            sage: fp.flip([2], [1])
+            sage: fp.append_flip([0], [2])
+            sage: fp.append_flip([1], [1])
+            sage: fp.append_flip([1], [1])
+            sage: fp.append_flip([2], [1])
             sage: assert fp.is_loop()
             sage: fp.is_complete()
             False
@@ -1276,10 +1465,10 @@ class VeeringQuadrangulationFlipSequence:
 
             sage: V = VeeringQuadrangulation("(0,1,2)", "(0,1)(2)")
             sage: fp = VeeringQuadrangulationFlipSequence(V)
-            sage: fp.flip([0], [1])
-            sage: fp.flip([0], [1])
-            sage: fp.flip([0], [2])
-            sage: fp.flip([2], [1])
+            sage: fp.append_flip([0], [1])
+            sage: fp.append_flip([0], [1])
+            sage: fp.append_flip([0], [2])
+            sage: fp.append_flip([2], [1])
             sage: assert fp.is_loop()
             sage: fp.is_complete()
             False
@@ -1288,10 +1477,10 @@ class VeeringQuadrangulationFlipSequence:
 
             sage: V = VeeringQuadrangulation("(0,1,2)", "(0,1)(2)")
             sage: fp = VeeringQuadrangulationFlipSequence(V)
-            sage: fp.flip([0], [1])
-            sage: fp.flip([0,1], [1,0])
-            sage: fp.flip([0], [2])
-            sage: fp.flip([0,2], [0,1])
+            sage: fp.append_flip([0], [1])
+            sage: fp.append_flip([0,1], [1,0])
+            sage: fp.append_flip([0], [2])
+            sage: fp.append_flip([0,2], [0,1])
             sage: assert fp.is_loop()
             sage: fp.is_complete()
             False
@@ -1330,21 +1519,21 @@ class VeeringQuadrangulationFlipSequence:
         r"""
         EXAMPLES::
 
-            sage: from veerer.veering_quadrangulation import VeererQuadrangulation, VeeringQuadrangulationFlipSequence
+            sage: from veerer.veering_quadrangulation import VeeringQuadrangulation, VeeringQuadrangulationFlipSequence
 
             sage: V = VeeringQuadrangulation("(0,1)(2)", "(0,2)(1)")
             sage: fp = VeeringQuadrangulationFlipSequence(V)
-            sage: fp.flip([0,2],[2,1])
-            sage: fp.flip([0,1],[2,1])
-            sage: fp.flip([0,2],[0,1])
-            sage: fp.flip([0,1],[0,1])
+            sage: fp.append_flip([0,2],[2,1])
+            sage: fp.append_flip([0,1],[2,1])
+            sage: fp.append_flip([0,2],[0,1])
+            sage: fp.append_flip([0,1],[0,1])
             sage: fp.is_reduced_at_end()
             False
 
             sage: V = VeeringQuadrangulation("(0,1)(2)", "(0,2)(1)")
             sage: fp = VeeringQuadrangulationFlipSequence(V)
-            sage: fp.flip([0,2],[2,1])
-            sage: fp.flip([0,1],[2,1])
+            sage: fp.append_flip([0,2],[2,1])
+            sage: fp.append_flip([0,1],[2,1])
             sage: fp.is_reduced_at_end()
             True
 
@@ -1396,7 +1585,7 @@ class VeeringQuadrangulationFlipSequence:
 
     def find_closure(self):
         r"""
-        List automorphisms identifying end and start
+        Return an isomorphism identifying the end with start.
         """
         ans, p = self._end.is_isomorphic(self._start, True)
         return p if ans else None
@@ -1432,14 +1621,14 @@ class VeeringQuadrangulationFlipSequence:
         r"""
         EXAMPLES::
 
-            sage: from veerer.veering_quadrangulation import VeererQuadrangulation, VeeringQuadrangulationFlipSequence
+            sage: from veerer.veering_quadrangulation import VeeringQuadrangulation, VeeringQuadrangulationFlipSequence
 
         A square-tiled example with coordinates in `Q[\sqrt{2}]::
 
             sage: V = VeeringQuadrangulation("(0,1)(2)", "(0,2)(1)")
             sage: fp = VeeringQuadrangulationFlipSequence(V)
-            sage: fp.flip([0,2],[2,2])
-            sage: fp.flip([0,1],[2,2])
+            sage: fp.append_flip([0,2],[2,2])
+            sage: fp.append_flip([0,1],[2,2])
             sage: fp.is_loop() and fp.is_complete()
             True
             sage: fp.matrix()
@@ -1455,8 +1644,8 @@ class VeeringQuadrangulationFlipSequence:
 
             sage: V = VeeringQuadrangulation("(0,1)(2)", "(0,2)(1)")
             sage: fp = VeeringQuadrangulationFlipSequence(V)
-            sage: fp.flip([0,2],[2,1])
-            sage: fp.flip([0,1],[2,1])
+            sage: fp.append_flip([0,2],[2,1])
+            sage: fp.append_flip([0,1],[2,1])
             sage: fp.is_loop() and fp.is_complete()
             True
         """
@@ -1494,8 +1683,8 @@ class VeeringQuadrangulationFlipSequence:
 
             sage: V = VeeringQuadrangulation("(0,1)(2)", "(0,2)(1)")
             sage: fp = VeeringQuadrangulationFlipSequence(V)
-            sage: fp.flip([0,2],[2,2])
-            sage: fp.flip([0,1],[2,2])
+            sage: fp.append_flip([0,2],[2,2])
+            sage: fp.append_flip([0,1],[2,2])
             sage: F, a = fp.self_similar_surface()
             sage: FF = F.copy()
             sage: FF.flip()
@@ -1521,8 +1710,10 @@ def weighted_composition_iterator(
         max_sum=None,
         max_part=None):
     r"""
-    Iterator through the pair ``(c, w)`` where ``c`` is a weighted composition
-    with total weight ``w`` and ``w`` is smaller than ``limit``.
+    Iterator through the triple ``(c, w, s)`` where ``c`` is a weighted composition
+    of maximum weight at most ``max_weight``, maximum sum at most ``max_sum`` and
+    maximum part at most ``max_part``. The integers ``w`` and ``s`` are
+    respectively the remaining weight and sum.
 
     Be careful that the compositions ``c`` is modified inplace so that the
     ouptut has to be copied before usage.
@@ -1530,53 +1721,47 @@ def weighted_composition_iterator(
     TESTS::
 
         sage: from veerer.veering_quadrangulation import weighted_composition_iterator
-        sage: for c in weighted_composition_iterator([2,1,2], 6):
-        ....:     print(c)
-        ([1, 0, 0], 4)
-        ([2, 0, 0], 2)
-        ([0, 1, 0], 5)
-        ([1, 1, 0], 3)
-        ([2, 1, 0], 1)
-        ([0, 2, 0], 4)
-        ([1, 2, 0], 2)
-        ([0, 3, 0], 3)
-        ([1, 3, 0], 1)
-        ([0, 4, 0], 2)
-        ([0, 5, 0], 1)
-        ([0, 0, 1], 4)
-        ([1, 0, 1], 2)
-        ([0, 1, 1], 3)
-        ([1, 1, 1], 1)
-        ([0, 2, 1], 2)
-        ([0, 3, 1], 1)
-        ([0, 0, 2], 2)
-        ([0, 1, 2], 1)
 
-        sage: for c in weighted_composition_iterator([2], 2):
-        ....:     print(c)
+        sage: [c[:] for c,_,_ in weighted_composition_iterator(1, [2], max_weight=6)] == [[1], [2], [3]]
+        True
+        sage: [c[:] for c,_,_ in weighted_composition_iterator(1, max_sum=3)] == [[1], [2], [3]]
+        True
+        sage: [c[:] for c,_,_ in weighted_composition_iterator(2, [1,3], max_weight=7, max_sum=3)] == [[1, 0], [2, 0], [3, 0], [0, 1], [1, 1], [2, 1], [0, 2], [1, 2]]
+        True
     """
-    if max_part is None:
-        max_part = n
     if (weights is None) + (max_weight is None) == 1:
         raise ValueError("weights and max_weight should be specified together")
+
     if weights is None:
+        if max_sum is None:
+            raise ValueError("either weights or max_sum must be set")
         weights = [1] * n
         max_weight = max_sum
-    elif len(weights) != n:
+    elif len(weights) != n or any(w < 0 for w in weights):
         raise ValueError('invalid weights specification')
 
-    c = [0]*n   # current composition
+    if max_sum is None:
+        if any(w == 0 for w in weights):
+            raise ValueError('when zero weights are used, max_sum must be specified')
+        max_sum = max_weight
+
+    if max_part is None:
+        max_part = max_sum
+
+    c = [0] * n      # current composition
     w = max_weight   # available weight
     s = max_sum      # available sum
 
     while True:
-        # find the first element available to increase
+        # find the first element available to increase, and set
+        # all terms in between to zero
         i = 0
-        while i < n and s >= 1 and weights[i] >= w and c[i] == max_part:
+        while i < n and (s < 1 or w < weights[i] or c[i] == max_part):
             w += c[i] * weights[i]
             s += c[i]
             c[i] = 0
             i += 1
+
         if i == n:
             # can not increase any
             return
@@ -1600,9 +1785,9 @@ def path_to_string(q, path):
     return ' | '.join(spath)
 
 def all_paths(q,
-        max_staircase_moves=None,     # bound on the number of staircase moves
-        max_diagonal_changes=None,    # bound on the number of diagonal changes
-        max_blocks=None,              # bound on the number of blocks
+        max_staircase_moves,     # upper bound on the number of staircase moves
+        max_flips,               # upper bound on the number of diagonal changes
+        max_blocks,              # upper bound on the number of blocks
         last_move=None):
     r"""
     Iterator through all reduced flip sequences starting from a given veering
@@ -1614,20 +1799,23 @@ def all_paths(q,
 
     - ``max_staircase_moves`` - bound on the number of staircase moves (or
       equivalently the number of flips)
+      (sum)
 
-    - ``max_diagonal_changes`` - bound on the number of diagonal changes
+    - ``max_flips`` - bound on the number of diagonal changes
 
     - ``max_blocks`` - bound on the number of blocks
+      (alternation between left and right)
 
-    - ``last_move`` - (optional) internally used for the recursive calls
+    - ``last_move`` - (optional) internal parameter used for the recursive calls
     """
     n = q._n
-    if limit <= 0:
+    if max_staircase_moves <= 0 or max_flips <= 0 or max_blocks <= 0:
+        yield []
         return
     q0 = q.copy() # NOTE: just for extra check at the end of the loop
                   # could be removed in the future
     representatives, sizes = q.r_cycles_representatives(last_move)
-    for multiplicities, new_limit in weighted_composition_iterator(sizes, limit):
+    for multiplicities, new_max_flips, new_max_staircase_moves in weighted_composition_iterator(len(sizes), sizes, max_flips, max_staircase_moves):
         flipped = []
 
         for i,m in zip(representatives, multiplicities):
@@ -1638,7 +1826,11 @@ def all_paths(q,
 
         prefix = [(representatives, multiplicities)]
         yield prefix
-        for path in all_paths(q, new_limit, flipped):
+        for path in all_paths(q,
+            max_staircase_moves=new_max_staircase_moves,
+            max_flips=new_max_flips,
+            max_blocks=max_blocks-1,
+            last_move=flipped):
             yield prefix + path
 
         q.symmetry()
@@ -1655,16 +1847,29 @@ def all_paths_up_to_symmetry(q, limit, A, last_move=None):
 
 # TODO: in what form should we return the result?
 # TODO: be smarter for the bound on eigenvalues
-def hyperelliptic_length_spectrum(k, flips_limit, primitive=True):
+def hyperelliptic_length_spectrum(k, max_staircase_moves=None, max_flips=None, max_blocks=None, primitive=True, verbose=False):
     r"""
-    Return the primitive hyperelliptic length spectrum.
+    Return the primitive hyperelliptic length spectrum in C^hyp(k).
     """
+    k = int(k)
+
+    if max_staircase_moves is None and max_flips is None:
+        raise ValueError('at least one of max_staircase_moves or max_flips must be specified')
+    elif max_staircase_moves is None:
+        max_staircase_moves = max_flips
+    elif max_flips is None:
+        max_flips = k * max_staircase_moves
+
+    if max_blocks is None:
+        max_blocks = max_flips
+
     ans = {}
-    for fp in all_reduced_and_complete_loops(k, flips_limit, verbose=False):
+    for fp in all_reduced_and_complete_loops(k, max_staircase_moves, max_flips, max_blocks, verbose):
         cp = fp.matrix().charpoly()
         if cp not in ans:
             ans[cp] = []
-        ans[cp].append((fp.num_blocks(), fp.num_flips()))
+        assert fp.num_blocks() <= fp.num_staircase_moves() <= fp.num_flips()
+        ans[cp].append(fp)
 
     if not primitive:
         return ans
@@ -1674,85 +1879,97 @@ def hyperelliptic_length_spectrum(k, flips_limit, primitive=True):
     x, y = Rxy.gens()
     Rx = QQ['x']
     Ry = QQ['y']
-    for cp in sorted(ans, key = lambda x: min(nflips for (nblocks,nflips) in ans[x])):
+    for cp in sorted(ans, key = lambda x: min(fp.num_flips() for fp in ans[cp])):
         if not ans[cp]:
             # non-primitive data in the spectrum
             continue
 
-        minflip = min(nflips for (nblocks, nflips) in ans[cp])
+        minblocks = min(fp.num_blocks() for fp in ans[cp])
+        minstair = min(fp.num_staircase_moves() for fp in ans[cp])
+        minflip = min(fp.num_flips() for fp in ans[cp])
 
         # ans[cp] should only be primitive elements, check that
         # each appear with the correct multiplicity
-        for key in ans[cp]:
-            assert ans[cp].count(key) % key[0] == 0, (cp, ans[cp])
+        invariants = {}
+        for fp in ans[cp]:
+            key = (fp.num_blocks(), fp.num_staircase_moves(), fp.num_flips())
+            if key not in invariants:
+                invariants[key] = 0
+            invariants[key] += 1
+        for (nblocks, nstairs, nflips), multiplicity in invariants.items():
+            if multiplicity % nblocks != 0:
+                print("WARNING: wrong multiplicity of (num_blocks, num_staircase_moves, num_flips) for charpoly={}".format(cp))
+            elif multiplicity % nblocks != 0:
+                print("We have an example where (char poly, num blocks, num staircase moves, num flips) does not determine the conjugacy class")
 
         # remove multiples
         k = 2
-        while k * minflip < flips_limit:
+        while k * minflip < max_flips and k * minstair < max_staircase_moves and k * minblocks < max_blocks:
             # minimal polynomial of rho^k
             q = Rxy(cp).resultant(y - x**k, Rxy(x))
             cpk = Rx(Ry(q))
             assert cpk in ans
-            for nblocks, nflips in ans[cp]:
-                if k * nflips < flips_limit:
-                    ans[cpk].remove((k*nblocks, k*nflips))
+            for fp in ans[cp]:
+                nblocks = fp.num_blocks()
+                nstairs = fp.num_staircase_moves()
+                nflips = fp.num_flips()
+                if k * nblocks < max_blocks and k * nstairs < max_staircase_moves and k * nflips < max_flips:
+                    ans[cpk].remove(fp**k)
             k += 1
 
     return ans
 
 # TODO: marked loops, ie take into account possible automorphisms of the starting point
-def all_reduced_and_complete_loops(start, limit, verbose=False):
+def all_reduced_and_complete_loops(start, max_staircase_moves, max_flips, max_blocks, verbose=False):
     r"""
-    Each loop must appear as many times as the number of blocks. Symmetries
-    are taken care of.
+    Each loop must appear as many times as the number of blocks.
+
+    Currently only works for H(2g-2)^hyp (symmetries in the H(g-1,g-1)^hyp
+    cases are not taken care of).
     """
     if isinstance(verbose, str):
         output = open(verbose, 'w')
-    else:
+    elif verbose:
+        import sys
         output = sys.stdout
+
     # it is better to pick a Lyndon order that consider first the combinatorics and then
     # the multiplicities
     if isinstance(start, numbers.Integral):
         start = ferenczi_zamboni_class(start)
-    elif isinstance(start, VeeringQuadrangulation):
-        start = [start]
     else:
-        raise TypeError
+        raise TypeError('invalid input for q')
+
+
     for q in start:
         n = q._n
         qit = q.copy()
-        A = qit.to_origami().automorphism_group().gap()
-        A = [perm_init([p(i)-1 for i in range(1,n+1)], n) for p in A]
+        A = qit.to_origami().automorphism_group()
+        assert A.cardinality() == 1
 
-        # version without symmetries
-        if A.Size() == 1:
-            for path in all_paths(qit, limit):
-                ans, close = qit.is_isomorphic(q, True)
-                if ans:
-                    fp = VeeringQuadrangulationFlipSequence.__new__(VeeringQuadrangulationFlipSequence)
-                    fp._start = q.copy()
-                    fp._end = q.copy()
-                    fp._flips = [(tuple(representatives), tuple(multiplicities)) for representatives, multiplicities in path]
-                    fp._relabelling = perm_compose(close, a, n)
-                    fp._normalized = False
-                    assert fp.is_loop()
+        for path in all_paths(qit, max_staircase_moves, max_flips, max_blocks):
+            ans, close = qit.is_isomorphic(q, True)
+            if ans:
+                fp = VeeringQuadrangulationFlipSequence.__new__(VeeringQuadrangulationFlipSequence)
+                fp._start = q.copy()
+                fp._end = q.copy()
+                fp._flips = [(tuple(representatives), tuple(multiplicities)) for representatives, multiplicities in path]
+                fp._relabelling = close
+                fp._normalized = False
+                fp._check()
+                assert fp.is_loop()
 
-                    if verbose:
-                        print("fp = {}".format(fp), file=output)
-                        print("num blocks = {}".format(fp.num_blocks()), file=output)
-                        print("num flips = {}".format(fp.num_flips()), file=output)
-                        print("charpoly = {}".format(fp.matrix().charpoly()), file=output)
-                        print("closure = {}".format(fp._relabelling), file=output)
-                        print("reduced at end = {}".format(fp.is_reduced_at_end()), file=output)
-                        print("complete = {}".format(fp.is_complete()), file=output)
+                if verbose:
+                    print("fp = {}".format(fp), file=output)
+                    print("num blocks = {}".format(fp.num_blocks()), file=output)
+                    print("num flips = {}".format(fp.num_flips()), file=output)
+                    print("charpoly = {} = {}".format(fp.matrix().charpoly(), fp.matrix().charpoly().factor()), file=output)
+                    print("closure = {}".format(fp._relabelling), file=output)
+                    print("reduced at end = {}".format(fp.is_reduced_at_end()), file=output)
+                    print("complete = {}".format(fp.is_complete()), file=output)
 
-                    if fp.is_reduced_at_end() and fp.is_complete():
-                        yield fp
-
-        # version with symmetries
-        else:
-            for path, B in all_paths_up_to_symmetry(qit, limit, A):
-                ans, close = qit.is_isomorphic(q, True)
+                if fp.is_reduced_at_end() and fp.is_complete():
+                    yield fp
 
     if isinstance(verbose, str):
         output.close()
@@ -1768,6 +1985,7 @@ def ferenczi_zamboni_class(k, labelled=False):
 
     EXAMPLES::
 
+        sage: from veerer.veering_quadrangulation import ferenczi_zamboni_class
         sage: len(ferenczi_zamboni_class(2, labelled=True))
         3
         sage: len(ferenczi_zamboni_class(2, labelled=False))
