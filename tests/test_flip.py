@@ -17,7 +17,6 @@
 # along with veerer. If not, see <https://www.gnu.org/licenses/>.
 ######################################################################
 
-import sys
 import pytest
 
 pytest.importorskip('ppl')
@@ -103,4 +102,6 @@ def test_flip_reduced(fp, cols, repeat):
         assert V.edge_has_curve(e)
         assert V.forward_flippable_edges() == [e[0] for e in V.edges() if V.edge_colour(e[0]) == PURPLE], (V0, e, col)
 
-if __name__ == '__main__': sys.exit(pytest.main(sys.argv))
+if __name__ == '__main__':
+    import sys
+    sys.exit(pytest.main(sys.argv))

@@ -17,7 +17,6 @@
 # along with veerer. If not, see <https://www.gnu.org/licenses/>.
 ######################################################################
 
-import sys
 import pytest
 
 import itertools
@@ -60,4 +59,6 @@ def test_pow(repeat=50):
         assert r == q
 
 
-if __name__ == '__main__': sys.exit(pytest.main(sys.argv))
+if __name__ == '__main__':
+    import sys
+    sys.exit(pytest.main(sys.argv))

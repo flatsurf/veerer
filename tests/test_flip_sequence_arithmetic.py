@@ -17,7 +17,6 @@
 # along with veerer. If not, see <https://www.gnu.org/licenses/>.
 ######################################################################
 
-import sys
 import pytest
 
 from veerer.veering_triangulation import VeeringTriangulation
@@ -80,4 +79,6 @@ def test_power_Q_11_m5():
     assert A**2 == A*A
     assert A**3 == A*A*A
 
-if __name__ == '__main__': sys.exit(pytest.main(sys.argv))
+if __name__ == '__main__':
+    import sys
+    sys.exit(pytest.main(sys.argv))

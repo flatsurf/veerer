@@ -17,7 +17,6 @@
 # along with veerer. If not, see <https://www.gnu.org/licenses/>.
 ######################################################################
 
-import sys
 import pytest
 
 from veerer.permutation import perm_init
@@ -31,4 +30,6 @@ def test_relabel():
     assert T.edges() == [[0, 2], [1, 3], [4, 5]]
     T._check()
 
-if __name__ == '__main__': sys.exit(pytest.main(sys.argv))
+if __name__ == '__main__':
+    import sys
+    sys.exit(pytest.main(sys.argv))

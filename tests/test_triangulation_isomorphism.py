@@ -17,7 +17,6 @@
 # along with veerer. If not, see <https://www.gnu.org/licenses/>.
 ######################################################################
 
-import sys
 import pytest
 
 from veerer import Triangulation, VeeringTriangulation
@@ -84,4 +83,6 @@ def test_veering_isomorphism(fp, cols, repeat):
         V.relabel(cert)
         assert V == W
 
-if __name__ == '__main__': sys.exit(pytest.main(sys.argv))
+if __name__ == '__main__':
+    import sys
+    sys.exit(pytest.main(sys.argv))

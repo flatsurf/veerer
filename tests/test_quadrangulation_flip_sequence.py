@@ -17,7 +17,6 @@
 # along with veerer. If not, see <https://www.gnu.org/licenses/>.
 ######################################################################
 
-import sys
 import pytest
 
 import random
@@ -213,3 +212,7 @@ def test_failure_conjugate_in_H1_1():
 #        else:
 #            reciprocal = cp.parent()(list(cp)[::-1])
 #        assert flip_lengths[cp] == flip_lengths[reciprocal]
+
+if __name__ == '__main__':
+    import sys
+    sys.exit(pytest.main(sys.argv))

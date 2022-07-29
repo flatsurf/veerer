@@ -17,7 +17,6 @@
 # along with veerer. If not, see <https://www.gnu.org/licenses/>.
 ######################################################################
 
-import sys
 import pytest
 
 import random
@@ -85,4 +84,6 @@ def test_veering_flip_sequence_reconstruction(fp, cols, repeat):
         assert eval(repr(F)) == F, F
         V = F.end()
 
-if __name__ == '__main__': sys.exit(pytest.main(sys.argv))
+if __name__ == '__main__':
+    import sys
+    sys.exit(pytest.main(sys.argv))

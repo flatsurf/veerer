@@ -17,10 +17,7 @@
 # along with veerer. If not, see <https://www.gnu.org/licenses/>.
 ######################################################################
 
-import sys
 import pytest
-
-import random
 from veerer import VeeringTriangulation, RED, BLUE, PURPLE, GREEN
 
 @pytest.mark.parametrize("fp, cols",
@@ -34,19 +31,9 @@ from veerer import VeeringTriangulation, RED, BLUE, PURPLE, GREEN
 ])
 def test_triangle(fp, cols):
     V = VeeringTriangulation(fp, cols)
-    assert V.angles() == [1, 1, 1, 1], V
+    A = V.abelian_cover()
+    assert A.angles() == [2], (V, A)
 
-@pytest.mark.parametrize("fp, cols",
-[
- ("(0,1,2)(~0,~1,~2)", "RRB"),
- ("(0,1,2)(~0,~1,~2)", "BBR"),
- ("(0,1,2)(~0,~1,~2)", "PBR"),
- ("(0,1,2)(~0,~1,~2)", "GRB"),
- ("(0,1,2)(~0,~1,~2)", "RPG"),
- ("(0,1,2)(~0,~1,~2)", "BGP")
-])
-def test_torus(fp, cols):
-    V = VeeringTriangulation(fp, cols)
-    assert V.angles() == [2], V
-
-if __name__ == '__main__': sys.exit(pytest.main(sys.argv))
+if __name__ == '__main__':
+    import sys
+    sys.exit(pytest.main(sys.argv))

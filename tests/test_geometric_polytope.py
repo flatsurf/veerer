@@ -17,7 +17,6 @@
 # along with veerer. If not, see <https://www.gnu.org/licenses/>.
 ######################################################################
 
-import sys
 import pytest
 
 pytest.importorskip('ppl')
@@ -65,4 +64,6 @@ def test_geometric_flips(fp, cols, repeat):
             V.flip(e, col)
         assert V.is_geometric()
 
-if __name__ == '__main__': sys.exit(pytest.main(sys.argv))
+if __name__ == '__main__':
+    import sys
+    sys.exit(pytest.main(sys.argv))
