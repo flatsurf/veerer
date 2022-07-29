@@ -8,8 +8,6 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  # sphinx is incompatible with python 4
-  - python <3.10
   - pytest
   - pytest-xdist
   - ipywidgets
@@ -28,7 +26,7 @@ dependencies:
   - pyintervalxt >=3.1.0,<4  # optional: pyintervalxt
   # sphinx 4 produces a warning currently that looks like a bug in sphinx:
   # <unknown>:1:py:obj reference target not found: surface_dynamics.flat_surfaces.abelian_strata.c
-  - sphinx >=3.0.0,<4  # optional: doc
+  - sphinx  # optional: doc
   - pip
   - surface-dynamics  # optional: surface-dynamics
   - pip:
