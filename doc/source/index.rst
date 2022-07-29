@@ -11,4 +11,7 @@ Welcome to veerer's documentation!
    :caption: Contents:
 
    installation
+   background
    veerer_demo
+   ferenczi_zamboni
+   references
