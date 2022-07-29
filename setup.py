@@ -8,22 +8,6 @@ def readfile(filename):
     with codecs.open(filename,  encoding='utf-8') as f:
         return f.read()
 
-class TestCommand(Command):
-    user_options = []
-
-    def initialize_options(self):
-        pass
-
-    def finalize_options(self):
-        pass
-
-    def run(self):
-        import subprocess
-
-        if subprocess.call(['sage', '-t', '--force-lib', 'veerer/']):
-            raise SystemExit("Doctest failures")
-
-
 setup(
     name='veerer',
     version=readfile("VERSION"),
@@ -34,7 +18,6 @@ setup(
     url='https://framagit.org/saulsch/Veerer',
     # Remember to update these if the directory structure changes.
     packages=['veerer/'],
-    install_requires=['six'],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Science/Research',
@@ -43,6 +26,5 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Topic :: Scientific/Engineering :: Mathematics',
-        ],
-    cmdclass = {'test': TestCommand}
+        ]
 )
