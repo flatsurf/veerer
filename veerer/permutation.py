@@ -45,6 +45,60 @@ def argmin(l):
             imin = i
     return imin
 
+def least_rotation(S):
+    """
+    Return the pair ``(index of smallest rotation, period)`` of the list ``S``.
+
+    Implementation of Booth's algorithm.
+
+    EXAMPLES::
+
+        sage: from veerer.permutation import least_rotation
+
+        sage: least_rotation([1,0])
+        (1, 2)
+        sage: least_rotation([0,1,0])
+        (2, 3)
+        sage: least_rotation([0,1,1,0,1])
+        (3, 5)
+        sage: least_rotation([0,1,0,1,1])
+        (0, 5)
+
+    Adding some period to the above examples::
+
+        sage: least_rotation([1,0]*4)
+        (1, 2)
+        sage: least_rotation([0,1,0]*5)
+        (2, 3)
+        sage: least_rotation([0,1,1,0,1]*3)
+        (3, 5)
+        sage: least_rotation([0,1,0,1,1]*2)
+        (0, 5)
+    """
+    l = len(S)
+    S = S + S
+    f = [-1] * len(S)  # failure function
+    k = 0              # least rotation of string found so far
+    period = 0
+    for j in range(1, len(S)):
+        sj = S[j]
+        i = f[j - k - 1]
+        while i != -1 and sj != S[k + i + 1]:
+            if sj < S[k + i + 1]:
+                k = j - i - 1
+            i = f[i]
+        if sj != S[k + i + 1]:  # if sj != S[k+i+1], then i == -1
+            if sj < S[k]:  # better index
+                k = j
+            f[j - k] = -1
+        else:
+            f[j - k] = i + 1
+    # NOTE: the loop below could probably be included in the above loop
+    for period in range(l):
+        if f[period+l] == l:
+            return (k, period)
+    return (k, l)
+
 #####################################################################
 # Initialization and conversion
 #####################################################################
@@ -137,7 +191,7 @@ def perm_is_one(p, n=None):
 
 def perm_init(data, n=None, involution=None):
     """
-    Returns a permutation from the given data.
+    Return a permutation from the given data.
 
     If data is a list of integers, then they are considered to be
     the images of the permutation. If ``data`` is a list of list
@@ -220,7 +274,7 @@ def perm_init(data, n=None, involution=None):
 
 def perm_from_cycles(t, n=None, involution=None):
     r"""
-    Returns a permutation on `[0, n-1]` from a list of cycles on `[0, n-1]`
+    Return a permutation on `[0, n-1]` from a list of cycles on `[0, n-1]`
 
     INPUT:
 
@@ -284,7 +338,7 @@ def perm_from_cycles(t, n=None, involution=None):
 
 def str_to_cycles(s):
     """
-    Returns a list of cycles from a string.
+    Return a list of cycles from a string.
 
     EXAMPLES::
 
@@ -644,7 +698,7 @@ def perm_cycle_type(p, n=None):
 
 def perm_cycle_string(p, singletons=True, n=None, involution=None):
     r"""
-    Returns a string representing the cycle decomposition of `p`
+    Return a string representing the cycle decomposition of `p`
 
     EXAMPLES::
 
@@ -664,7 +718,7 @@ def perm_cycle_string(p, singletons=True, n=None, involution=None):
 
 def perm_orbit(p, i):
     r"""
-    Returns the orbit of an integer `i` under the permutation `p`
+    Return the orbit of ``i`` under the permutation ``p``.
 
     EXAMPLES::
 
@@ -678,6 +732,25 @@ def perm_orbit(p, i):
         res.append(j)
         j = p[j]
     return res
+
+def perm_orbit_size(p, i):
+    r"""
+    Return the size of the orbit of ``i`` under the permutation ``p``.
+
+    EXAMPLES::
+
+        sage: from veerer.permutation import perm_orbit_size
+        sage: perm_orbit_size([0,3,1,2], 2)
+        3
+        sage: perm_orbit_size([0,3,1,2], 0)
+        1
+    """
+    s = 1
+    j = p[i]
+    while j != i:
+        s += 1
+        j = p[j]
+    return s
 
 def perm_preimage(p, i):
     r"""
@@ -798,7 +871,7 @@ def perm_on_cyclic_list(p, t):
 
 def perm_invert(l, n=None):
     r"""
-    Returns the inverse of the permutation ``l``.
+    Return the inverse of the permutation ``l``.
 
     EXAMPLES::
 
@@ -822,7 +895,7 @@ def perm_invert(l, n=None):
 
 def perm_compose(p1, p2, n=None):
     r"""
-    Returns the product ``p1 p2``.
+    Return the product ``p1 p2``.
 
     In the notation ``p1 p2`` we use the right action, in other words
     ``p1`` is applied first.

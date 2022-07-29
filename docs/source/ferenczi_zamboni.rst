@@ -8,6 +8,34 @@ Ferenczi-Zamboni induction is a particularly nice way to do veering
 flips in hyperelliptic strata of Abelian differentials (or equivalently,
 minimal strata of quadratic differentials on the sphere).
 
+Torus case or `\mathcal{Q}(-1^4)`
+---------------------------------
+
+There are only two possible moves::
+
+    sage: from veerer import VeeringTriangulation, VeeringFlipSequence
+    sage: V = VeeringTriangulation("(0,1,2)", "PBR")
+    sage: R = VeeringFlipSequence(V, "0R", [2,1,0])
+    sage: L = VeeringFlipSequence(V, "0B", [1,0,2])
+
+The smallest dilatation is the golden rotation::
+
+    sage: assert R.is_closed() and L.is_closed()
+    sage: fp = R * L
+    sage: fp
+    VeeringFlipSequence(VeeringTriangulation("(0,1,2)", "PBR"), "0R 2B", "(0,2,1)")
+    sage: a, S = fp.self_similar_surface()
+    sage: SS = S.copy()
+    sage: SS.flip(0)
+    sage: SS.flip(2)
+    sage: SS.relabel("(0,2,1)")
+    sage: SS.xy_scaling(a, 1/a)
+    sage: SS == S
+    True
+
+`\mathcal{H}(2)` or `\mathcal{Q}(1,-1^5)`
+-----------------------------------------
+
 The case of 3 triangles correspond in terms of strata to H(2) (which is
 the canonical orientation cover of Q(1,-1^5) on the sphere). The
 Ferenczi-Zamboni automaton is made of three triangulations. We denote them
