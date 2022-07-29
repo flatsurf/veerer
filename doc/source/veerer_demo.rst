@@ -16,12 +16,12 @@ Veering triangulation demo
 
 ``veerer`` is a Python library for exploration of veering
 triangulations. It is written by
-`Mark Bell <https://markcbell.github.io/build/html/index.html>`_,
+`Mark Bell <https://markcbell.github.io>`_,
 `Vincent Delecroix <http://www.labri.fr/perso/vdelecro/>`_ and
 `Saul Schleimer <http://homepages.warwick.ac.uk/~masgar/>`_. It is
 part of a project that also involve
 `Vaibhav Gadre <http://www.maths.gla.ac.uk/~vgadre/>`_ and
-`Rodolfo Gutiérrez-Romo <https://webusers.imj-prg.fr/~rodolfo.gutierrez/>`_.
+`Rodolfo Gutiérrez-Romo <http://rodol.fo>`_.
 
 ``veerer`` works in conjunction with ``pplpy`` (for rational polytope
 computations and optimiation) and ``surface_dynamics`` (for analyzing
