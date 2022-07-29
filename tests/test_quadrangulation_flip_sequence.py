@@ -107,7 +107,7 @@ def test_rotate(pr, pl, repeat):
      ("(0,3,2,1)", "(0,3)(1,2)", 20),
      ("(0,1,2,3,4)", "(0)(1,4)(2,3)", 20)])
 def test_conjugate(pr, pl, repeat):
-    pytest.importskip('surface_dynamics')
+    pytest.importorskip('surface_dynamics')
     for _ in range(repeat):
         fp = random_flip_sequence(pr, pl, loop=True)
         n = fp._start._n
