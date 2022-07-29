@@ -8,6 +8,8 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  # sphinx is incompatible with python 4
+  - python <3.10
   - pytest
   - pytest-xdist
   - ipywidgets
