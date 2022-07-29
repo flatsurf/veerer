@@ -17,7 +17,6 @@
 # along with veerer. If not, see <https://www.gnu.org/licenses/>.
 ######################################################################
 
-import sys
 import pytest
 
 pytest.importorskip('ppl')
@@ -78,4 +77,6 @@ def test_flip_reduced(fp, cols, repeat):
         assert P.is_cylindrical(PURPLE) == (B.is_square_tiled(BLUE) and R.is_square_tiled(RED)), P
 
 
-if __name__ == '__main__': sys.exit(pytest.main(sys.argv))
+if __name__ == '__main__':
+    import sys
+    sys.exit(pytest.main(sys.argv))
