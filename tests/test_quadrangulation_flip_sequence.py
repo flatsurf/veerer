@@ -72,6 +72,7 @@ def test_append_relabelling(pr, pl, repeat):
      ("(0,3,2,1)", "(0,3)(1,2)", 20),
      ("(0,1,2,3,4)", "(0)(1,4)(2,3)", 20)])
 def test_relabel(pr, pl, repeat):
+    pytest.importorskip('surface_dynamics')
     for _ in range(repeat):
         fp = random_flip_sequence(pr, pl, loop=True)
         n = fp._start._n
@@ -88,6 +89,7 @@ def test_relabel(pr, pl, repeat):
      ("(0,3,2,1)", "(0,3)(1,2)", 20),
      ("(0,1,2,3,4)", "(0)(1,4)(2,3)", 20)])
 def test_rotate(pr, pl, repeat):
+    pytest.importorskip('surface_dynamics')
     for _ in range(repeat):
         fp = random_flip_sequence(pr, pl, loop=True)
         n = fp._start._n
@@ -151,6 +153,8 @@ def test_failure_conjugate_in_H6():
              ("(0,4,1)(2,3)(5,6)", "(0,5,6)(1,2,3,4)",
               [((0,), (1,)), ((0,), (1,)), ((5,), (1,)), ((0,), (1,))],
               "(0,3,6,2,5,1,4)")]
+
+    pytest.importorskip('surface_dynamics')
 
     flip_sequences = [VeeringQuadrangulationFlipSequence(VeeringQuadrangulation(pr, pl), flips, relabelling) for pr, pl, flips, relabelling in data]
 
