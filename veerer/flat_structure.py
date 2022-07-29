@@ -390,14 +390,14 @@ class FlatVeeringTriangulation(Triangulation):
             sage: from veerer import *
             sage: T = VeeringTriangulation("(0,1,2)(~0,~1,3)", "BRRR")
             sage: F = T.flat_structure_min()
-            sage: F.plot()
+            sage: F.plot()  # not tested (warning in matplotlib)
             Graphics object consisting of 15 graphics primitives
 
-            sage: F.plot(horizontal_train_track=True)
+            sage: F.plot(horizontal_train_track=True)  # not tested (matplotlib warning)
             Graphics object consisting of 19 graphics primitives
-            sage: F.plot(vertical_train_track=True)
+            sage: F.plot(vertical_train_track=True)  # not tested (matplotlib warning)
             Graphics object consisting of 19 graphics primitives
-            sage: F.plot(horizontal_train_track=True, vertical_train_track=True)
+            sage: F.plot(horizontal_train_track=True, vertical_train_track=True)  # not tested (matplotlib warning)
             Graphics object consisting of 23 graphics primitives
         """
         return self.layout().plot(*args, **kwds)

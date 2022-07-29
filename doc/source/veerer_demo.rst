@@ -113,7 +113,7 @@ colors.
 ::
 
     sage: FS2 = T2.flat_structure_min()
-    sage: FS2.plot().show(figsize=5)
+    sage: FS2.plot().show(figsize=5)  # not tested (warning from matplotlib)
 
 
 Viewing train-tracks!

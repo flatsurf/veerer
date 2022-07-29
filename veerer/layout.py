@@ -1075,7 +1075,7 @@ class FlatVeeringTriangulationLayout(object):
             sage: from veerer import *
             sage: T = VeeringTriangulation("(0,1,2)(~0,~1,3)", "BRRR")
             sage: F = T.flat_structure_min().layout()
-            sage: F.plot() + F.plot_orbit((0,1/4),4)
+            sage: F.plot() + F.plot_orbit((0,1/4),4)  # not tested (warning in matplotlib)
             Graphics object consisting of 19 graphics primitives
         """
         G = Graphics()
