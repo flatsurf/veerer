@@ -47,7 +47,7 @@ release = u''
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sage_autodoc',
+    'sphinx.ext.autodoc',
     'sphinx.ext.mathjax',
 ]
 
