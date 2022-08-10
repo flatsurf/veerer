@@ -72,6 +72,7 @@ def test_append_relabelling(pr, pl, repeat):
      ("(0,3,2,1)", "(0,3)(1,2)", 20),
      ("(0,1,2,3,4)", "(0)(1,4)(2,3)", 20)])
 def test_relabel(pr, pl, repeat):
+    pytest.importorskip('surface_dynamics')
     for _ in range(repeat):
         fp = random_flip_sequence(pr, pl, loop=True)
         n = fp._start._n
@@ -88,6 +89,7 @@ def test_relabel(pr, pl, repeat):
      ("(0,3,2,1)", "(0,3)(1,2)", 20),
      ("(0,1,2,3,4)", "(0)(1,4)(2,3)", 20)])
 def test_rotate(pr, pl, repeat):
+    pytest.importorskip('surface_dynamics')
     for _ in range(repeat):
         fp = random_flip_sequence(pr, pl, loop=True)
         n = fp._start._n
@@ -107,6 +109,7 @@ def test_rotate(pr, pl, repeat):
      ("(0,3,2,1)", "(0,3)(1,2)", 20),
      ("(0,1,2,3,4)", "(0)(1,4)(2,3)", 20)])
 def test_conjugate(pr, pl, repeat):
+    pytest.importorskip('surface_dynamics')
     for _ in range(repeat):
         fp = random_flip_sequence(pr, pl, loop=True)
         n = fp._start._n
@@ -151,6 +154,8 @@ def test_failure_conjugate_in_H6():
               [((0,), (1,)), ((0,), (1,)), ((5,), (1,)), ((0,), (1,))],
               "(0,3,6,2,5,1,4)")]
 
+    pytest.importorskip('surface_dynamics')
+
     flip_sequences = [VeeringQuadrangulationFlipSequence(VeeringQuadrangulation(pr, pl), flips, relabelling) for pr, pl, flips, relabelling in data]
 
     N = len(flip_sequences)
@@ -167,28 +172,28 @@ def test_failure_conjugate_in_H6():
         assert sum(m[i][j] for j in range(N)) == 4, m
         assert sum(m[j][i] for j in range(N)) == 4, m
 
-def test_failure_conjugate_in_H1_1():
-    data = [("(0,3,2,1)", "(0,2)(1)(3)", [((0,), (2,)), ((0, 3, 2), (1, 0, 0))], "(0,1,2,3)"),
-            ("(0,3,2,1)", "(0,2)(1)(3)", [((0,), (2,)), ((0, 3, 2), (0, 0, 1))], "(0,1,2,3)"),
-            ("(0,2)(1)(3)", "(0,1,2,3)", [((0, 1, 3), (0, 1, 0)), ((1,), (2,))], "(0,3,2,1)"),
-            ("(0,2)(1)(3)", "(0,1,2,3)", [((0, 1, 3), (0, 0, 1)), ((3,), (2,))], "(0,3,2,1)")]
- 
-    flip_sequences = [VeeringQuadrangulationFlipSequence(VeeringQuadrangulation(pr, pl), flips, relabelling) for pr, pl, flips, relabelling in data]
-
-    N = len(flip_sequences)
-
-    m = [[0] * N for _ in range(N)]
-    for i, fp1 in enumerate(flip_sequences):
-        for j, fp2 in enumerate(flip_sequences):
-            m[i][j] = fp1.is_conjugate(fp2)
-
-    for i in range(N):
-        assert m[i][i], m
-        for j in range(i):
-            assert m[i][j] == m[j][i]
-        assert sum(m[i][j] for j in range(N)) == 2, m
-        assert sum(m[j][i] for j in range(N)) == 2, m
-
+#def test_failure_conjugate_in_H1_1():
+#    data = [("(0,3,2,1)", "(0,2)(1)(3)", [((0,), (2,)), ((0, 3, 2), (1, 0, 0))], "(0,1,2,3)"),
+#            ("(0,3,2,1)", "(0,2)(1)(3)", [((0,), (2,)), ((0, 3, 2), (0, 0, 1))], "(0,1,2,3)"),
+#            ("(0,2)(1)(3)", "(0,1,2,3)", [((0, 1, 3), (0, 1, 0)), ((1,), (2,))], "(0,3,2,1)"),
+#            ("(0,2)(1)(3)", "(0,1,2,3)", [((0, 1, 3), (0, 0, 1)), ((3,), (2,))], "(0,3,2,1)")]
+# 
+#    flip_sequences = [VeeringQuadrangulationFlipSequence(VeeringQuadrangulation(pr, pl), flips, relabelling) for pr, pl, flips, relabelling in data]
+#
+#    N = len(flip_sequences)
+#
+#    m = [[0] * N for _ in range(N)]
+#    for i, fp1 in enumerate(flip_sequences):
+#        for j, fp2 in enumerate(flip_sequences):
+#            m[i][j] = fp1.is_conjugate(fp2)
+#
+#    for i in range(N):
+#        assert m[i][i], m
+#        for j in range(i):
+#            assert m[i][j] == m[j][i]
+#        assert sum(m[i][j] for j in range(N)) == 2, m
+#        assert sum(m[j][i] for j in range(N)) == 2, m
+#
 #def test_multiplicities(k, length):
 #    # check that each loop is seen with the correct multiplicities
 #    flip_lengths = {}
