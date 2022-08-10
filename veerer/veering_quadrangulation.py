@@ -1623,7 +1623,7 @@ class VeeringQuadrangulationFlipSequence:
 
             sage: from veerer.veering_quadrangulation import VeeringQuadrangulation, VeeringQuadrangulationFlipSequence
 
-        A square-tiled example with coordinates in `Q[\sqrt{2}]::
+        A square-tiled example with coordinates in `Q[\sqrt{2}]`::
 
             sage: V = VeeringQuadrangulation("(0,1)(2)", "(0,2)(1)")
             sage: fp = VeeringQuadrangulationFlipSequence(V)
@@ -1716,7 +1716,7 @@ def weighted_composition_iterator(
     respectively the remaining weight and sum.
 
     Be careful that the compositions ``c`` is modified inplace so that the
-    ouptut has to be copied before usage.
+    output has to be copied before usage.
 
     TESTS::
 
@@ -2063,8 +2063,8 @@ def _uniq_primitive(paths):
         else:
             nb_nf[k] = [p]
 
-    # TOOO: when the path is not symmetric but the start is we get multiple times
-    # the guy... (with different relabelling)
+    # TODO: when the path is not symmetric but the start is, we get
+    # multiple times the guy... (with different relabelling)
 
     for k, paths in nb_nf.items():
         nb, nf = k
