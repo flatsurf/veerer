@@ -17,7 +17,7 @@ Additional features are available if this module is used inside
 `SageMath <https://www.sagemath.org/>`_.
 
 Computations involving polytopes are only available if the Python module
-`pplpy <https://github.com/flatsurf/pplpy>`_ is available. It is installed
+`pplpy <https://github.com/sagemath/pplpy>`_ is available. It is installed
 by default with SageMath, version 8.7 or above.
 
 Example
