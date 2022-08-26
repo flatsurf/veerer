@@ -102,10 +102,10 @@ def face_edge_perms_init(data):
 #
 # TODO: implement: is_removable(), remove(), add()
 #
-# NOTE: Many of the above is already done in the flatsurf package
-# with a quite different encoding
+# NOTE: Much of the above is already done in the flatsurf package
+# with a quite different encoding, see
 #
-#    https://github.com/videlec/sage-flatsurf
+#    https://github.com/flatsurf/sage-flatsurf
 
 class Triangulation(object):
     r"""
