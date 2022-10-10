@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-import os
 import codecs
 from distutils.core import setup
-from distutils.cmd import Command
+
 
 def readfile(filename):
     with codecs.open(filename,  encoding='utf-8') as f:
         return f.read()
+
 
 setup(
     name='veerer',
@@ -15,8 +15,7 @@ setup(
     long_description=readfile("README.rst"),
     author='Mark Bell, Vincent Delecroix and Saul Schleimer',
     author_email='vincent.delecroix@u-bordeaux.fr',
-    url='https://framagit.org/saulsch/Veerer',
-    # Remember to update these if the directory structure changes.
+    url='https://github.com/flatsurf/veerer',
     packages=['veerer/'],
     classifiers=[
         'Development Status :: 4 - Beta',
