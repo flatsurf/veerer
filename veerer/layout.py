@@ -217,7 +217,7 @@ class FlatVeeringTriangulationLayout(object):
     # sometimes we end up with non-valid positions...
     def glue_edge(self, e):
         r"""
-        Glue the triangle accross the edge ``e`` to ``E`` so that
+        Glue the triangle across the edge ``e`` to ``E`` so that
         we have a quadrilateral around ``e``.
 
         TESTS::
