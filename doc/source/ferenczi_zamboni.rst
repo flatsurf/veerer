@@ -6,7 +6,9 @@ Ferenczi-Zamboni induction
 
 Ferenczi-Zamboni induction is a particularly nice way to do veering
 flips in hyperelliptic strata of Abelian differentials (or equivalently,
-minimal strata of quadratic differentials on the sphere).
+minimal strata of quadratic differentials on the sphere). They
+are defined in [FeZa10]_, [CaFeZa11]_ and put into a more geometrical
+context in [DeUl15]_.
 
 Torus case or `\mathcal{Q}(-1^4)`
 ---------------------------------

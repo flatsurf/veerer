@@ -10,6 +10,7 @@ channels:
 dependencies:
   - pytest
   - pytest-xdist
+  - ipywidgets
   - scipy
   - matplotlib-base
   - gap-defaults
