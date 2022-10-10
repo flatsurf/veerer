@@ -16,6 +16,8 @@ dependencies:
   - sympy
   - sagemath-db-conway-polynomials
   - sagelib
+  # some of the tests rely on ipywidgets which is not required by sagelib
+  - ipywidgets
   # sagelib<9.2 does not explicitly install libiconv which is needed in lots of places.
   - libiconv
   # Work around https://github.com/conda-forge/givaro-feedstock/issues/13
@@ -23,9 +25,7 @@ dependencies:
   - sage-flatsurf  # optional: sage_flatsurf
   - pyeantic >=1.0.0,<2  # optional: pyeantic
   - pyintervalxt >=3.1.0,<4  # optional: pyintervalxt
-  # sphinx 4 produces a warning currently that looks like a bug in sphinx:
-  # <unknown>:1:py:obj reference target not found: surface_dynamics.flat_surfaces.abelian_strata.c
-  - sphinx >=3.0.0,<4  # optional: doc
+  - spinx >=4.2.0,<5  # optional: doc
   - pip
   - surface-dynamics  # optional: surface-dynamics
   - pip:
