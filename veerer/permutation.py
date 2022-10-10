@@ -980,7 +980,7 @@ def perm_compose_01(p1, p2, n=None):
 
 def perm_compose_11(p1, p2, n=None):
     r"""
-    Return the product ``p1^(-1) p2^(-1)
+    Return the product `p1^(-1) p2^(-1)`.
 
     EXAMPLES::
 

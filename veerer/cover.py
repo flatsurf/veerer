@@ -10,12 +10,13 @@ from array import array
 from .permutation import *
 from .triangulation import Triangulation
 
+
 class TriangulationCover(object):
     r"""
     A triangulation cover
 
     We consider ramified cover with arbitrary ramifications at the vertices and
-    at mot double ramification at the middle of folded edges. A covering of
+    at most double ramification at the middle of folded edges. A covering of
     degree d of a triangulation with n half edges is determined by a tuple of n
     permutations in S_d.
 

@@ -2196,7 +2196,7 @@ class VeeringTriangulation(Triangulation):
                     lbdry.reverse()
                     rbdry.reverse()
                     rbdry, lbdry = lbdry, rbdry
-                    lbdry.pop()  # a0 will be added again at the begining of next loop
+                    lbdry.pop()  # a0 will be added again at the beginning of next loop
                     assert cols[c0] == opcol
                     a, b, c = b0, c0, a0
                     typ = LEFT
@@ -2575,7 +2575,7 @@ class VeeringTriangulation(Triangulation):
     @staticmethod
     def _tt_check(x):
         if not x:
-            raise AssertionError("does not satisfy train-track contraints".format(x))
+            raise AssertionError("does not satisfy train-track constraints".format(x))
 
     def _set_train_track_constraints(self, insert, x, slope, low_bound, allow_degenerations):
         r"""
@@ -2632,7 +2632,7 @@ class VeeringTriangulation(Triangulation):
             sage: T._set_train_track_constraints(T._tt_check, [1,1,1], HORIZONTAL, False, False)
             Traceback (most recent call last):
             ...
-            AssertionError: does not satisfy train-track contraints
+            AssertionError: does not satisfy train-track constraints
 
         Check equations with folded edges (that are "counted twice")::
 

@@ -120,23 +120,23 @@ class Triangulation(object):
 
     Each of fp, ep, vp is a permutation of oriented half-edges (aka
     "darts"), given as a function.  Our conventions for the
-    permutations are set out in the following figure:
+    permutations are set out in the following figure::
 
-          ~b
-        ----->
-    w-----------*-----------v
-     \             <-----  /
-      \ \             b   / /
-       \ \ c             / /~a
-        \ \     F       / /
-         \ v           / v
-          *         ^ *
-         ^ \       / /
-          \ \   a / /
-         ~c\ \   / /
-            \ \   /
-               \ /
-                u
+              ~b
+            ----->
+        w-----------*-----------v
+         \             <-----  /
+          \ \             b   / /
+           \ \ c             / /~a
+            \ \     F       / /
+             \ v           / v
+              *         ^ *
+             ^ \       / /
+              \ \   a / /
+             ~c\ \   / /
+                \ \   /
+                   \ /
+                    u
 
     Here the face permutation sends a to b, b to c, and c to a.  The
     vertex permutation send a to ~c, b to ~a, and c to ~b.  The edge
@@ -1519,7 +1519,7 @@ class Triangulation(object):
 
     def is_isomorphic_to(self, other, certificate=False):
         r"""
-        Check wheter ``self`` is isomorphic to ``other``.
+        Check whether ``self`` is isomorphic to ``other``.
 
         TESTS::
 

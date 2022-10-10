@@ -479,9 +479,9 @@ class FlatVeeringTriangulation(Triangulation):
 
     def relabel(self, p):
         r"""
-        Relabel the flat structure with te permutation `p`.
+        Relabel the flat structure with the permutation `p`.
 
-        EXAMPLES:
+        EXAMPLES::
 
             sage: from veerer import Triangulation, FlatVeeringTriangulation
             sage: T = Triangulation("(0,1,2)(3,4,~0)(5,6,~1)")
