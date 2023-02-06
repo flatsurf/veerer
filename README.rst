@@ -28,7 +28,7 @@ edges of a triangulation are labeled with the integers 0, 1, ..., n-1.
 Each edge comes with an orientation and the edge opposite to ``i``
 is labelled ``~i`` (so ``-1``, ``-2``, etc. are respectively opposite
 edges to ``0``, ``1``, etc.). To input a triangulation, you must provide
-a list of triangles, each triangle beeing a triple of oriented edges,
+a list of triangles, each triangle being a triple of oriented edges,
 and a list of colours:: 
 
     >>> from veerer import *
