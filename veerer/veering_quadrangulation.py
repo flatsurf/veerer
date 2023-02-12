@@ -1426,7 +1426,7 @@ class VeeringQuadrangulationFlipSequence:
         r"""
         Return whether this flip sequence is complete.
 
-        A flip sequence is complete if it is a loop and if, by reapeating this loop,
+        A flip sequence is complete if it is a loop and if, by repeating this loop,
         all edges are flipped. Equivalently, if the associated mapping class is of
         pseudo-Anosov type.
 
