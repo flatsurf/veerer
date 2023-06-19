@@ -809,7 +809,7 @@ class VeeringTriangulation(Triangulation):
             f = vp[e]
             while f != e0:
                 if (cols[e] == RED and cols[f] == BLUE) or (cols[e] == GREEN):
-                       o = not o
+                    o = not o
 
                 oris[f] = o
                 if oris[ep[f]] is None:
@@ -1844,17 +1844,16 @@ class VeeringTriangulation(Triangulation):
            self._colouring.count(RED) != other._colouring.count(RED) or \
            self._colouring.count(BLUE) != other._colouring.count(BLUE) or \
            self._colouring.count(PURPLE) != other._colouring.count(PURPLE):
-               return (False, None) if certificate else False
+            return (False, None) if certificate else False
 
         r1, data1 = self.best_relabelling()
         r2, data2 = other.best_relabelling()
 
         if data1 != data2:
             return (False, None) if certificate else False
-        elif certificate:
+        if certificate:
             return (True, perm_compose(r1, perm_invert(r2)))
-        else:
-            return True
+        return True
 
 # TODO?
 #    def isometries_to(self, other):
@@ -3611,7 +3610,7 @@ class VeeringTriangulations(object):
            not isinstance(b2, numbers.Integral) or \
            not isinstance(t1, numbers.Integral) or \
            not isinstance(t2, numbers.Integral):
-               raise TypeError("a1, a2, b1, b2, t1, t2 must be integers")
+            raise TypeError("a1, a2, b1, b2, t1, t2 must be integers")
         a1 = int(a1)
         a2 = int(a2)
         b1 = int(b1)

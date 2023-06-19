@@ -4,14 +4,16 @@ Train-track and triangulations automata.
 from __future__ import print_function, absolute_import
 from six.moves import range, map, filter, zip
 
-import os, sys, shutil
+import os
+import sys
 from time import time
 
 from .veering_triangulation import VeeringTriangulation
-from .constants import *
+from .constants import RED, BLUE, PURPLE, PROPERTIES_COLOURS, colour_to_char, colour_to_string
 
 from . import env
 from .env import sage, require_package
+
 
 class CoreAutomaton(object):
     r"""
@@ -66,11 +68,14 @@ class CoreAutomaton(object):
     def __init__(self, graph):
         self._graph = graph
         self._iso_sigs = sorted(graph)
-        self._index = dict((sig, index) for index, sig in enumerate(self._iso_sigs))
+        self._index = {sig: index for index, sig in enumerate(self._iso_sigs)}
+
     def __str__(self):
         return "Core veering automaton with %s vertices" % len(self._graph)
+
     def __repr__(self):
         return str(self)
+
     def __len__(self):
         return len(self._iso_sigs)
 
@@ -80,6 +85,7 @@ class CoreAutomaton(object):
     def __iter__(self):
         for s in self._iso_sigs:
             yield VeeringTriangulation.from_string(s)
+
     def __contains__(self, item):
         return item in self._iso_sigs
 
@@ -121,7 +127,7 @@ class CoreAutomaton(object):
             G = Graph(loops=loops, multiedges=multiedges)
 
         for g, neighb in self._graph.items():
-            for gg,e,old_col,col in neighb:
+            for gg, e, old_col, col in neighb:
                 G.add_edge(g, gg, (e, old_col, col))
 
         return G
@@ -227,7 +233,6 @@ class CoreAutomaton(object):
         if triangulations:
             os.mkdir(path)
 
-        seed = min(self._graph)
         f.write('/**********************************************************************/\n')
         f.write('/* Automaton of core Veering triangulations                           */\n')
         f.write('/*                                                                    */\n')
@@ -260,7 +265,7 @@ class CoreAutomaton(object):
             if triangulations:
                 f.write("""    %s [label="%d" style=filled color="%s" tooltip="%s" href="%s"];\n""" % (g, aut_size, colour, g, t_rel_filename))
             else:
-                 f.write('    %s [label="%d" color="%s"];\n' % (g, aut_size, colour))
+                f.write('    %s [label="%d" color="%s"];\n' % (g, aut_size, colour))
 
             for gg, e, old_col, new_col in self._graph[g]:
                 f.write('    %s -> %s [color="%s;%f:%s"];\n' % (g, gg, old_col, 0.5, new_col))
@@ -394,7 +399,7 @@ class CoreAutomaton(object):
         dim = self.one_triangulation().stratum_dimension()
         for vt in self:
             p = vt.geometric_polytope()
-            if p.affine_dimension() == 2*dim:
+            if p.affine_dimension() == 2 * dim:
                 yield vt, p
 
     def num_geometric_triangulations(self):
@@ -482,7 +487,6 @@ class CoreAutomaton(object):
         T = T.copy()
         iso_sig = T.iso_sig()
         d = T.stratum_dimension()
-        count = 0
 
         graph = {iso_sig: []}
         iso_sigs = [iso_sig]  # iso_sig sequence
@@ -495,11 +499,10 @@ class CoreAutomaton(object):
         else:
             ffe = T.forward_flippable_edges()
 
-        ffe_orb = []
         branch.append([])
-        branch[-1].extend((x,BLUE) for x in ffe)
-        branch[-1].extend((x,RED) for x in ffe)
-        e,col = branch[-1].pop()
+        branch[-1].extend((x, BLUE) for x in ffe)
+        branch[-1].extend((x, RED) for x in ffe)
+        e, col = branch[-1].pop()
         recol = None
         old_size = 0
         t0 = time()
@@ -514,14 +517,14 @@ class CoreAutomaton(object):
                 print('[automaton] going along (%s, %s)' % (e, col))
             elif verbosity:
                 if len(graph) > old_size + 500:
-                    print('\r[automaton] %8d      %8d      %.3f      ' % (len(graph),len(branch),time()-t0), end='')
+                    print('\r[automaton] %8d      %8d      %.3f      ' % (len(graph), len(branch), time() - t0), end='')
                     sys.stdout.flush()
                     old_size = len(graph)
 
             # some safety check to be disabled
-            #assert len(flips) + 1 == len(iso_sigs) == len(branch)
-            #assert iso_sig == iso_sigs[-1]
-            #assert T.iso_sig() == iso_sig
+            # assert len(flips) + 1 == len(iso_sigs) == len(branch)
+            # assert iso_sig == iso_sigs[-1]
+            # assert T.iso_sig() == iso_sig
 
             # explore the automaton in DFS
             old_col = T.colour(e)
@@ -534,7 +537,7 @@ class CoreAutomaton(object):
                 print('[automaton] ... landed at %s' % T.to_string())
                 sys.stdout.flush()
 
-            if T.edge_has_curve(e): # = T is core
+            if T.edge_has_curve(e):  # = T is core
                 if reduced:
                     recol = []
                     # only two edges are succeptible to become forward flippable
@@ -590,7 +593,7 @@ class CoreAutomaton(object):
                         sys.stdout.flush()
 
                     # new core
-                    flips.append((e,old_col,recol))
+                    flips.append((e, old_col, recol))
                     graph[new_iso_sig] = []
                     graph[iso_sig].append((new_iso_sig, e, old_col, col))
 
@@ -609,16 +612,16 @@ class CoreAutomaton(object):
                         assert ffe == T.forward_flippable_edges()
                     else:
                         ffe = T.forward_flippable_edges()
-                    branch[-1].extend((x,BLUE) for x in ffe)
-                    branch[-1].extend((x,RED) for x in ffe)
-                    e,col = branch[-1].pop()
+                    branch[-1].extend((x, BLUE) for x in ffe)
+                    branch[-1].extend((x, RED) for x in ffe)
+                    e, col = branch[-1].pop()
                     continue
                 else:
                     # (e,col) leads to an already visited vertex
                     if verbosity >= 2:
                         print('[automaton] known vertex')
                         sys.stdout.flush()
-                   # assertion to be removed
+                    # assertion to be removed
                     assert not reduced or old_col == PURPLE
                     graph[iso_sig].append((new_iso_sig, e, old_col, col))
 
@@ -641,7 +644,7 @@ class CoreAutomaton(object):
             assert T.iso_sig() == iso_sigs[-1], (T.iso_sig(), iso_sigs[-1])
 
             while flips and not branch[-1]:
-                e,old_col,recol = flips.pop()
+                e, old_col, recol = flips.pop()
                 if reduced:
                     for ee, ccol in recol:
                         if verbosity >= 2:
@@ -659,7 +662,7 @@ class CoreAutomaton(object):
             e, col = branch[-1].pop()
 
         if verbosity == 1:
-            print('\r[automaton] %8d      %8d      %.3f      ' % (len(graph),len(branch),time()-t0))
+            print('\r[automaton] %8d      %8d      %.3f      ' % (len(graph), len(branch), time() - t0))
             sys.stdout.flush()
         return CoreAutomaton(graph)
 

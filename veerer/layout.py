@@ -371,9 +371,9 @@ class FlatVeeringTriangulationLayout(object):
             if T.edge_colour(e) == RED and \
                T.edge_colour(f) == BLUE and \
                hol[e][1] > 0:
-                   assert hol[f][1] > 0
-                   wedges.append((e, f))
-                   bdries[e] = bdries[f] = bdries[ep[e]] = bdries[ep[f]] = True
+                assert hol[f][1] > 0
+                wedges.append((e, f))
+                bdries[e] = bdries[f] = bdries[ep[e]] = bdries[ep[f]] = True
 
         x = 0   # current x coordinate
         for er, el in wedges:
