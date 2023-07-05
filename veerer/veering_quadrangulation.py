@@ -958,7 +958,7 @@ class VeeringQuadrangulationFlipSequence:
            self._end != other._end or \
            self._relabelling != other._relabelling or \
            len(self._flips) != len(other._flips):
-               return False
+            return False
 
         self.normalize()
         other.normalize()
@@ -1038,7 +1038,7 @@ class VeeringQuadrangulationFlipSequence:
         """
         if self.num_blocks() != other.num_blocks() or \
            self.num_flips() != other.num_flips():
-               return (False, None) if certificate else False
+            return (False, None) if certificate else False
         ans, p = self._start.is_isomorphic(other._start, certificate=True)
         if not ans:
             return (False, None) if certificate else False
@@ -1070,7 +1070,7 @@ class VeeringQuadrangulationFlipSequence:
 
         if self.num_blocks() != other.num_blocks() or \
            self.num_flips() != other.num_flips():
-               return False
+            return False
 
         # From now on we assume that the flip sequence are reduced
 
