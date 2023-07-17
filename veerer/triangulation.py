@@ -2,7 +2,9 @@ r"""
 Triangulation of surfaces.
 """
 
+import numbers
 from array import array
+
 from .permutation import *
 from .env import require_package, flipper, curver
 
@@ -321,6 +323,14 @@ class Triangulation(object):
                 raise error('broken edge permutation')
             if self._fp[self._ep[self._vp[i]]] != i:
                 raise error('fev relation not satisfied')
+
+    def _check_half_edge(self, e):
+        if not isinstance(e, numbers.Integral):
+            raise TypeError('invalid half-edge {}'.format(e))
+        e = int(e)
+        if e < 0 or e >= self._n:
+            raise ValueError('half-edge number out of range e={}'.format(e))
+        return e
 
     def __eq__(self, other):
         if type(self) != type(other):
