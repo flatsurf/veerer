@@ -964,31 +964,30 @@ class VeeringTriangulation(Triangulation):
             return False
         return all(colours[f] != colours[(f+1) % 4] for f in range(4))
 
-    def vertex_cycles(self, slope=VERTICAL, T=None):
+    # TODO: change the names
+    # TODO: compute it combinatorially, not via polytope computation
+    # (these are the cycles and, if not orientable, the dumbbells)
+    def vertex_cycles(self, slope=VERTICAL):
         r"""
-        Return the vertex cycles as curves on the (curver) triangulation.
+        Return the rays of the train-track polytope.
 
         EXAMPLES::
 
             sage: from veerer import VeeringTriangulation, HORIZONTAL, VERTICAL
             sage: V = VeeringTriangulation([(0,1,2), (-1,-2,-3)], "RRB")
-            sage: V.vertex_cycles()  # optional - curver
-            [Curve([(~2, ~0, ~1), (0, 1, 2)], [1, 1, 0]),
-             Curve([(~2, ~0, ~1), (0, 1, 2)], [0, 1, 1])]
-            sage: V.vertex_cycles(HORIZONTAL)  # optional - curver
-            [Curve([(~2, ~0, ~1), (0, 1, 2)], [1, 0, 1]),
-             Curve([(~2, ~0, ~1), (0, 1, 2)], [1, 1, 0])]
+            sage: V.vertex_cycles()
+            [(1, 1, 0), (0, 1, 1)]
+            sage: V.vertex_cycles(HORIZONTAL)
+            [(1, 0, 1), (1, 1, 0)]
         """
-        require_package('curver', 'vertex_cycles')
-        if T is None:
-            T = self.to_curver()
-        polytope = self.train_track_polytope(slope=slope)
-        rays = [g for g in polytope.generators() if g.is_ray()]
-        return [T.lamination([int(x) for x in ray.coefficients()]) for ray in rays]
+        from sage.modules.free_module import FreeModule
+        from sage.rings.integer_ring import ZZ
+        F = FreeModule(ZZ, self.num_edges())
+        return [F(g.coefficients()) for g in self.train_track_polytope(slope=slope).minimized_generators() if g.is_ray()]
 
     def branches(self, slope=VERTICAL):
         r"""
-        Return a 3-uplet made of the lists of respectively the small, mixed
+        Return a 3-tuple made of the lists of respectively the small, mixed
         and large edges of the underlying train track.
 
         INPUT:
