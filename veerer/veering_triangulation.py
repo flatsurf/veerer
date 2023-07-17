@@ -622,10 +622,10 @@ class VeeringTriangulation(Triangulation):
             if ep[e] < e:
                 raise ValueError("veering triangulation not in canonical form")
             if slope == VERTICAL:
-                if self.is_forward_flippable(e):
+                if self.is_forward_flippable(e, check=False):
                     self._colouring[e] = self._colouring[ep[e]] = COLOR
             else:
-                if self.is_backward_flippable(e):
+                if self.is_backward_flippable(e, check=False):
                     self._colouring[e] = self._colouring[ep[e]] = COLOR
 
     def copy(self):
@@ -1049,8 +1049,10 @@ class VeeringTriangulation(Triangulation):
         return (small, mixed, large)
 
 
-    def is_flippable(self, e):
+    def is_flippable(self, e, check=True):
         r"""
+        Return whether the edge ``e`` can be flipped.
+
         EXAMPLES::
 
             sage: from veerer import *
@@ -1063,27 +1065,67 @@ class VeeringTriangulation(Triangulation):
             sage: T.is_flippable(2)
             False
         """
-        e = int(e)
+        if check:
+            e = self._check_half_edge(e)
         return Triangulation.is_flippable(self, e) and self.alternating_square(e)
 
-    def is_forward_flippable(self, e):
+    def is_forward_flippable(self, e, check=True):
         r"""
+        Return whether one can perform a forward flip to ``e``.
+
         EXAMPLES::
 
             sage: from veerer import *
 
             sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
-            sage: T.is_forward_flippable(0)
-            False
-            sage: T.is_forward_flippable(1)
-            True
-            sage: T.is_forward_flippable(2)
-            False
-        """
-        return Triangulation.is_flippable(self, e) and self.colours_about_edge(e) == [BLUE, RED, BLUE, RED]
+            sage: [T.is_forward_flippable(e) for e in range(3)]
+            [False, True, False]
 
-    def is_backward_flippable(self, e):
-        return Triangulation.is_flippable(self, e) and self.colours_about_edge(e) == [RED, BLUE, RED, BLUE]
+            sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [GREEN, RED, BLUE])
+            sage: [T.is_forward_flippable(e) for e in range(3)]
+            [False, True, True]
+
+            sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [PURPLE, BLUE, RED])
+            sage: [T.is_forward_flippable(e) for e in range(3)]
+            [True, False, False]
+        """
+        if check:
+            e = self._check_half_edge(e)
+        if self._colouring[e] == GREEN or not Triangulation.is_flippable(self, e):
+            return False
+        if self._colouring[e] == PURPLE:
+            return True
+        ca, cb, cc, cd = self.colours_about_edge(e)
+        return bool(ca & (BLUE | GREEN)) and bool(cb & (RED | GREEN)) and bool(cc & (BLUE | GREEN)) and bool(cd & (RED | GREEN))
+
+    def is_backward_flippable(self, e, check=True):
+        r"""
+        Return whether one can perform a backward flip to ``e``.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
+            sage: [T.is_backward_flippable(e) for e in range(3)]
+            [True, False, False]
+
+            sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [GREEN, RED, BLUE])
+            sage: [T.is_backward_flippable(e) for e in range(3)]
+            [True, False, False]
+
+            sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [PURPLE, BLUE, RED])
+            sage: [T.is_backward_flippable(e) for e in range(3)]
+            [False, True, True]
+        """
+        if check:
+            e = self._check_half_edge(e)
+        if self._colouring[e] == PURPLE or not Triangulation.is_flippable(self, e):
+            return False
+        if self._colouring[e] == GREEN:
+            return True
+        ca, cb, cc, cd = self.colours_about_edge(e)
+        return bool(ca & (RED | PURPLE)) and bool(cb & (BLUE | PURPLE)) and bool(cc & (RED | PURPLE)) and bool(cd & (BLUE | PURPLE))
 
     def forward_flippable_edges(self, folded=True):
         r"""
@@ -1118,43 +1160,10 @@ class VeeringTriangulation(Triangulation):
         ep = self._ep
         n = self._n
         if folded:
-            return [e for e in range(n) if e <= ep[e] and self.is_forward_flippable(e)]
-        return [e for e in range(n) if e < ep[e] and self.is_forward_flippable(e)]
+            return [e for e in range(n) if e <= ep[e] and self.is_forward_flippable(e, check=False)]
+        return [e for e in range(n) if e < ep[e] and self.is_forward_flippable(e, check=False)]
 
-    def purple_edges(self, folded=True):
-        r"""
-        EXAMPLES::
-
-            sage: from veerer import VeeringTriangulation
-            sage: t = VeeringTriangulation("(0,~6,~3)(1,7,~2)(2,~1,~0)(3,5,~4)(4,8,~5)(6,~8,~7)", "RBPBRBPRB")
-            sage: t.purple_edges()
-            [2, 6]
-        """
-        ep = self._ep
-        n = self._n
-        if folded:
-            return [e for e in range(n) if e <= ep[e] and self._colouring[e] == PURPLE]
-        return [e for e in range(n) if e < ep[e] and self._colouring[e] == PURPLE]
-
-    def is_backward_flippable(self, e):
-        r"""
-        Test whether the edge ``e`` is backward flippable.
-
-        EXAMPLES::
-
-            sage: from veerer import *
-
-            sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
-            sage: T.is_backward_flippable(0)
-            True
-            sage: T.is_backward_flippable(1)
-            False
-            sage: T.is_backward_flippable(2)
-            False
-        """
-        return Triangulation.is_flippable(self, e) and self.colours_about_edge(e) == [RED, BLUE, RED, BLUE]
-
-    def backward_flippable_edges(self):
+    def backward_flippable_edges(self, folded=True):
         r"""
         Return the list of backward flippable edges.
 
@@ -1172,7 +1181,24 @@ class VeeringTriangulation(Triangulation):
         """
         ep = self._ep
         n = self._n
-        return [e for e in range(n) if e <= ep[e] and self.is_backward_flippable(e)]
+        if folded:
+            return [e for e in range(n) if e <= ep[e] and self.is_backward_flippable(e, check=False)]
+        return [e for e in range(n) if e <= ep[e] and self.is_backward_flippable(e, check=False)]
+
+    def purple_edges(self, folded=True):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation
+            sage: t = VeeringTriangulation("(0,~6,~3)(1,7,~2)(2,~1,~0)(3,5,~4)(4,8,~5)(6,~8,~7)", "RBPBRBPRB")
+            sage: t.purple_edges()
+            [2, 6]
+        """
+        ep = self._ep
+        n = self._n
+        if folded:
+            return [e for e in range(n) if e <= ep[e] and self._colouring[e] == PURPLE]
+        return [e for e in range(n) if e < ep[e] and self._colouring[e] == PURPLE]
 
     def mostly_sloped_edges(self, slope):
         if slope == HORIZONTAL:
@@ -1881,7 +1907,7 @@ class VeeringTriangulation(Triangulation):
 #    def self_isometries(self):
 #        return self.isometries_to(self)
 
-    def flip(self, e, col, Lx=None, Gx=None, reduced=None):
+    def flip(self, e, col, Lx=None, Gx=None, reduced=None, check=True):
         r"""
         Flip an edge inplace.
 
@@ -1889,7 +1915,7 @@ class VeeringTriangulation(Triangulation):
 
         - ``e`` - edge number
 
-        - ``col`` - colour of the edge after the flip (ie either ``RED`` or ``BLUE``)
+        - ``col`` - colour of the edge after the flip (ie either ``RED``, ``BLUE`` or ``GREEN``)
 
         - ``Lx`` - (optional) - matrix whose rows are equations in a linear subspace
           that has to be carried around
@@ -1948,12 +1974,13 @@ class VeeringTriangulation(Triangulation):
             ....:     T._set_switch_conditions(T._tt_check, Gx.row(0), VERTICAL)
             ....:     T._set_switch_conditions(T._tt_check, Gx.row(1), VERTICAL)
         """
-        if col != BLUE and col != RED:
-            raise ValueError("'col' must be BLUE or RED")
+        if check:
+            if col != BLUE and col != RED and col != GREEN:
+                raise ValueError("'col' must be BLUE, RED or GREEN")
 
-        e = int(e)
-        if e < 0 or e >= self._n or not self.is_forward_flippable(e):
-            raise ValueError("invalid half edge e={} for flipping veering triangulation".format(e))
+            e = self._check_half_edge(e)
+            if not self.is_forward_flippable(e, check=False):
+                raise ValueError("half-edge e={} is not forward flippable".format(e))
 
         if reduced is None:
             reduced = self._colouring[e] == PURPLE
@@ -1981,7 +2008,7 @@ class VeeringTriangulation(Triangulation):
                 Gx.add_multiple_of_column(e, d, -1)
                 Gx.add_multiple_of_column(e, a, +1)
             else:
-                raise ValueError("invalid colour")
+                raise NotImplementedError('GREEN not implemented with linear subspace')
 
         # flip and set colour
         E = self._ep[e]
@@ -1991,33 +2018,35 @@ class VeeringTriangulation(Triangulation):
         if reduced:
             ep = self._ep
             a, b, c, d = self.square_about_edge(e)
-            assert self._colouring[a] == RED, (a, colour_to_string(self._colouring[a]))
-            assert self._colouring[b] == BLUE, (b, colour_to_string(self._colouring[b]))
-            assert self._colouring[c] == RED, (c, colour_to_string(self._colouring[c]))
-            assert self._colouring[d] == BLUE, (d, colour_to_string(self._colouring[d]))
+            assert self._colouring[a] & (RED | GREEN), (a, colour_to_string(self._colouring[a]))
+            assert self._colouring[b] & (BLUE | GREEN), (b, colour_to_string(self._colouring[b]))
+            assert self._colouring[c] & (RED | GREEN), (c, colour_to_string(self._colouring[c]))
+            assert self._colouring[d] & (BLUE | GREEN), (d, colour_to_string(self._colouring[d]))
 
             # assertions to be removed
             assert not self.is_forward_flippable(e)
 
             if col == BLUE:
-                if self.is_forward_flippable(b):
+                if self.is_forward_flippable(b, check=False):
                     self._colouring[b] = PURPLE
                     self._colouring[ep[b]] = PURPLE
-                if d != ep[b] and self.is_forward_flippable(d):
+                if d != ep[b] and self.is_forward_flippable(d, check=False):
                     self._colouring[d] = PURPLE
                     self._colouring[ep[d]] = PURPLE
                 assert not self.is_forward_flippable(a)
                 assert not self.is_forward_flippable(c)
-            else:
-                assert col == RED
-                if self.is_forward_flippable(a):
+            elif col == RED:
+                if self.is_forward_flippable(a, check=False):
                     self._colouring[a] = PURPLE
                     self._colouring[ep[a]] = PURPLE
-                if c != ep[a] and self.is_forward_flippable(c):
+                if c != ep[a] and self.is_forward_flippable(c, check=False):
                     self._colouring[c] = PURPLE
                     self._colouring[ep[c]] = PURPLE
                 assert not self.is_forward_flippable(b)
                 assert not self.is_forward_flippable(d)
+            else:
+                assert col == GREEN
+                # should we put all edges in a cylinder PURPLE?
 
     def cylinders(self, col):
         r"""
@@ -2402,7 +2431,7 @@ class VeeringTriangulation(Triangulation):
         n = self.num_edges()
         ep = self._ep
         for e in range(n):
-            if not self.is_forward_flippable(e):
+            if not self.is_forward_flippable(e, check=False):
                 continue
 
             k += 1 if ep[e] == e else 2
@@ -2457,7 +2486,7 @@ class VeeringTriangulation(Triangulation):
         n = self.num_edges()
         ep = self._ep
         for e in range(n):
-            if not self.is_forward_flippable(e):
+            if not self.is_forward_flippable(e, check=False):
                 continue
             if self._colouring[e] != col:
                 return False
@@ -2509,7 +2538,7 @@ class VeeringTriangulation(Triangulation):
 
         return code
 
-    def flip_back(self, e, col):
+    def flip_back(self, e, col, check=True):
         r"""
         Flip backward an edge in place
 
@@ -2529,8 +2558,14 @@ class VeeringTriangulation(Triangulation):
             sage: T == T0
             True
         """
-        e = int(e)
-        assert self.is_backward_flippable(e)
+        if check:
+            if col != BLUE and col != RED and col != PURPLE:
+                raise ValueError("'col' must be BLUE, RED or PURPLE")
+
+            e = self._check_half_edge(e)
+            if not self.is_backward_flippable(e, check=False):
+                raise ValueError('half-edge e={} is not backward flippable'.format(e))
+
         E = self._ep[e]
 
         Triangulation.flip_back(self, e)
@@ -2554,40 +2589,50 @@ class VeeringTriangulation(Triangulation):
             LAR = PURPLE
             POS = BLUE
             NEG = RED
-            if any(c == GREEN for c in self._colouring):
-                raise NotImplementedError('no vertical train track with green edges')
+            ZERO = GREEN
         elif slope == HORIZONTAL:
             LAR = GREEN
             POS = RED
             NEG = BLUE
-            if any(c == PURPLE for c in self._colouring):
-                raise NotImplementedError('no horizontal train track with purple edges')
+            ZERO = PURPLE
         else:
             raise ValueError('bad slope parameter')
 
         for (i,j,k) in self.faces():
-            # find the large edge
-            # if horizontal, this is the one opposite to the RED/BLUE transition
-            # if vertical this is the one opposite to the BLUE/RED transition
             i = self._norm(i)
+            ci = self._colouring[i]
             j = self._norm(j)
+            cj = self._colouring[j]
             k = self._norm(k)
-            if self._colouring[k] == LAR or (self._colouring[i] == POS and self._colouring[j] == NEG):
+            ck = self._colouring[k]
+
+            if ci == ZERO and cj == NEG and ck == POS:
+                # i is degenerate
+                insert(x[i] == 0)
+                insert(x[j] == x[k])
+            elif cj == ZERO and ck == NEG and ci == POS:
+                # j is degenerate
+                insert(x[j] == 0)
+                insert(x[k] == x[i])
+            elif ck == ZERO and ci == NEG and cj == POS:
+                # k is degenerate
+                insert(x[k] == 0)
+                insert(x[i] == x[j])
+            elif ck == LAR or (ci == POS and cj == NEG):
                 # k is large
-                l,s1,s2 = k,i,j
-            elif self._colouring[i] == LAR or (self._colouring[j] == POS and self._colouring[k] == NEG):
+                insert(x[k] == x[i] + x[j])
+            elif ci == LAR or (cj == POS and ck == NEG):
                 # i is large
-                l,s1,s2 = i,j,k
-            elif self._colouring[j] == LAR or (self._colouring[k] == POS and self._colouring[i] == NEG):
+                insert(x[i] == x[j] + x[k])
+            elif cj == LAR or (ck == POS and ci == NEG):
                 # j is large
+                insert(x[j] == x[k] + x[i])
                 l,s1,s2 = j,k,i
             else:
-                raise ValueError('can not determine the large edge for the %s track in triangle (%s, %s, %s) with colors (%s, %s, %s)' %
-                                 ('horizontal' if slope == HORIZONTAL else 'vertical',
-                                   self._edge_rep(i), self._edge_rep(j), self._edge_rep(k),
-                                  colour_to_string(self._colouring[i]), colour_to_string(self._colouring[j]), colour_to_string(self._colouring[k])))
-
-            insert(x[self._norm(l)] == x[self._norm(s1)] + x[self._norm(s2)])
+                raise ValueError('can not determine the nature of triangle (%s, %s, %s) with colors (%s, %s, %s) in %s direction' %
+                                 (self._edge_rep(i), self._edge_rep(j), self._edge_rep(k),
+                                  colour_to_string(ci), colour_to_string(cj), colour_to_string(ck),
+                                  'horizontal' if slope == HORIZONTAL else 'vertical'))
 
     @staticmethod
     def _tt_check(x):
@@ -2596,7 +2641,7 @@ class VeeringTriangulation(Triangulation):
 
     def _set_train_track_constraints(self, insert, x, slope, low_bound, allow_degenerations):
         r"""
-        Sets the equation and inequations for train tracks.
+        Sets the equations and inequations for train tracks.
 
         INPUT:
 
@@ -2660,9 +2705,11 @@ class VeeringTriangulation(Triangulation):
         if slope == VERTICAL:
             POS = BLUE
             NEG = RED
+            ZERO = GREEN
         elif slope == HORIZONTAL:
             POS = RED
             NEG = BLUE
+            ZERO = PURPLE
         else:
             raise ValueError('bad slope parameter')
 
@@ -2677,10 +2724,13 @@ class VeeringTriangulation(Triangulation):
         for e in range(ne):
             if ep[e] != e and ep[e] < ne:
                 raise ValueError('edge permutation not in standard form')
-            if not low_bound or \
+            if self._colouring[e] == ZERO:
+                # already done in switch conditions: insert(x[e] == 0)
+                pass
+            elif not low_bound or \
                 (allow_degenerations and \
-                 ((slope == HORIZONTAL and self.is_forward_flippable(e)) or \
-                 (slope == VERTICAL and self.is_backward_flippable(e)))):
+                 ((slope == HORIZONTAL and self.is_forward_flippable(e, check=False)) or \
+                 (slope == VERTICAL and self.is_backward_flippable(e, check=False)))):
                 insert(x[e] >= 0)
             else:
                 insert(x[e] >= low_bound)
@@ -2810,6 +2860,18 @@ class VeeringTriangulation(Triangulation):
             sage: P = T.train_track_polytope(VERTICAL, low_bound=3)
             sage: P.generators()
             Generator_System {ray(1, 1, 0), ray(0, 1, 1), point(3/1, 6/1, 3/1)}
+
+            sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [GREEN, RED, BLUE])
+            sage: T.train_track_polytope(VERTICAL).generators()
+            Generator_System {point(0/1, 0/1, 0/1), ray(0, 1, 1)}
+            sage: T.train_track_polytope(HORIZONTAL).generators()
+            Generator_System {point(0/1, 0/1, 0/1), ray(1, 0, 1), ray(1, 1, 0)}
+
+            sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [PURPLE, BLUE, RED])
+            sage: T.train_track_polytope(VERTICAL).generators()
+            Generator_System {point(0/1, 0/1, 0/1), ray(1, 0, 1), ray(1, 1, 0)}
+            sage: T.train_track_polytope(HORIZONTAL).generators()
+            Generator_System {point(0/1, 0/1, 0/1), ray(0, 1, 1)}
         """
         require_package('ppl', 'train_track_polytope')
 
