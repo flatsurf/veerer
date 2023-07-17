@@ -55,8 +55,6 @@ The same flip sequence defined in one line::
 # along with veerer. If not, see <https://www.gnu.org/licenses/>.
 ######################################################################
 
-from __future__ import absolute_import
-
 from .constants import colour_from_char, colour_to_char, RED, BLUE, PURPLE, GREEN, HORIZONTAL, VERTICAL
 from .permutation import perm_init, perm_check, perm_id, perm_is_one, perm_preimage, perm_invert, perm_cycle_string, perm_compose, perm_pow, perm_conjugate
 from .veering_triangulation import VeeringTriangulation

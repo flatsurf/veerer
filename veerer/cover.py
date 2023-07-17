@@ -2,9 +2,6 @@ r"""
 Covering of triangulations
 """
 
-from __future__ import absolute_import, print_function
-from six.moves import range, map, zip
-
 from array import array
 
 from .permutation import *

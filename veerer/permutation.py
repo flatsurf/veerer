@@ -10,8 +10,6 @@ TODO:
   such array should not be allocated each time the function
   is called.
 """
-from __future__ import absolute_import, print_function
-from six.moves import range, map, filter, zip
 
 from array import array
 from math import log

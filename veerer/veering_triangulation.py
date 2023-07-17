@@ -5,8 +5,6 @@ An edge permutation is an involution (possibly with fixed points corresponding
 to folded edges). It is said to be in canonical form if it starts with cycle
 representatives.
 """
-from __future__ import print_function, absolute_import
-from six.moves import range, map, filter, zip
 
 import numbers
 
