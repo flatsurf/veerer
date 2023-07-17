@@ -50,6 +50,7 @@ def ppl_cone_to_hashable(P):
     ieqs.sort()
     return (P.space_dimension(), tuple(eqns), tuple(ieqs))
 
+
 def ppl_cone_from_hashable(args):
     d, eqns, ieqs = args
     P = ppl.C_Polyhedron(d)
@@ -58,6 +59,7 @@ def ppl_cone_from_hashable(args):
     for constraint in ieqs:
         P.add_constraint(sum(coeff * ppl.Variable(i) for i,coeff in enumerate(constraint)) >= 0)
     return P
+
 
 def relabel_on_edges(ep, r, n, m):
     r"""
@@ -88,6 +90,7 @@ def relabel_on_edges(ep, r, n, m):
         else:
             rr[i] = k
     return rr
+
 
 class VeeringTriangulation(Triangulation):
     r"""
@@ -1265,7 +1268,7 @@ class VeeringTriangulation(Triangulation):
         Triangulation.relabel(self, p)
         perm_on_list(p, self._colouring)
 
-    def _automorphism_good_starts(self, has_purple=None):
+    def _automorphism_good_starts(self, has_purple=None, has_green=None):
         r"""
         Start at a RED before a BLUE.
 
@@ -1279,6 +1282,10 @@ class VeeringTriangulation(Triangulation):
             sage: t = VeeringTriangulation("(0,~6,~3)(1,7,~2)(2,~1,~0)(3,5,~4)(4,8,~5)(6,~8,~7)", "RBPBRBPRB")
             sage: len(t._automorphism_good_starts())
             2
+
+            sage: T = VeeringTriangulation("(0,1,2)(3,4,~1)(5,6,~4)", "RBGGRBG")
+            sage: T._automorphism_good_starts()
+            [2, 3, 6]
         """
         starts = []
         best_word = None
@@ -1292,6 +1299,11 @@ class VeeringTriangulation(Triangulation):
             for e in range(n):
                 if self._colouring[e] == PURPLE:
                     has_purple = True
+        if has_green is None:
+            has_green = False
+            for e in range(n):
+                if self._colouring[e] == GREEN:
+                    has_green = True
 
         # first run: compare edges using colours and vertex permutation orbits
         # FIX: Take advantage of folded edges, if they are present?
@@ -1302,6 +1314,9 @@ class VeeringTriangulation(Triangulation):
             # otherwise start from red -> blue transition
             if has_purple:
                 if cols[e] != PURPLE:
+                    continue
+            elif has_green:
+                if cols[e] != GREEN:
                     continue
             elif cols[e] != RED or cols[f] != BLUE:
                 continue
@@ -1342,6 +1357,8 @@ class VeeringTriangulation(Triangulation):
                 best_word = w
             elif w == best_word:
                 starts.append(e)
+
+        assert starts
 
         if len(starts) == 1:
             return starts
@@ -1735,6 +1752,9 @@ class VeeringTriangulation(Triangulation):
             ....:     p = perm_random(24)
             ....:     T.relabel(p)
             ....:     assert T.iso_sig() == iso_sig
+
+            sage: VeeringTriangulation("(0,1,2)(3,4,~1)(5,6,~4)", "RBGGRBG").iso_sig()
+            'GBRGRGBRB_731264580_082375641'
         """
         n = self._n
 
