@@ -10,8 +10,7 @@ M. Bell, V. Delecroix, V. Gadre, R. Gutiérrez-Romo, S. Schleimer,
 "Coding Teichmüller flow using veering triangulations",
 `arXiv:1909.00890 <https://arxiv.org/abs/1909.00890>`_.
 
-To install the module you need Python (preferably version 3 but Python 2 is
-supported).
+To install the module you need Python 3.
 
 Additional features are available if this module is used inside
 `SageMath <https://www.sagemath.org/>`_.

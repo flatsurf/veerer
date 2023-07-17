@@ -1,8 +1,6 @@
 r"""
 Train-track and triangulations automata.
 """
-from __future__ import print_function, absolute_import
-from six.moves import range, map, filter, zip
 
 import os
 import sys
