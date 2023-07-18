@@ -505,7 +505,7 @@ class Automaton(object):
         self._serialized_branch = [iso_sig]
 
         self._graph[iso_sig] = []
-        self._branch.append(self._forward_flippable_edges(self._state))
+        self._branch.append(self._forward_flips(self._state))
 
     @classmethod
     def from_triangulation(self, T, reduced=False, max_size=None, verbosity=0):
@@ -535,7 +535,7 @@ class Automaton(object):
         """
         return self.from_triangulation(VeeringTriangulation.from_stratum(stratum), reduced=reduced, **kwds)
 
-    def _forward_flippable_edges(self, state):
+    def _forward_flips(self, state):
         r"""
         Return the list of forward flip_data from ``state``.
 
@@ -676,7 +676,7 @@ class Automaton(object):
 
                     # TODO: one can optimize the computation of forward flippable edges knowing
                     # how the current state was built
-                    branch.append(self._forward_flippable_edges(T))
+                    branch.append(self._forward_flips(T))
                     count += 1
                     continue
 
@@ -733,7 +733,7 @@ class CoreAutomaton(Automaton):
     def _unserialize(self):
         return VeeringTriangulation.from_string(string)
 
-    def _forward_flippable_edges(self, state):
+    def _forward_flips(self, state):
         r"""
         Return the list of forward flippable edges from ``state``
         """
@@ -764,7 +764,7 @@ class ReducedCoreAutomaton(Automaton):
         
         state.forgot_forward_flippable_colour()
 
-    def _forward_flippable_edges(self, state):
+    def _forward_flips(self, state):
         r"""
         Return the list of forward flippable edges from ``state``
         """
@@ -836,3 +836,50 @@ class ReducedCoreAutomaton(Automaton):
             self._state._colouring[ee] = ccol
             self._state._colouring[self._state._ep[ee]] = ccol
         self._state.flip_back(e, old_col)
+
+
+class GeometricAutomaton(Automaton):
+    r"""
+    Automaton of core veering triangulations.
+
+    EXAMPLES::
+
+        sage: from veerer import *
+        sage: fp = "(0,~7,6)(1,~8,~2)(2,~6,~3)(3,5,~4)(4,8,~5)(7,~1,~0)"
+        sage: cols = "RBRBRBBBB"
+        sage: vt = VeeringTriangulation(fp, cols)
+        sage: GeometricAutomaton(vt)
+        Geometric veering automaton with 54 vertices
+
+    One can check that the cardinality is indeed correct::
+
+        sage: sum(x.is_geometric() for x in CoreAutomaton(vt))
+        54
+    """
+    _name = 'geometric'
+
+    def _seed_setup(self, state):
+        if not isinstance(state, VeeringTriangulation) or not state.is_geometric():
+            raise ValueError('invalid seed')
+
+    def _serialize(self, state):
+        return state.iso_sig()
+
+    def _unserialize(self):
+        return VeeringTriangulation.from_string(string)
+
+    def _forward_flips(self, state):
+        r"""
+        Return the list of forward flippable edges from ``state``
+        """
+        return state.geometric_flips()
+
+    def _flip(self, flip_data):
+        flip_back_data = tuple((e, self._state.colour(e)) for e, _ in flip_data)
+        for e, col in flip_data:
+            self._state.flip(e, col)
+        return True, flip_back_data
+
+    def _flip_back(self, flip_back_data):
+        for e, old_col in flip_back_data:
+            self._state.flip_back(e, old_col)
