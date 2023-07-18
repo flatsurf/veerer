@@ -259,7 +259,7 @@ from `T_i` by a flip.
 
     sage: # T0 was the torus example
     sage: from veerer import CoreAutomaton
-    sage: A0 = CoreAutomaton.from_triangulation(T0)
+    sage: A0 = CoreAutomaton(T0)
     sage: A0
     Core veering automaton with 2 vertices
 
@@ -275,7 +275,7 @@ from `T_i` by a flip.
 ::
 
     sage: # T1 was the genus 2 example in H(2)
-    sage: A1 = CoreAutomaton.from_triangulation(T1)
+    sage: A1 = CoreAutomaton(T1)
 
 ::
 
@@ -289,7 +289,7 @@ from `T_i` by a flip.
 ::
 
     sage: # T2 was the genus 1 example in Q(1^2, -1^2)
-    sage: A2 = CoreAutomaton.from_triangulation(T2)
+    sage: A2 = CoreAutomaton(T2)
     sage: print(A2.num_states(), A2.num_transitions())
     1074 3620
     sage: print(A2.num_geometric_triangulations())
@@ -332,7 +332,7 @@ filtering cylindrical (single test is cheap) ~2 sec for H(4)^hyp
 
     sage: H = AbelianStratum(4).hyperelliptic_component()  # optional - surface_dynamics
     sage: V = VeeringTriangulation.from_stratum(H)         # optional - surface_dynamics
-    sage: AV = CoreAutomaton.from_triangulation(V)       # long time - ~21 secs # optional - surface_dynamics
+    sage: AV = CoreAutomaton(V)                          # long time - ~21 secs # optional - surface_dynamics
     sage: print(AV.num_states())                         # long time - ~150 µs # optional - surface_dynamics
     9116
     sage: print(AV.num_geometric_triangulations())       # long time - ~21 secs # optional - surface_dynamics

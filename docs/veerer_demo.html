@@ -264,7 +264,7 @@ sequence of flips and there is a directed edge <cite>T_i to T_j</cite> if <cite>
 from <cite>T_i</cite> by a flip.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="c1"># T0 was the torus example</span>
 <span class="n">sage</span><span class="p">:</span> <span class="kn">from</span> <span class="nn">veerer</span> <span class="kn">import</span> <span class="n">CoreAutomaton</span>
-<span class="n">sage</span><span class="p">:</span> <span class="n">A0</span> <span class="o">=</span> <span class="n">CoreAutomaton</span><span class="o">.</span><span class="n">from_triangulation</span><span class="p">(</span><span class="n">T0</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">A0</span> <span class="o">=</span> <span class="n">CoreAutomaton</span><span class="p">(</span><span class="n">T0</span><span class="p">)</span>
 <span class="n">sage</span><span class="p">:</span> <span class="n">A0</span>
 <span class="n">Core</span> <span class="n">veering</span> <span class="n">automaton</span> <span class="k">with</span> <span class="mi">2</span> <span class="n">vertices</span>
 </pre></div>
@@ -278,7 +278,7 @@ from <cite>T_i</cite> by a flip.</p>
 </pre></div>
 </div>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="c1"># T1 was the genus 2 example in H(2)</span>
-<span class="n">sage</span><span class="p">:</span> <span class="n">A1</span> <span class="o">=</span> <span class="n">CoreAutomaton</span><span class="o">.</span><span class="n">from_triangulation</span><span class="p">(</span><span class="n">T1</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">A1</span> <span class="o">=</span> <span class="n">CoreAutomaton</span><span class="p">(</span><span class="n">T1</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">A1</span><span class="o">.</span><span class="n">num_states</span><span class="p">(),</span> <span class="n">A1</span><span class="o">.</span><span class="n">num_transitions</span><span class="p">())</span>
@@ -290,7 +290,7 @@ from <cite>T_i</cite> by a flip.</p>
 </pre></div>
 </div>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="c1"># T2 was the genus 1 example in Q(1^2, -1^2)</span>
-<span class="n">sage</span><span class="p">:</span> <span class="n">A2</span> <span class="o">=</span> <span class="n">CoreAutomaton</span><span class="o">.</span><span class="n">from_triangulation</span><span class="p">(</span><span class="n">T2</span><span class="p">)</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">A2</span> <span class="o">=</span> <span class="n">CoreAutomaton</span><span class="p">(</span><span class="n">T2</span><span class="p">)</span>
 <span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">A2</span><span class="o">.</span><span class="n">num_states</span><span class="p">(),</span> <span class="n">A2</span><span class="o">.</span><span class="n">num_transitions</span><span class="p">())</span>
 <span class="mi">1074</span> <span class="mi">3620</span>
 <span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">A2</span><span class="o">.</span><span class="n">num_geometric_triangulations</span><span class="p">())</span>
@@ -371,7 +371,7 @@ vertices and 44664 edges) - filtering the geometric triangulations
 filtering cylindrical (single test is cheap) ~2 sec for H(4)^hyp</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">H</span> <span class="o">=</span> <span class="n">AbelianStratum</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span><span class="o">.</span><span class="n">hyperelliptic_component</span><span class="p">()</span>  <span class="c1"># optional - surface_dynamics</span>
 <span class="n">sage</span><span class="p">:</span> <span class="n">V</span> <span class="o">=</span> <span class="n">VeeringTriangulation</span><span class="o">.</span><span class="n">from_stratum</span><span class="p">(</span><span class="n">H</span><span class="p">)</span>         <span class="c1"># optional - surface_dynamics</span>
-<span class="n">sage</span><span class="p">:</span> <span class="n">AV</span> <span class="o">=</span> <span class="n">CoreAutomaton</span><span class="o">.</span><span class="n">from_triangulation</span><span class="p">(</span><span class="n">V</span><span class="p">)</span>       <span class="c1"># long time - ~21 secs # optional - surface_dynamics</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">AV</span> <span class="o">=</span> <span class="n">CoreAutomaton</span><span class="p">(</span><span class="n">V</span><span class="p">)</span>                          <span class="c1"># long time - ~21 secs # optional - surface_dynamics</span>
 <span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">AV</span><span class="o">.</span><span class="n">num_states</span><span class="p">())</span>                         <span class="c1"># long time - ~150 µs # optional - surface_dynamics</span>
 <span class="mi">9116</span>
 <span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">AV</span><span class="o">.</span><span class="n">num_geometric_triangulations</span><span class="p">())</span>       <span class="c1"># long time - ~21 secs # optional - surface_dynamics</span>
