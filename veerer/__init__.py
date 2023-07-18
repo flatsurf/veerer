@@ -9,7 +9,7 @@ from .constants import RED, BLUE, PURPLE, GREEN, HORIZONTAL, VERTICAL, RIGHT, LE
 from .triangulation import Triangulation
 from .cover import TriangulationCover
 from .veering_triangulation import VeeringTriangulation, VeeringTriangulations
-from .automaton import CoreAutomaton
+from .automaton import CoreAutomaton, ReducedCoreAutomaton
 from .flip_sequence import VeeringFlipSequence
 
 from .env import sage

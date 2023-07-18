@@ -6,7 +6,7 @@ TESTS::
     sage: from veerer.env import sage, flipper, surface_dynamics, ppl
 """
 
-CHECK = False
+CHECK = True
 
 try:
     import sage.all
