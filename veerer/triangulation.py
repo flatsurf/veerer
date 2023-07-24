@@ -220,6 +220,72 @@ class Triangulation(object):
     def set_immutable(self):
         self._mutable = False
 
+    def __hash__(self):
+        r"""
+        TESTS::
+
+            sage: from itertools import permutations, combinations
+            sage: from veerer import Triangulation
+
+            sage: triangulations = []
+
+            sage: t = Triangulation("(0, 1, 2)")
+            sage: triangulations.append(t)
+
+            sage: for p in permutations(["1", "~1", "2", "~2"]):
+            ....:     t = Triangulation("(0, {}, {})(~0, {}, {})".format(*p))
+            ....:     triangulations.append(t)
+
+            sage: for i, j in combinations([0, 1, 2, 3], 2):
+            ....:     for k, l in permutations(set(range(4)).difference([i, j])):
+            ....:         vars = {'i': i, 'j': j, 'k': k, 'l': l}
+            ....:         t = Triangulation("({i}, {j}, {k})(~{i}, ~{j}, {l})".format(**vars))
+            ....:         triangulations.append(t)
+            ....:         t = Triangulation("({i}, ~{j}, {k})(~{i}, {j}, {l})".format(**vars))
+            ....:         triangulations.append(t)
+            ....:         t = Triangulation("({i}, {k}, {j})(~{i}, ~{j}, {l})".format(**vars))
+            ....:         triangulations.append(t)
+            ....:         t = Triangulation("({i}, {k}, ~{j})(~{i}, {j}, {l})".format(**vars))
+            ....:         triangulations.append(t)
+            ....:         t = Triangulation("({i}, {j}, {k})(~{i}, {l}, ~{j})".format(**vars))
+            ....:         triangulations.append(t)
+            ....:         t = Triangulation("({i}, ~{j}, {k})(~{i}, {l}, {j})".format(**vars))
+            ....:         triangulations.append(t)
+            ....:         t = Triangulation("({i}, {k}, {j})(~{i}, {l}, ~{j})".format(**vars))
+            ....:         triangulations.append(t)
+            ....:         t = Triangulation("({i}, {k}, ~{j})(~{i}, {l}, {j})".format(**vars))
+            ....:         triangulations.append(t)
+
+            sage: for i in range(len(triangulations)):
+            ....:     for j in range(len(triangulations)):
+            ....:         assert (triangulations[i] == triangulations[j]) == (i == j), (i, j)
+            ....:         assert (triangulations[i] != triangulations[j]) == (i != j), (i, j)
+
+            sage: hashes1 = {}
+            sage: hashes2 = {}
+            sage: for t in triangulations:
+            ....:     h1 = hash(t) % (2 ** 16)
+            ....:     h2 = (hash(t) >> 16) % (2 ** 16)
+            ....:     if h1 in hashes1:
+            ....:         print('collision 1: {} {}'.format(hashes1[h1], t))
+            ....:     else:
+            ....:         hashes1[h1] = t
+            ....:     if h2 in hashes2:
+            ....:         print('collision 2: {} {}'.format(hashes2[h2], t))
+            ....:     else:
+            ....:         hashes2[h2] = t
+            sage: assert len(hashes1) == len(hashes2) == len(triangulations), (len(hashes1), len(hashes2), len(triangulations))
+        """
+        if self._mutable:
+            raise ValueError('mutable veering triangulation not hashable')
+
+        x = 140737488617563
+        x = ((x ^ hash(self._vp.tobytes())) * 2147483693) + 82520 + self._n + self._n
+        x = ((x ^ hash(self._ep.tobytes())) * 2147483693) + 82520 + self._n + self._n
+        x = ((x ^ hash(self._fp.tobytes())) * 2147483693) + 82520 + self._n + self._n
+
+        return x
+
     @staticmethod
     def from_face_edge_perms(fp, ep, vp=None, mutable=False, check=True):
         r"""
