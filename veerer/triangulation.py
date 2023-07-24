@@ -148,21 +148,31 @@ class Triangulation(object):
 
         sage: from veerer import *
 
-        sage: T = Triangulation("(~2, 1, ~0)(~1, 0, 2)")
+        sage: T = Triangulation("(~2, 1, ~0)(~1, 0, 2)", mutable=True)
         sage: T.genus()
         1
         sage: T.num_faces()
         2
         sage: T.num_vertices()
         1
-        sage: T.flip(0); T
+        sage: T.flip(0)
+        sage: T
         Triangulation("(0,~1,~2)(1,2,~0)")
-        sage: T.flip(0); T
+        sage: T.flip(0)
+        sage: T
         Triangulation("(0,~2,1)(2,~1,~0)")
-        sage: T.flip(0); T
+        sage: T.flip(0)
+        sage: T
         Triangulation("(0,1,2)(~2,~0,~1)")
-        sage: T.flip(0); T
+        sage: T.flip(0)
+        sage: T
         Triangulation("(0,2,~1)(1,~0,~2)")
+
+        sage: T.set_immutable()
+        sage: T.flip(0)
+        Traceback (most recent call last):
+        ...
+        ValueError: immutable triangulation; use a mutable copy instead
 
     The surface must be connected::
 
@@ -171,14 +181,16 @@ class Triangulation(object):
         ...
         ValueError: (fp, ep, vp) do not generate a transitive group
     """
-    __slots__ = ['_n', '_fp', '_ep', '_vp']
+    __slots__ = ['_mutable', '_n', '_fp', '_ep', '_vp']
 
-    def __init__(self, triangles, check=True):
+    def __init__(self, triangles, mutable=False, check=True):
         if isinstance(triangles, Triangulation):
             self._fp = triangles.face_permutation(copy=True)
             self._ep = triangles.edge_permutation(copy=True)
         else:
             self._fp, self._ep = face_edge_perms_init(triangles)
+
+        self._mutable = mutable
 
         fp = self._fp
         ep = self._ep
@@ -205,8 +217,11 @@ class Triangulation(object):
         if check:
             self._check(ValueError)
 
+    def set_immutable(self):
+        self._mutable = False
+
     @staticmethod
-    def from_face_edge_perms(fp, ep, vp=None, check=True):
+    def from_face_edge_perms(fp, ep, vp=None, mutable=False, check=True):
         r"""
         INPUT:
 
@@ -238,13 +253,15 @@ class Triangulation(object):
                 vp[fp[ep[i]]] = i
         T._vp = vp
 
+        T._mutable = mutable
+
         if check:
             T._check(ValueError)
 
         return T
 
     @staticmethod
-    def from_string(s, check=True):
+    def from_string(s, mutable=False, check=True):
         r"""
         EXAMPLES::
 
@@ -258,7 +275,7 @@ class Triangulation(object):
         n = uint_from_base64_str(n)
         fp = perm_from_base64_str(fp, n)
         ep = perm_from_base64_str(ep, n)
-        return Triangulation.from_face_edge_perms(fp, ep, check=check)
+        return Triangulation.from_face_edge_perms(fp, ep, mutable=mutable, check=check)
 
     def _check(self, error=RuntimeError):
         r"""
@@ -342,25 +359,43 @@ class Triangulation(object):
             raise TypeError
         return self._n != other._n or self._fp != other._fp or self._ep != other._ep
 
-    def copy(self):
+    def copy(self, mutable=None):
         r"""
         EXAMPLES::
 
             sage: from veerer import *
 
-            sage: T = Triangulation([[0,1,2],[-1,-2,-3]])
+            sage: T = Triangulation([[0,1,2],[-1,-2,-3]], mutable=True)
             sage: U = T.copy()
             sage: T == U
             True
             sage: T.flip(0)
             sage: T == U
             False
+
+            sage: T.set_immutable()
+            sage: T.copy() is T
+            True
+
+            sage: U = T.copy(mutable=True)
+            sage: U.flip(0)
+            sage: T
+            Triangulation("(0,2,~1)(1,~0,~2)")
         """
+        if mutable is None:
+            mutable = self._mutable
+
+        if not self._mutable and not mutable:
+            # avoid copies of immutable objects
+            return self
+
         T = Triangulation.__new__(Triangulation)
         T._n = self._n
         T._fp = self._fp[:]
         T._ep = self._ep[:]
         T._vp = self._vp[:]
+        T._mutable = mutable
+
         return T
 
     def to_flipper(self):
@@ -596,7 +631,10 @@ class Triangulation(object):
         ep = self._ep
 
         assert m.nrows() == ne
-        V = m._row_ambient_module()
+        try:
+            V = m.row_ambient_module()
+        except AttributeError:
+            V = m._row_ambient_module()
 
         # boundary condition
         for F in self.faces():
@@ -626,23 +664,15 @@ class Triangulation(object):
 
             sage: from veerer import *
             sage: T = Triangulation("(1,~0,4)(2,~4,~1)(3,~2,5)(~5,~3,0)")
-            sage: T.homology_matrix()
-            [ 1  0  0]
-            [ 0  1  0]
-            [ 1  0  0]
-            [ 0  0  1]
-            [ 1 -1  0]
-            [ 1  0 -1]
+            sage: T.homology_matrix().transpose().echelon_form()
+            [ 1  0  1  0  1  1]
+            [ 0  1  0  0 -1  0]
+            [ 0  0  0  1  0 -1]
 
             sage: T = Triangulation("(1,~0,4)(2,~4,~1)(3,~2,5)(~5,6,0)")
-            sage: T.homology_matrix()
-            [ 1  0]
-            [ 0  1]
-            [ 1  0]
-            [ 0  0]
-            [ 1 -1]
-            [ 1  0]
-            [ 0  0]
+            sage: T.homology_matrix().transpose().echelon_form()
+            [ 1  0  1  0  1  1  0]
+            [ 0  1  0  0 -1  0  0]
         """
         require_package('sage', 'homology_matrix')
         from sage.matrix.constructor import matrix
@@ -701,7 +731,7 @@ class Triangulation(object):
 
             sage: from veerer import Triangulation
 
-            sage: T = Triangulation("(0,1,2)(~0,~1,~2)")
+            sage: T = Triangulation("(0,1,2)(~0,~1,~2)", mutable=True)
             sage: A = matrix([[1,1],[-1,0],[0,-1]])
             sage: B = copy(A)
             sage: for e in [0,1,0,1]:
@@ -722,7 +752,7 @@ class Triangulation(object):
         Another torus example (a single Dehn twist along the curve
         w)::
 
-            sage: T = Triangulation("(1,~0,4)(2,~4,~1)(3,~2,5)(~5,~3,0)")
+            sage: T = Triangulation("(1,~0,4)(2,~4,~1)(3,~2,5)(~5,~3,0)", mutable=True)
             sage: u = [0,1,0,0,-1,0]
             sage: v = [0,0,0,1,0,-1]
             sage: w = [1,1,1,1,0,0]
@@ -776,7 +806,10 @@ class Triangulation(object):
             m[e] = (m[a] if a < A else m[A]) + (m[d] if d < D else m[D])
         else:
             if a == A and d == D:
-                m[e] = V = m._row_ambient_module().zero()
+                try:
+                    m[e] = V = m.row_ambient_module().zero()
+                except AttributeError:
+                    m[e] = V = m._row_ambient_module().zero()
             elif a == A:
                 m[e] = m[d] if d < D else -m[D]
             elif d == D:
@@ -806,7 +839,7 @@ class Triangulation(object):
 
             sage: from veerer import Triangulation
 
-            sage: T = Triangulation("(1,~0,4)(2,~4,~1)(3,~2,5)(~5,~3,0)")
+            sage: T = Triangulation("(1,~0,4)(2,~4,~1)(3,~2,5)(~5,~3,0)", mutable=True)
             sage: u = [0,1,0,0,-1,0]
             sage: v = [0,0,0,1,0,-1]
             sage: w = [1,1,1,1,0,0]
@@ -815,7 +848,7 @@ class Triangulation(object):
             sage: perms = ["(0,1)(~0,~1)", "(3,~3)", "(3,~5)(~3,5)",
             ....:          "(0,1,2,~0,~1,~2)",
             ....:          "(0,~1,4,~0,1,~4)(2,3)(~2,~3)"]
-            sage: for p in perms*5:
+            sage: for p in perms * 5:
             ....:     T.relabel_homological_action(p, A)
             ....:     T.relabel(p)
             ....:     T._check_homology_matrix(A)
@@ -957,7 +990,7 @@ class Triangulation(object):
 
             sage: from veerer import Triangulation
 
-            sage: T = Triangulation("(0,1,2)(~0,~1,~2)")
+            sage: T = Triangulation("(0,1,2)(~0,~1,~2)", mutable=True)
             sage: T.swap(0)
             sage: T
             Triangulation("(0,~1,~2)(1,2,~0)")
@@ -968,7 +1001,7 @@ class Triangulation(object):
             sage: T
             Triangulation("(0,1,2)(~2,~0,~1)")
 
-            sage: T = Triangulation("(0,~5,4)(3,5,6)(1,2,~6)")
+            sage: T = Triangulation("(0,~5,4)(3,5,6)(1,2,~6)", mutable=True)
             sage: T.swap(0)
             sage: T
             Triangulation("(0,~5,4)(1,2,~6)(3,5,6)")
@@ -982,7 +1015,7 @@ class Triangulation(object):
 
             sage: fp = "(0,~1,2)(~0,1,~3)(4,~5,3)(~4,6,~2)(7,~6,8)(~7,5,~9)(10,~11,9)(~10,11,~8)"
             sage: cols = "BRBBBRRBBBBR"
-            sage: V = VeeringTriangulation(fp, cols)
+            sage: V = VeeringTriangulation(fp, cols, mutable=True)
             sage: V.swap(0)
             sage: V.swap(10)
             sage: V
@@ -990,7 +1023,7 @@ class Triangulation(object):
 
         One can alternatively use ``relabel``::
 
-            sage: T = Triangulation("(0,~5,4)(3,5,6)(1,2,~6)")
+            sage: T = Triangulation("(0,~5,4)(3,5,6)(1,2,~6)", mutable=True)
             sage: T1 = T.copy()
             sage: T1.swap(3)
             sage: T1.swap(6)
@@ -999,6 +1032,9 @@ class Triangulation(object):
             sage: T1 == T2
             True
         """
+        if not self._mutable:
+            raise ValueError('immutable triangulation; use a mutable copy instead')
+
         vp = self._vp
         ep = self._ep
         fp = self._fp
@@ -1043,15 +1079,23 @@ class Triangulation(object):
 
             sage: from veerer import Triangulation
 
-            sage: T = Triangulation("(0,1,2)(~0,~1,~2)")
-            sage: T.relabel("(0,~0)"); T
+            sage: T = Triangulation("(0,1,2)(~0,~1,~2)", mutable=True)
+            sage: T.relabel("(0,~0)")
+            sage: T
             Triangulation("(0,~1,~2)(1,2,~0)")
-            sage: T.relabel("(0,1,~2)"); T
+            sage: T.relabel("(0,1,~2)")
+            sage: T
             Triangulation("(0,1,2)(~2,~0,~1)")
+
+            sage: T.set_immutable()
+            sage: T.relabel("(0,~1)")
+            Traceback (most recent call last):
+            ...
+            ValueError: immutable triangulation; use a mutable copy instead
 
         An example of a flip sequence which forms a loop after non-trivial relabelling::
 
-            sage: T0 = Triangulation("(1,~0,4)(2,~4,~1)(3,~2,5)(~5,~3,0)")
+            sage: T0 = Triangulation("(1,~0,4)(2,~4,~1)(3,~2,5)(~5,~3,0)", mutable=True)
             sage: T = T0.copy()
             sage: T.flip_back(1)
             sage: T.flip_back(3)
@@ -1061,6 +1105,9 @@ class Triangulation(object):
             sage: T == T0
             True
         """
+        if not self._mutable:
+            raise ValueError('immutable triangulation; use a mutable copy instead')
+
         n = self._n
         if not perm_check(p, n):
             # if the input is not a valid permutation, we assume that half-edges
@@ -1084,12 +1131,14 @@ class Triangulation(object):
 
         Flipping a folded edge is an involution::
 
-            sage: T = Triangulation("(0,1,2)")
+            sage: T = Triangulation("(0,1,2)", mutable=True)
             sage: T
             Triangulation("(0,1,2)")
-            sage: T.flip(0); T
+            sage: T.flip(0)
+            sage: T
             Triangulation("(0,2,1)")
-            sage: T.flip(0); T
+            sage: T.flip(0)
+            sage: T
             Triangulation("(0,1,2)")
 
             sage: T == Triangulation("(0,1,2)")
@@ -1108,6 +1157,9 @@ class Triangulation(object):
         # | /         |     |         \ |
         # v/    c     |     v     c    \|
         # w---------->x     w---------->x
+
+        if not self._mutable:
+            raise ValueError('immutable triangulation; use a mutable copy instead')
 
         e = int(e)
         E = self._ep[e]
@@ -1162,17 +1214,25 @@ class Triangulation(object):
         EXAMPLES::
 
             sage: from veerer import *
-            sage: T0 = Triangulation([(0,1,2),(-1,-2,-3)])
+            sage: T0 = Triangulation([(0,1,2),(-1,-2,-3)], mutable=True)
             sage: T = T0.copy()
             sage: T.flip(0)
             sage: T.flip_back(0)
             sage: T == T0
             True
 
-            sage: T.flip(1); T.flip(2)
-            sage: T.flip_back(2); T.flip_back(1)
+            sage: T.flip(1)
+            sage: T.flip(2)
+            sage: T.flip_back(2)
+            sage: T.flip_back(1)
             sage: T == T0
             True
+
+            sage: T.set_immutable()
+            sage: T.flip(0)
+            Traceback (most recent call last):
+            ...
+            ValueError: immutable triangulation; use a mutable copy instead
         """
         # Use the following for reference:
         # v<----------u     v<----------u
@@ -1188,6 +1248,9 @@ class Triangulation(object):
         # | /         |     |         \ |
         # v/    c     |     v     c    v|
         # w---------->x     w---------->x
+
+        if not self._mutable:
+            raise ValueError('immutable triangulation; use a mutable copy instead')
 
         e = int(e)
         E = self._ep[e]
@@ -1263,10 +1326,16 @@ class Triangulation(object):
 
             sage: from veerer import Triangulation
 
-            sage: T = Triangulation("(0,1,2)(~0,~4,~2)(3,4,5)(~3,~1,~5)")
+            sage: T = Triangulation("(0,1,2)(~0,~4,~2)(3,4,5)(~3,~1,~5)", mutable=True)
             sage: T.conjugate()
             sage: T
             Triangulation("(0,2,4)(1,3,5)(~5,~4,~3)(~2,~1,~0)")
+
+            sage: T = Triangulation("(0,1,2)(~0,~4,~2)(3,4,5)(~3,~1,~5)", mutable=False)
+            sage: T.conjugate()
+            Traceback (most recent call last):
+            ...
+            ValueError: immutable triangulation; use a mutable copy instead
         """
         # for reference
         #
@@ -1285,6 +1354,9 @@ class Triangulation(object):
         # x                 x<----------x
         #
         # (a, b, c)     -->  (C, B, A)
+
+        if not self._mutable:
+            raise ValueError('immutable triangulation; use a mutable copy instead')
 
         self._fp = perm_conjugate(perm_invert(self._fp), self._ep)
         self._vp = perm_invert(self._vp)
@@ -1307,7 +1379,7 @@ class Triangulation(object):
             sage: fp = array('l', [1, 5, 4, 2, 3, 0])
             sage: ep = array('l', [4, 3, 5, 1, 0, 2])
             sage: vp = array('l', [2, 4, 1, 0, 5, 3])
-            sage: T = Triangulation.from_face_edge_perms(fp, ep, vp)
+            sage: T = Triangulation.from_face_edge_perms(fp, ep, vp, mutable=True)
             sage: T._relabelling_from(3)
             array('l', [4, 5, 3, 0, 1, 2])
 
@@ -1324,7 +1396,7 @@ class Triangulation(object):
             sage: fp = array('l', [1, 2, 0])
             sage: ep = array('l', [0, 1, 2])
             sage: vp = array('l', [2, 0, 1])
-            sage: T = Triangulation.from_face_edge_perms(fp, ep, vp)
+            sage: T = Triangulation.from_face_edge_perms(fp, ep, vp, mutable=True)
             sage: T._relabelling_from(1)
             array('l', [1, 0, 2])
             sage: p = T._relabelling_from(0)
@@ -1337,7 +1409,7 @@ class Triangulation(object):
 
         An example with no automorphism::
 
-            sage: T = Triangulation("(0,1,2)(3,4,5)(~0,~3,6)")
+            sage: T = Triangulation("(0,1,2)(3,4,5)(~0,~3,6)", mutable=True)
             sage: p = T._relabelling_from(0)
             sage: T.relabel(p)
             sage: for i in range(1, 9):
@@ -1533,7 +1605,8 @@ class Triangulation(object):
 
             sage: from veerer import Triangulation
             sage: from veerer.permutation import perm_random_centralizer
-            sage: T = Triangulation("(0,5,1)(~0,4,2)(~1,~2,~4)(3,6,~5)")
+
+            sage: T = Triangulation("(0,5,1)(~0,4,2)(~1,~2,~4)(3,6,~5)", mutable=True)
             sage: TT = T.copy()
             sage: for _ in range(10):
             ....:     rel = perm_random_centralizer(TT.edge_permutation(False))
