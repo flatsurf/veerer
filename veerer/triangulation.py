@@ -46,10 +46,17 @@ def face_edge_perms_init(data):
     for e in neg:
         if ~e not in pos:
             raise ValueError("inconsistent permutation data")
+
     pos.sort()
     neg.sort(reverse=True)
-    if pos != list(range(len(pos))):
-        raise ValueError("inconsistent permutation data")
+    for i in range(len(pos) - 1):
+        if pos[i] == pos[i+1]:
+            raise ValueError("repeated edge label {}".format(pos[i]))
+        elif pos[i+1] != pos[i] + 1:
+            raise ValueError("missing edge label {}".format(pos[i] + 1))
+    for i in range(len(neg) - 1):
+        if neg[i] == neg[i+1]:
+            raise ValueError("repeated edge label ~{}".format(~neg[i]))
 
     # number of half edges
     n = len(pos) + len(neg)
