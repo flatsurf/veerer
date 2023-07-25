@@ -733,3 +733,44 @@ class VeeringTriangulationLinearFamilies:
     def L_shaped_surface(a1, a2, b1, b2, t1=0, t2=0):
         vt, s, t = VeeringTriangulations.L_shaped_surface(a1, a2, b1, b2, t1, t2)
         return VeeringTriangulationLinearFamily(vt, matrix([s, t]))
+
+    @staticmethod
+    def triangle_3_4_13_unfolding_orbit_closure():
+        from surface_dynamics import QuadraticStratum
+        from sage.rings.rational_field import QQ
+        from sage.rings.number_field.number_field import NumberField
+        from sage.rings.qqbar import AA
+
+        x = QQ['x'].gen()
+
+        fp = "(0,9,~8)(1,8,2)(10,14,~9)(3,11,~10)(~2,~3,~11)(~14,15,4)(12,5,~15)(~4,16,~12)(13,6,~16)(23,21,~13)(18,~5,~23)(17,20,~18)(~6,~17,~20)(~0,22,7)(~21,19,~22)(~7,~1,~19)"
+        cols = "BBRBRBRRRRRRRRBRBBRRRBRR"
+        vt = VeeringTriangulation(fp, cols)
+        assert vt.stratum() == QuadraticStratum(11, 1)
+
+        # equations (beyond switches)
+        # B = phi A
+        # S = phi T
+        # C = phi D
+        # U = phi V
+        # where A = 0, B = 1, C = 2, D = 6, S = 3, T = 17, U = 4, V = 7
+        K = NumberField(x**2 - x - 1, 'phi', embedding=(AA(5).sqrt() + 1)/2)
+        phi = K.gen()
+        L = LinearExpressions(K)
+        cs = ConstraintSystem()
+        vt._set_switch_conditions(cs.insert, [L.variable(e) for e in range(24)])
+        A = L.variable(0)
+        B = L.variable(1)
+        C = L.variable(2)
+        C = L.variable(2)
+        D = L.variable(6)
+        S = L.variable(3)
+        T = L.variable(17)
+        U = L.variable(4)
+        V = L.variable(7)
+        cs.insert(B == phi * A)
+        cs.insert(S == phi * T)
+        cs.insert(C == phi * D)
+        cs.insert(U == phi * V)
+
+        return VeeringTriangulationLinearFamily(vt, cs.linear_generators_matrix())
