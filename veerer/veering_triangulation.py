@@ -6,10 +6,9 @@ to folded edges). It is said to be in canonical form if it starts with cycle
 representatives.
 """
 
+import collections
+import itertools
 import numbers
-
-from collections import deque
-from itertools import product
 
 from .constants import *
 from .permutation import *
@@ -149,6 +148,10 @@ class VeeringTriangulation(Triangulation):
             if i == len(v):
                 raise error('monochromatic vertex {} of colour {}'.format(v, colour_to_string(cols[v[0]])))
 
+    def base_ring(self):
+        from sage.rings.rational_field import QQ
+        return QQ
+
     def __hash__(self):
         r"""
         TESTS::
@@ -208,17 +211,9 @@ class VeeringTriangulation(Triangulation):
         """
         require_package('sage', 'as_linear_family')
 
-        from sage.matrix.constructor import matrix
-        from sage.modules.free_module_element import vector
-        from sage.rings.rational_field import QQ
-
-        P = self.train_track_linear_space()
-        lines = []
-        for l in P.minimized_generators():
-            if l.is_line():
-                lines.append(vector(QQ, l.coefficients()))
         from .linear_family import VeeringTriangulationLinearFamily
-        return VeeringTriangulationLinearFamily(self, matrix(QQ, lines), mutable=mutable)
+        P = self.train_track_linear_space()
+        return VeeringTriangulationLinearFamily(self, self.train_track_linear_space().lines(), mutable=mutable)
 
     def triangle(self, a):
         r"""
@@ -1035,14 +1030,14 @@ class VeeringTriangulation(Triangulation):
             from surface_dynamics import AbelianStratum
             return AbelianStratum([(a-2)/2 for a in A])
 
-    def stratum_dimension(self):
+    def dimension(self):
         r"""
         Return the dimension of the ambient stratum of Abelian or quadratic differential.
         """
         # each folded edge gives a pole
         return 2 * self.genus() - 2 + self.num_vertices() + self.num_folded_edges() + self.is_abelian()
 
-    ambient_dimension = stratum_dimension
+    stratum_dimension = dimension
 
     def colours_about_edge(self, e):
         e = int(e)
@@ -1061,7 +1056,7 @@ class VeeringTriangulation(Triangulation):
     # TODO: change the names
     # TODO: compute it combinatorially, not via polytope computation
     # (these are the cycles and, if not orientable, the dumbbells)
-    def vertex_cycles(self, slope=VERTICAL):
+    def vertex_cycles(self, slope=VERTICAL, backend='ppl'):
         r"""
         Return the rays of the train-track polytope.
 
@@ -1069,15 +1064,12 @@ class VeeringTriangulation(Triangulation):
 
             sage: from veerer import VeeringTriangulation, HORIZONTAL, VERTICAL
             sage: V = VeeringTriangulation([(0,1,2), (-1,-2,-3)], "RRB")
-            sage: V.vertex_cycles()
-            [(1, 1, 0), (0, 1, 1)]
-            sage: V.vertex_cycles(HORIZONTAL)
-            [(1, 0, 1), (1, 1, 0)]
+            sage: sorted(V.vertex_cycles())
+            [[0, 1, 1], [1, 1, 0]]
+            sage: sorted(V.vertex_cycles(HORIZONTAL))
+            [[1, 0, 1], [1, 1, 0]]
         """
-        from sage.modules.free_module import FreeModule
-        from sage.rings.integer_ring import ZZ
-        F = FreeModule(ZZ, self.num_edges())
-        return [F(g.coefficients()) for g in self.train_track_polytope(slope=slope).minimized_generators() if g.is_ray()]
+        return self.train_track_polytope(slope, backend=backend).rays()
 
     def branches(self, slope=VERTICAL):
         r"""
@@ -2735,11 +2727,11 @@ class VeeringTriangulation(Triangulation):
         """
         if homogeneous:
             if slope == VERTICAL:
-                for eff, ebf in product(self.forward_flippable_edges(), self.backward_flippable_edges()):
+                for eff, ebf in itertools.product(self.forward_flippable_edges(), self.backward_flippable_edges()):
                     a, b, c, d = self.square_about_edge(ebf)
                     insert(x[self._norm(b)] + x[self._norm(c)] >= x[self._norm(eff)])
             elif slope == HORIZONTAL:
-                for eff, ebf in product(self.forward_flippable_edges(), self.backward_flippable_edges()):
+                for eff, ebf in itertools.product(self.forward_flippable_edges(), self.backward_flippable_edges()):
                     a, b, c, d = self.square_about_edge(eff)
                     insert(x[self._norm(b)] + x[self._norm(c)] >= x[self._norm(ebf)])
             else:
@@ -2773,12 +2765,9 @@ class VeeringTriangulation(Triangulation):
             sage: from veerer import *
             sage: T = VeeringTriangulation("(0,1,2)(~2,~0,~1)", "RRB")
             sage: T.train_track_linear_space()
-            A 2-dimensional polyhedron in QQ^3 defined as the convex hull of 1 point, 2 lines
-
-            sage: type(T.train_track_linear_space(backend='ppl'))
-            <class 'ppl.polyhedron.C_Polyhedron'>
-            sage: type(T.train_track_linear_space(backend='sage'))
-            <class 'sage.geometry.polyhedron.parent.Polyhedra_QQ_ppl_with_category.element_class'>
+            Cone of dimension 2 in ambient dimension 3 made of 0 facets (backend=ppl)
+            sage: T.train_track_linear_space(backend='sage')
+            Cone of dimension 2 in ambient dimension 3 made of 0 facets (backend=sage)
         """
         from sage.rings.rational_field import QQ
         cs = ConstraintSystem()
@@ -2786,7 +2775,7 @@ class VeeringTriangulation(Triangulation):
         ne = self.num_edges()
         x = [L.variable(e) for e in range(ne)]
         self._set_switch_conditions(cs.insert, x, slope)
-        return polyhedron(cs, backend)
+        return cs.cone(backend)
 
     def train_track_polytope(self, slope=VERTICAL, low_bound=0, backend='ppl'):
         r"""
@@ -2806,31 +2795,31 @@ class VeeringTriangulation(Triangulation):
             sage: T = VeeringTriangulation([(0,1,2),(-1,-2,-3)], [RED, RED, BLUE])
             sage: P = T.train_track_polytope(VERTICAL)
             sage: P
-            A 2-dimensional polyhedron in QQ^3 defined as the convex hull of 1 point, 2 rays
-            sage: P.generators()
-            Generator_System {point(0/1, 0/1, 0/1), ray(1, 1, 0), ray(0, 1, 1)}
+            Cone of dimension 2 in ambient dimension 3 made of 2 facets (backend=ppl)
+            sage: sorted(P.rays())
+            [[0, 1, 1], [1, 1, 0]]
 
-            sage: P = T.train_track_polytope(VERTICAL, low_bound=3)
-            sage: P.generators()
+            sage: P = T.train_track_polytope(VERTICAL, low_bound=3)  # not tested
+            sage: P.generators()  # not tested
             Generator_System {ray(1, 1, 0), ray(0, 1, 1), point(3/1, 6/1, 3/1)}
 
             sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [GREEN, RED, BLUE])
-            sage: T.train_track_polytope(VERTICAL).generators()
-            Generator_System {point(0/1, 0/1, 0/1), ray(0, 1, 1)}
-            sage: T.train_track_polytope(HORIZONTAL).generators()
-            Generator_System {point(0/1, 0/1, 0/1), ray(1, 0, 1), ray(1, 1, 0)}
+            sage: sorted(T.train_track_polytope(VERTICAL).rays())
+            [[0, 1, 1]]
+            sage: sorted(T.train_track_polytope(HORIZONTAL).rays())
+            [[1, 0, 1], [1, 1, 0]]
 
             sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [PURPLE, BLUE, RED])
-            sage: T.train_track_polytope(VERTICAL).generators()
-            Generator_System {point(0/1, 0/1, 0/1), ray(1, 0, 1), ray(1, 1, 0)}
-            sage: T.train_track_polytope(HORIZONTAL).generators()
-            Generator_System {point(0/1, 0/1, 0/1), ray(0, 1, 1)}
-
-        One can also use sage::
-
-            sage: T.train_track_polytope(VERTICAL, backend='sage').rays_list()
+            sage: sorted(T.train_track_polytope(VERTICAL).rays())
             [[1, 0, 1], [1, 1, 0]]
-            sage: T.train_track_polytope(HORIZONTAL, backend='sage').rays_list()
+            sage: sorted(T.train_track_polytope(HORIZONTAL).rays())
+            [[0, 1, 1]]
+
+        One can also use other backends::
+
+            sage: sorted(T.train_track_polytope(VERTICAL, backend='sage').rays())
+            [[1, 0, 1], [1, 1, 0]]
+            sage: sorted(T.train_track_polytope(HORIZONTAL, backend='sage').rays())
             [[0, 1, 1]]
         """
         from sage.rings.rational_field import QQ
@@ -2839,7 +2828,7 @@ class VeeringTriangulation(Triangulation):
         ne = self.num_edges()
         variables = [L.variable(e) for e in range(ne)]
         self._set_train_track_constraints(cs.insert, variables, slope, low_bound, False)
-        return polyhedron(cs, backend)
+        return cs.cone(backend)
 
     def train_track_min_solution(self, slope=VERTICAL, allow_degenerations=False):
         r"""
@@ -2917,12 +2906,11 @@ class VeeringTriangulation(Triangulation):
 
             sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
             sage: T.geometric_polytope()
-            A 4-dimensional polyhedron in QQ^6 defined as the convex hull of 1 point, 7 rays
-            sage: T.geometric_polytope(x_low_bound=1, y_low_bound=1, hw_bound=1)
-            A 4-dimensional polyhedron in QQ^6 defined as the convex hull of 1 point, 7 rays
+            Cone of dimension 4 in ambient dimension 6 made of 6 facets (backend=ppl)
+            sage: T.geometric_polytope(x_low_bound=1, y_low_bound=1, hw_bound=1)  # not tested
 
             sage: T.geometric_polytope(backend='sage')
-            A 4-dimensional polyhedron in QQ^6 defined as the convex hull of 1 vertex and 7 rays
+            Cone of dimension 4 in ambient dimension 6 made of 6 facets (backend=sage)
         """
         from sage.rings.rational_field import QQ
         L = LinearExpressions(QQ)
@@ -2933,7 +2921,7 @@ class VeeringTriangulation(Triangulation):
         self._set_train_track_constraints(cs.insert, x, VERTICAL, x_low_bound, False)
         self._set_train_track_constraints(cs.insert, y, HORIZONTAL, y_low_bound, False)
         self._set_geometric_constraints(cs.insert, x, y, hw_bound=hw_bound)
-        return polyhedron(cs, backend)
+        return cs.cone(backend)
 
     def _complexify_generators(self, Gx):
         r"""
@@ -3062,7 +3050,7 @@ class VeeringTriangulation(Triangulation):
         from .flat_structure import FlatVeeringTriangulation
         return FlatVeeringTriangulation(self, vectors)
 
-    def flat_structure_middle(self):
+    def flat_structure_middle(self, backend='ppl'):
         r"""
         Return a flat structure with this Veering triangulation.
 
@@ -3091,13 +3079,13 @@ class VeeringTriangulation(Triangulation):
         """
         n = self.num_edges()
 
-        PH = self.train_track_polytope(HORIZONTAL)
-        PV = self.train_track_polytope(VERTICAL)
+        PH = self.train_track_polytope(HORIZONTAL, backend=backend)
+        PV = self.train_track_polytope(VERTICAL, backend=backend)
 
         # pick sum of rays
-        VH = [g.coefficients() for g in PH.generators() if g.is_ray()]
+        VH = PH.rays()
         VH = [sum(v[i] for v in VH) for i in range(n)]
-        VV = [g.coefficients() for g in PV.generators() if g.is_ray()]
+        VV = PV.rays()
         VV = [sum(v[i] for v in VV) for i in range(n)]
 
         return self._flat_structure_from_train_track_lengths(VH, VV)
@@ -3145,7 +3133,7 @@ class VeeringTriangulation(Triangulation):
 
         return self._flat_structure_from_train_track_lengths(VH, VV)
 
-    def flat_structure_geometric_middle(self, L=None):
+    def flat_structure_geometric_middle(self, backend='ppl'):
         r"""
         Return a geometric flat structure obtained by averaging the
         vertices of the geometric polytope.
@@ -3158,15 +3146,10 @@ class VeeringTriangulation(Triangulation):
             sage: T.flat_structure_geometric_middle()
             FlatVeeringTriangulation(Triangulation("(0,1,2)(~2,~0,~1)"), [(4, 9), (-9, -4), (5, -5), (-5, 5), (9, 4), (-4, -9)])
         """
-        n = self.num_edges()
-
-
-        P = self.geometric_polytope()
-        if L is not None:
-            P.intersection_assign(L)
-        r = [g.coefficients() for g in P.generators() if g.is_ray()]
-        VV = [sum(v[i] for v in r) for i in range(n)]
-        VH = [sum(v[n+i] for v in r) for i in range(n)]
+        ne = self.num_edges()
+        r = self.geometric_polytope(backend=backend).rays()
+        VV = [sum(v[i] for v in r) for i in range(ne)]
+        VH = [sum(v[ne + i] for v in r) for i in range(ne)]
 
         return self._flat_structure_from_train_track_lengths(VH, VV)
 
@@ -3174,13 +3157,9 @@ class VeeringTriangulation(Triangulation):
         raise NotImplementedError
         return self.geometric_polytope().vrep()[1:, 1:].sum(axis=0).tolist()
 
-    def is_core(self, method='polytope'):
+    def is_core(self):
         r"""
         Test whether this coloured triangulation is core.
-
-        INPUT:
-
-        - ``method`` - a string which should either be ``'polytope'`` or ``'LP'``
 
         EXAMPLES::
 
@@ -3207,6 +3186,14 @@ class VeeringTriangulation(Triangulation):
             sage: U.flip(10, RED)
             sage: U.is_core()
             False
+
+        Examples involving linear subspaces::
+
+            sage: vt = VeeringTriangulation("(0,1,2)(~0,~1,~2)", [RED, RED, BLUE])
+            sage: vt.as_linear_family().is_core()
+            True
+            sage: VeeringTriangulationLinearFamily(vt, [1, 0, -1]).is_core()
+            False
         """
         if any(c == PURPLE or c == GREEN for c in self._colouring):
             raise ValueError('core not implemented with PURPLE or GREEN colour')
@@ -3214,39 +3201,17 @@ class VeeringTriangulation(Triangulation):
         # TODO: could use v.has_curve for every edge?
         # In theory LP should be much faster but in practice (in small dimensions)
         # polytope is much better
-        if method == 'polytope':
-            d = self.stratum_dimension()
-            return self.train_track_polytope(HORIZONTAL).affine_dimension() == d and \
-                   self.train_track_polytope(VERTICAL).affine_dimension() == d
-        elif method == 'LP':
-            require_package('ppl', 'is_core')
+        d = self.dimension()
+        return self.train_track_polytope(HORIZONTAL).affine_dimension() == d and \
+               self.train_track_polytope(VERTICAL).affine_dimension() == d
 
-            n = self.num_edges()
-            x = [ppl.Variable(e) for e in range(n)]
-            for slope in (HORIZONTAL, VERTICAL):
-                M = ppl.MIP_Problem(n)
-                self._set_train_track_constraints(M.add_constraint, x, slope, True, False)
-
-                if M.solve()['status'] == 'unfeasible':
-                    return False
-
-            return True
-
-        else:
-            raise ValueError("method must be either 'polytope' or 'LP'")
-
-    def is_geometric(self, method=None, backend='ppl'):
+    def is_geometric(self, backend='ppl'):
         r"""
         Test whether this coloured triangulation is geometric.
 
-        INPUT:
-
-        - ``method`` - string - either ``'polytope_dimension'``, ``'polytope_interior'``
-          or ``'LP'`` (linear programming).
-
         EXAMPLES::
 
-            sage: from veerer import VeeringTriangulation, VeeringTriangulations
+            sage: from veerer import VeeringTriangulation
 
             sage: vt1 = VeeringTriangulation("(0,~6,~3)(1,7,~2)(2,~1,~0)(3,5,~4)(4,8,~5)(6,~8,~7)", "RBBBRBBRB")
             sage: vt2 = VeeringTriangulation("(0,~8,~3)(1,6,~2)(2,~1,~0)(3,7,~4)(4,8,~5)(5,~7,~6)", "RBBBRBRBB")
@@ -3255,66 +3220,19 @@ class VeeringTriangulation(Triangulation):
             sage: vt2.is_geometric()
             False
 
-            sage: vt1.is_geometric(method='polytope_interior')
-            True
-            sage: vt2.is_geometric(method='polytope_interior')
-            False
-
-            sage: vt1.is_geometric(method='LP')
-            True
-            sage: vt2.is_geometric(method='LP')
-            False
-
         An example in genus 2 involving a linear subspace::
 
+            sage: from veerer import VeeringTriangulations, VeeringTriangulationLinearFamily
             sage: T, s, t = VeeringTriangulations.L_shaped_surface(1, 1, 1, 1)
             sage: f = VeeringTriangulationLinearFamily(T, [s, t])
-            sage: f.is_geometric(method='polytope_dimension')
-            True
-            sage: f.is_geometric(method='polytope_interior')
-            True
-            sage: f.is_geometric(method='LP')
+            sage: f.is_geometric()
             True
         """
-        if method is None or method == 'polytope_dimension':
-            dim = self.ambient_dimension()
-            P = self.geometric_polytope(backend=backend)
-            Pdim = polyhedron_dimension(P, backend)
-            assert Pdim <= 2 * dim
-            return Pdim == 2 * dim
-
-        elif method == 'polytope_interior':
-            # test whether the polytope contains an interior point
-            return not self.geometric_polytope(x_low_bound=1, y_low_bound=1, hw_bound=1).is_empty()
-
-        elif method == 'LP':
-            require_package('ppl', 'is_geometric')
-
-            ne = self.num_edges()
-            M = ppl.MIP_Problem(2*ne)
-            x = [ppl.Variable(e) for e in range(ne)]
-            y = [ppl.Variable(e) for e in range(ne, 2*ne)]
-
-            if Gx is not None:
-                Lx = Gx.right_kernel_matrix()
-
-            if Lx is not None:
-                # NOTE: Lx already contains the switch conditions
-                self._set_linear_subspace_constraints(M.add_constraint, x, y, Lx)
-            else:
-                self._set_switch_conditions(M.add_constraint, x, VERTICAL)
-                self._set_switch_conditions(M.add_constraint, y, HORIZONTAL)
-
-            for e in range(ne):
-                M.add_constraint(x[e] >= 1)
-                M.add_constraint(y[e] >= 1)
-
-            self._set_geometric_constraints(M.add_constraint, x, y, True)
-
-            return M.solve()['status'] != 'unfeasible'
-
-        else:
-            raise ValueError("method must be 'polytope_dimension', 'polytope_interior' or 'LP'")
+        dim = self.dimension()
+        P = self.geometric_polytope(backend=backend)
+        Pdim = P.affine_dimension()
+        assert Pdim <= 2 * dim
+        return Pdim == 2 * dim
 
     def balanced_polytope(self, slope=VERTICAL, homogeneous=False):
         r"""
@@ -3456,7 +3374,7 @@ class VeeringTriangulation(Triangulation):
         fp = self._fp
         seen = [False] * n
         seen[start] = True
-        q = deque()
+        q = collections.deque()
         q.append(start)
         while q:
             f = q.popleft()
@@ -3491,65 +3409,130 @@ class VeeringTriangulation(Triangulation):
 
     def geometric_flips(self, backend='ppl'):
         r"""
-        Return the list of flips that corresponding to codimension one cells.
+        Return the list of geometric flips.
+
+        A flip is geometric if it arises generically as a flip of L^oo-Delaunay
+        triangulations along Teichmueller geodesics. These correspond to a subset
+        of facets of the geometric polytope.
 
         OUTPUT: a list of pairs (edge number, new colour)
 
-        EXAMPLES:
+        EXAMPLES::
 
             sage: from veerer import *
+
             sage: vt = VeeringTriangulation("(0,2,3)(1,4,~0)(5,6,~1)", "BRRBBBB")
             sage: sorted(vt.geometric_flips())
             [[(3, 1)], [(3, 2)], [(4, 1)], [(4, 2)], [(5, 1)], [(5, 2)]]
             sage: sorted(vt.geometric_flips(backend='sage'))
             [[(3, 1)], [(3, 2)], [(4, 1)], [(4, 2)], [(5, 1)], [(5, 2)]]
+
+        L-shaped square tiled surface with 3 squares (given as a sphere with
+        3 triangles). It has two geometric neighbors corresponding to simultaneous
+        flipping of the diagonals 3, 4 and 5::
+
+            sage: from veerer import *
+            sage: T, s, t = VeeringTriangulations.L_shaped_surface(1, 1, 1, 1)
+            sage: f = VeeringTriangulationLinearFamily(T, [s, t])
+            sage: sorted(f.geometric_flips(backend='ppl'))
+            [[(3, 1), (4, 1), (5, 1)], [(3, 2), (4, 2), (5, 2)]]
+            sage: sorted(f.geometric_flips(backend='sage'))
+            [[(3, 1), (4, 1), (5, 1)], [(3, 2), (4, 2), (5, 2)]]
+            sage: sorted(f.geometric_flips(backend='normaliz-QQ'))
+            [[(3, 1), (4, 1), (5, 1)], [(3, 2), (4, 2), (5, 2)]]
+
+        To be compared with the geometric flips in the ambient stratum::
+
+            sage: sorted(T.geometric_flips())
+            [[(3, 1)], [(3, 2)], [(4, 1)], [(4, 2)], [(5, 1)], [(5, 2)]]
+            sage: sorted(T.as_linear_family().geometric_flips())
+            [[(3, 1)], [(3, 2)], [(4, 1)], [(4, 2)], [(5, 1)], [(5, 2)]]
+
+        A more complicated example::
+
+            sage: T, s, t = VeeringTriangulations.L_shaped_surface(2, 3, 5, 2, 1, 1)
+            sage: f = VeeringTriangulationLinearFamily(T, [s, t])
+            sage: sorted(f.geometric_flips(backend='ppl'))
+            [[(4, 2)], [(5, 1)], [(5, 2)]]
+            sage: sorted(f.geometric_flips(backend='sage'))
+            [[(4, 2)], [(5, 1)], [(5, 2)]]
+            sage: sorted(f.geometric_flips(backend='normaliz-QQ'))
+            [[(4, 2)], [(5, 1)], [(5, 2)]]
+
+        TESTS::
+
+            sage: from veerer import VeeringTriangulation
+            sage: fp = "(0,~8,~7)(1,3,~2)(2,7,~3)(4,6,~5)(5,8,~6)(~4,~1,~0)"
+            sage: cols = "RBRRRRBBR"
+            sage: vt = VeeringTriangulation(fp, cols)
+            sage: sorted(vt.geometric_flips())
+            [[(2, 1)], [(2, 2)], [(4, 1), (8, 1)], [(4, 2), (8, 2)]]
+            sage: sorted(vt.as_linear_family().geometric_flips())
+            [[(2, 1)], [(2, 2)], [(4, 1), (8, 1)], [(4, 2), (8, 2)]]
         """
-        from sage.rings.rational_field import QQ
-        L = LinearExpressions(QQ)
-        ne = self.num_edges()
+        from sage.matrix.constructor import matrix
+
+        dim = self.dimension()
+        ne = ambient_dim = self.num_edges()
+        L = LinearExpressions(self.base_ring())
         x = [L.variable(e) for e in range(ne)]
-        y = [L.variable(ne+e) for e in range(ne)]
-
-        # construct the linear invariant subspace we are interested in
-        dim = self.stratum_dimension()
-
-        # NOTE: geometric_polytope might be redefined in subclasses
+        y = [L.variable(ne + e) for e in range(ne)]
         P = self.geometric_polytope(backend=backend)
-        if polyhedron_dimension(P, backend) != 2 * dim:
-            raise ValueError('not geometric')
+        if P.affine_dimension() != 2 * dim:
+            raise ValueError('not geometric P.dimension() = {} while 2 * dim = {}'.format(P.dimension(), 2 * dim))
 
-        # constructing the Delaunay flip facets
-        # (a strict subset of the facets)
+        # determine which facets correspond to veering flips
+        # when they do, compute the subset of edges that do flip
+        eqns = P.eqns()
+        ieqs = P.ieqs()
+        ff_edges = self.forward_flippable_edges()
+        mat = matrix(self.base_ring(), len(eqns) + 2, 2 * ne)
+        for i, eqn in enumerate(eqns):
+            mat[i] = eqn
         delaunay_facets = {}
-        for e in self.forward_flippable_edges():
-            a, b, c, d = self.square_about_edge(e)
+        for i, ieq in enumerate(ieqs):
+            edges = []
+            mat[len(eqns)] = ieq
+            assert mat[:len(eqns) + 1].rank() == len(eqns) + 1
+            for e in ff_edges:
+                a, b, c, d = self.square_about_edge(e)
+                constraint = x[self._norm(e)] == y[self._norm(a)] + y[self._norm(d)]
+                constraint = constraint.coefficients(dim=2*ne, homogeneous=True)
+                mat[len(eqns) + 1] = constraint
+                if mat.rank() == len(eqns) + 1:
+                    edges.append(e)
+            if edges:
+                delaunay_facets[i] = edges
 
-            constraint = x[self._norm(e)] == y[self._norm(a)] + y[self._norm(d)]
-            Q = polyhedron_add_constraints(P, constraint, backend)
-            facet_dim = polyhedron_dimension(Q, backend)
-            assert facet_dim < 2 * dim
-            if facet_dim == 2*dim - 1:
-                hQ = polyhedron_to_hashable(Q, backend)
-                if hQ not in delaunay_facets:
-                    delaunay_facets[hQ] = [Q, []]
-                delaunay_facets[hQ][1].append(e)
-
-        # computing colouring of the new triangulations
+        # determine the possible colours
         # NOTE: is it really enough? We need the neighbour to also be geometric
         # (and not 2*dim - 1 dimensional)
+        cs = ConstraintSystem()
+        for eqn in eqns:
+            cs.insert(L(eqn) == 0)
         neighbours = []
-        for Q, edges in delaunay_facets.values():
-            for cols in product([BLUE, RED], repeat=len(edges)):
-                cs = ConstraintSystem()
+        for i, edges in delaunay_facets.items():
+            # TODO: see whether colors are actually always the same
+
+            # build the facet
+            cs_facet = cs.copy()
+            for j, ieq in enumerate(ieqs):
+                if i == j:
+                    cs_facet.insert(L(ieq) == 0)
+                else:
+                    cs_facet.insert(L(ieq) >= 0)
+
+            # test each edge colour conditions
+            for cols in itertools.product([BLUE, RED], repeat=len(edges)):
                 Z = list(zip(edges, cols))
+                ccs = cs_facet.copy()
                 for e, col in Z:
-                    a,b,c,d = self.square_about_edge(e)
+                    a, b, c, d = self.square_about_edge(e)
                     if col == RED:
-                        cs.insert(x[self._norm(a)] <= x[self._norm(d)])
+                        ccs.insert(x[self._norm(a)] <= x[self._norm(d)])
                     else:
-                        cs.insert(x[self._norm(a)] >= x[self._norm(d)])
-                S = polyhedron_add_constraints(Q, cs, backend)
-                if polyhedron_dimension(S, backend) == 2*dim - 1:
+                        ccs.insert(x[self._norm(a)] >= x[self._norm(d)])
+                if ccs.cone(backend).affine_dimension() == 2 * dim - 1:
                     neighbours.append(Z)
 
         return neighbours

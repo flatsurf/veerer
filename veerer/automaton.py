@@ -850,10 +850,6 @@ class GeometricAutomaton(Automaton):
         sage: GeometricAutomaton(vt)
         Geometric veering automaton with 54 vertices
 
-        sage: from surface_dynamics import AbelianStratum
-        sage: for comp in AbelianStratum(4).components():
-        ....:     print(comp, GeometricAutomaton(VeeringTriangulation.from_stratum(comp)))
-
     One can check that the cardinality is indeed correct::
 
         sage: sum(x.is_geometric() for x in CoreAutomaton(vt))
@@ -902,6 +898,7 @@ class GeometricAutomatonSubspace(Automaton):
         sage: vt, s, t = VeeringTriangulations.L_shaped_surface(1, 1, 1, 1)
         sage: f = VeeringTriangulationLinearFamily(vt, [s, t])
         sage: GeometricAutomatonSubspace(f)
+        Geometric veering linear constraint automaton with 6 vertices
 
     One can check that the cardinality is indeed correct::
 
