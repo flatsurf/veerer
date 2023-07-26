@@ -605,9 +605,9 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
         self._set_geometric_constraints(cs.insert, x, y, hw_bound=hw_bound)
         return cs.cone(backend)
 
-    def geometric_automaton(self, run=True):
+    def geometric_automaton(self, run=True, backend='ppl'):
         from .automaton import GeometricAutomatonSubspace
-        A = GeometricAutomatonSubspace(backend='sage')
+        A = GeometricAutomatonSubspace(backend=backend)
         A.set_seed(self)
         if run:
             A.run()
@@ -624,6 +624,13 @@ class VeeringTriangulationLinearFamilies:
 
     @staticmethod
     def triangle_3_4_13_unfolding_orbit_closure():
+        r"""
+        EXAMPLES::
+
+            sage: from veerer.linear_family import VeeringTriangulationLinearFamilies
+            sage: f = VeeringTriangulationLinearFamilies.triangle_3_4_13_unfolding_orbit_closure()
+            sage: f
+        """
         from surface_dynamics import QuadraticStratum
         from sage.rings.rational_field import QQ
         from sage.rings.number_field.number_field import NumberField

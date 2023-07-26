@@ -857,6 +857,12 @@ class GeometricAutomaton(Automaton):
     """
     _name = 'geometric veering'
 
+    def _setup(self, backend=None):
+        if backend is None:
+            self._backend = 'ppl'
+        else:
+            self._backend = backend
+
     def _seed_setup(self, state):
         if not isinstance(state, VeeringTriangulation) or not state.is_geometric():
             raise ValueError('invalid seed')
