@@ -14,10 +14,13 @@ from sage.structure.richcmp import op_LE, op_LT, op_EQ, op_NE, op_GT, op_GE
 from sage.rings.integer_ring import ZZ
 from sage.rings.rational_field import QQ
 from sage.rings.qqbar import AA, number_field_elements_from_algebraics
-
+from sage.rings.real_arb import RealBallField
+from sage.rings.real_double import RDF
 
 from sage.arith.functions import lcm
 from sage.arith.functions import LCM_list
+
+RBF = RealBallField(64)
 
 
 _NumberFields = NumberFields()
@@ -404,6 +407,7 @@ class ConstraintSystem:
         EXAMPLES::
 
             sage: from veerer.linear_expression import LinearExpressions, ConstraintSystem
+
             sage: L = LinearExpressions(QQ)
             sage: cs = ConstraintSystem()
             sage: cs.insert(L.variable(0) >= 0)
@@ -421,6 +425,29 @@ class ConstraintSystem:
             sage: assert all(sorted(cone.ieqs()) == [[-15, -3, 10, 0], [0, 1, 0, 0], [1, 0, 0, 0]] for cone in cones)
             sage: assert all(sorted(cone.eqns()) == [[15, 3, -10, 90]] for cone in cones)
             sage: assert all(sorted(cone.rays()) == [[0, 0, 9, 1], [0, 10, 3, 0], [2, 0, 3, 0]] for cone in cones)
+
+        An example over a number field::
+
+            sage: K = NumberField(x^2 - x - 1, 'phi', embedding=(AA(5).sqrt() + 1)/2)
+            sage: phi = K.gen()
+            sage: L = LinearExpressions(K)
+            sage: cs = ConstraintSystem()
+            sage: cs.insert(L.variable(0) - phi * L.variable(1) >= 0)
+            sage: cs.insert(L.variable(0) + L.variable(1) == 0)
+            sage: cone_sage = cs.cone('sage')
+            sage: cone_nmz = cs.cone('normaliz-NF')
+
+        Note that contrarily to sage, normaliz does some simplifications::
+
+            sage: cone_sage.ieqs()
+            [[phi + 1, 0]]
+            sage: cone_nmz.ieqs()
+            [[1, 0]]
+
+            sage: cone_sage.eqns()
+            [[1, 1]]
+            sage: cone_nmz.eqns()
+            [[1, 1]]
         """
         # homogeneous case
         if not all(constraint.is_homogeneous() for constraint in self):
@@ -428,11 +455,12 @@ class ConstraintSystem:
 
         if backend == 'ppl':
             import ppl
-            return Cone_ppl(ppl.C_Polyhedron(self.ppl()))
+            return Cone_ppl(QQ, ppl.C_Polyhedron(self.ppl()))
         elif backend == 'sage':
             from sage.geometry.polyhedron.constructor import Polyhedron
             ieqs, eqns = self.ieqs_eqns()
-            return Cone_sage(Polyhedron(ieqs=ieqs, eqns=eqns))
+            P = Polyhedron(ieqs=ieqs, eqns=eqns)
+            return Cone_sage(P.base_ring(), P)
         elif backend == 'normaliz-QQ' or 'normaliz-NF':
             nmz_data = {}
             if backend == 'normaliz-QQ':
@@ -441,13 +469,13 @@ class ConstraintSystem:
             else:
                 ieqs, eqns = self.ieqs_eqns(homogeneous=True)
                 base_ring = embedded_nf([x for l in (ieqs + eqns) for x in l])
-                ieqs = [[nf(x) for x in ieq] for ieq in ieqs]
-                eqns = [[nf(x) for x in eqn] for eqn in eqns]
-                nmz_data["number_field"] = number_field_data
+                ieqs = [[str(base_ring(x)) for x in ieq] for ieq in ieqs]
+                eqns = [[str(base_ring(x)) for x in eqn] for eqn in eqns]
+                nmz_data["number_field"] = nmz_number_field_data(base_ring)
             nmz_data["inequalities"] = ieqs
             nmz_data["equations"] = eqns
             from PyNormaliz import NmzCone
-            return Cone_normaliz(NmzCone(**nmz_data))
+            return Cone_normaliz(base_ring, NmzCone(**nmz_data))
         else:
             raise RuntimeError
 
@@ -527,7 +555,8 @@ class LinearExpressions(Parent):
 class Cone:
     _name = 'none'
 
-    def __init__(self, cone):
+    def __init__(self, base_ring, cone):
+        self._base_ring = base_ring
         self._cone = cone
 
     def __repr__(self):
@@ -649,6 +678,15 @@ class Cone_sage(Cone):
         new_cone = self._cone.intersection(Polyhedron(ieqs=ieqs, eqns=eqns))
         return Cone_sage(new_cone)
 
+class NFElementHandler:
+    def __init__(self, nf):
+        self._nf = nf
+
+    def __call__(self, l):
+        nf = self._nf
+        l = list(l) + [0] * (nf.degree() - len(l))
+        l = nf(l)
+        return l
 
 class Cone_normaliz(Cone):
     r"""
@@ -656,13 +694,13 @@ class Cone_normaliz(Cone):
     """
     _name = 'normaliz'
 
-    @staticmethod
-    def _rational_handler(l):
-        return QQ((l[0], l[1]))
+    @property
+    def _rational_handler(self):
+        return lambda l: QQ((l[0], l[1]))
 
-    @staticmethod
-    def _nfelem_handler(l):
-        raise NotImplementedError
+    @property
+    def _nfelem_handler(self):
+        return NFElementHandler(self._base_ring)
 
     def _nmz_result(self, prop):
         from PyNormaliz import NmzResult
@@ -695,7 +733,7 @@ class Cone_normaliz(Cone):
         raise NotImplementedError
 
 
-def data_nf(l):
+def embedded_nf(l):
     from sage.structure.element import get_coercion_model
     cm = get_coercion_model()
     K = cm.common_parent(*l)
@@ -708,3 +746,9 @@ def data_nf(l):
         if K == QQ:
             raise ValueError('rational base ring')
         return K
+
+def nmz_number_field_data(base_ring):
+    gen = base_ring.gen()
+    s_gen = str(gen)
+    emb = RBF(gen)
+    return [str(base_ring.polynomial()).replace("x", s_gen), s_gen, str(emb)]
