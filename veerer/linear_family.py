@@ -630,6 +630,7 @@ class VeeringTriangulationLinearFamilies:
             sage: from veerer.linear_family import VeeringTriangulationLinearFamilies
             sage: f = VeeringTriangulationLinearFamilies.triangle_3_4_13_unfolding_orbit_closure()
             sage: f
+            VeeringTriangulationLinearFamily("(0,9,~8)(1,8,2)(3,11,~10)(4,~14,15)(5,~15,12)(6,~16,13)(7,~0,22)(10,14,~9)(16,~12,~4)(17,20,~18)(18,~5,~23)(19,~22,~21)(21,~13,23)(~20,~6,~17)(~19,~7,~1)(~11,~2,~3)", "BBRBRBRRRRRRRRBRBBRRRBRR", [(1, phi, 0, 0, 0, 1, 0, 0, -phi, -phi - 1, 0, 0, -phi, -phi, phi + 1, -phi - 1, phi, 0, 0, -phi, 0, phi - 1, -1, -1), (0, 0, 1, 0, 0, 0, phi - 1, 0, 1, 1, 1, 1, 0, phi - 1, 0, 0, 0, 0, phi - 1, 0, phi - 1, 0, 0, phi - 1), (0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, phi - 1, 0, 0, -phi + 1, 0, 0, 0), (0, 0, 0, 0, 1, 0, 0, phi - 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, phi - 1, 0, 0, phi - 1, 0)])
         """
         from surface_dynamics import QuadraticStratum
         from sage.rings.rational_field import QQ
