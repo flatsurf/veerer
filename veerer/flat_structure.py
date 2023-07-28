@@ -366,12 +366,20 @@ class FlatVeeringTriangulation(Triangulation):
                 E = ep[e]
                 assert self._holonomies[e] == -self._holonomies[E]
 
-    def copy(self):
+    def copy(self, mutable=None):
+        if mutable is None:
+            mutable = self._mutable
+
+        if not self._mutable and not mutable:
+            # avoid copies of mutable objects
+            return self
+
         res = FlatVeeringTriangulation.__new__(FlatVeeringTriangulation)
         res._n = self._n
         res._vp = self._vp[:]
         res._ep = self._ep[:]
         res._fp = self._fp[:]
+        res._mutable = mutable
         res._V = self._V
         res._K = self._K
         res._holonomies = [v.__copy__() for v in self._holonomies]

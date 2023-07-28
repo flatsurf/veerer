@@ -165,7 +165,7 @@ Core vs not core
 ::
 
     sage: # start from our surface in H(2) and let us flip some edges
-    sage: S = T1.copy()
+    sage: S = T1.copy(mutable=True)
     sage: print(S.is_core())
     True
     sage: print(S.flippable_edges())
@@ -211,17 +211,17 @@ Core vs not core
 ::
 
     sage: print(S.train_track_polytope(HORIZONTAL))
-    A 4-dimensional polyhedron in QQ^9 defined as the convex hull of 1 point, 5 rays
+    Cone of dimension 4 in ambient dimension 9 made of 5 facets (backend=ppl)
     sage: print(S.train_track_polytope(VERTICAL))
-    A 3-dimensional polyhedron in QQ^9 defined as the convex hull of 1 point, 3 rays
+    Cone of dimension 3 in ambient dimension 9 made of 3 facets (backend=ppl)
 
 ::
 
     sage: # check that we indeed started with a core veering triangulation
     sage: print(T1.train_track_polytope(HORIZONTAL))
-    A 4-dimensional polyhedron in QQ^9 defined as the convex hull of 1 point, 4 rays
+    Cone of dimension 4 in ambient dimension 9 made of 4 facets (backend=ppl)
     sage: print(T1.train_track_polytope(VERTICAL))
-    A 4-dimensional polyhedron in QQ^9 defined as the convex hull of 1 point, 5 rays
+    Cone of dimension 4 in ambient dimension 9 made of 5 facets (backend=ppl)
 
 
 Geometric polytope
@@ -245,7 +245,7 @@ of the product of the two train-track polytopes.
     sage: print(T1.is_geometric())
     True
     sage: print(T1.geometric_polytope())
-    A 8-dimensional polyhedron in QQ^18 defined as the convex hull of 1 point, 61 rays
+    Cone of dimension 8 in ambient dimension 18 made of 13 facets (backend=ppl)
 
 Core automaton
 --------------
@@ -267,9 +267,9 @@ from `T_i` by a flip.
 
     sage: print(A0.num_states(), A0.num_transitions())
     2 4
-    sage: print(A0.num_geometric_triangulations())
+    sage: print(sum(vt.is_geometric() for vt in A0))
     2
-    sage: print(A0.num_cylindrical_triangulations())
+    sage: print(sum(vt.is_cylindrical() for vt in A0))
     2
 
 ::
@@ -281,9 +281,9 @@ from `T_i` by a flip.
 
     sage: print(A1.num_states(), A1.num_transitions())
     86 300
-    sage: print(A1.num_geometric_triangulations())
+    sage: print(sum(vt.is_geometric() for vt in A1))
     54
-    sage: print(A1.num_cylindrical_triangulations())
+    sage: print(sum(vt.is_cylindrical() for vt in A1))
     24
 
 ::
@@ -292,9 +292,9 @@ from `T_i` by a flip.
     sage: A2 = CoreAutomaton(T2)
     sage: print(A2.num_states(), A2.num_transitions())
     1074 3620
-    sage: print(A2.num_geometric_triangulations())
+    sage: print(sum(vt.is_geometric() for vt in A2))
     270
-    sage: print(A2.num_cylindrical_triangulations())
+    sage: print(sum(vt.is_cylindrical() for vt in A2))
     196
 
 Some data (orientable case)
