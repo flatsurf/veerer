@@ -100,7 +100,7 @@ class FlatVeeringTriangulationLayout(object):
         FlatTriangulationLayout(FlatVeeringTriangulation(Triangulation("(0,1,2)(~2,~0,~1)"), [(1, 2), (-2, -1), (1, -1), (-1, 1), (2, 1), (-1, -2)]))
         sage: layout.set_pos()
         sage: layout
-        FlatTriangulationLayout(FlatVeeringTriangulation(Triangulation("(0,1,2)(~2,~0,~1)"), [(1, 2), (-2, -1), (1, -1), (-1, 1), (2, 1), (-1, -2)]), [(2, 1), (3, 3), (1, 2), (2, 1), (0, 0), (1, 2)])
+        FlatTriangulationLayout(FlatVeeringTriangulation(Triangulation("(0,1,2)(~2,~0,~1)"), [(1, 2), (-2, -1), (1, -1), (-1, 1), (2, 1), (-1, -2)]), [(1, 0), (2, 2), (0, 1), (3, 1), (1, 0), (2, 2)])
 
     Or from a preexisting flat surface::
 
@@ -115,7 +115,7 @@ class FlatVeeringTriangulationLayout(object):
 
         - flat_triangulation - a flat triangulation
         """
-        self._triangulation = FlatVeeringTriangulation(flat_triangulation)
+        self._triangulation = FlatVeeringTriangulation(flat_triangulation, mutable=True)
         n = self._triangulation.num_half_edges()
         m = self._triangulation.num_edges()
 
