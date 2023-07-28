@@ -615,7 +615,7 @@ class VeeringTriangulation(Triangulation):
     def __ne__(self, other):
         if type(self) != type(other):
             raise TypeError
-        return self._n == other._n and self._fp == other._fp and self._ep == other._ep and self._colouring != other._colouring
+        return self._n != other._n or self._fp != other._fp or self._ep != other._ep or self._colouring != other._colouring
 
     def _richcmp_(self, other, op):
         c = (self._n > other._n) - (self._n < other._n)
