@@ -78,8 +78,8 @@ class FlatVeeringTriangulation(Triangulation):
         sage: FlatVeeringTriangulation(fp, vecs)
         FlatVeeringTriangulation(Triangulation("(0,1,2)(~2,~0,~1)"), [(1, 2), (-2, -1), (1, -1), (-1, 1), (2, 1), (-1, -2)])
     """
-    def __init__(self, triangulation, holonomies=None, base_ring=None, check=True):
-        Triangulation.__init__(self, triangulation, check=False)
+    def __init__(self, triangulation, holonomies=None, base_ring=None, mutable=False, check=True):
+        Triangulation.__init__(self, triangulation, mutable=mutable, check=False)
         if isinstance(triangulation, FlatVeeringTriangulation):
             self._holonomies = triangulation._holonomies[:]
             self._base_ring = triangulation._K
@@ -166,6 +166,9 @@ class FlatVeeringTriangulation(Triangulation):
         r"""
         Apply a 180 degree rotation to the triangle containing the edge ``e``.
         """
+        if not self._mutable:
+            raise ValueError("immutable flat veering triangulation; use a mutable copy instead")
+
         f = self._fp[e]
         g = self._fp[f]
         self._holonomies[e] = -self._holonomies[e]
@@ -225,6 +228,8 @@ class FlatVeeringTriangulation(Triangulation):
         r"""
         Swap the orientation of the edge ``e``.
         """
+        if not self._mutable:
+            raise ValueError("immutable flat veering triangulation; use a mutable copy instead")
         E = self._ep[e]
         if e != E:
             Triangulation.swap(e)
@@ -410,25 +415,34 @@ class FlatVeeringTriangulation(Triangulation):
 
             sage: from veerer import Triangulation, FlatVeeringTriangulation, RIGHT, LEFT
             sage: T = Triangulation("(0,1,2)(3,4,~0)(5,6,~1)")
-            sage: fl = FlatVeeringTriangulation(T, [(-47, 51), (-27, -67), (74, 16), (22, 79), (-69, -28), (-61, -31), (34, -36)])
+            sage: fl = FlatVeeringTriangulation(T, [(-47, 51), (-27, -67), (74, 16), (22, 79), (-69, -28), (-61, -31), (34, -36)], mutable=True)
             sage: fl.flip(2)
             sage: fl.flip(4)
             sage: fl.flip(0)
             sage: fl
             FlatVeeringTriangulation(Triangulation("(0,1,4)(2,~0,3)(5,6,~1)"), [(2, 197), (-27, -67), (-20, 118), (22, 79), (25, -130), (-61, -31), (34, -36), (27, 67), (-2, -197)])
 
+            sage: fl = FlatVeeringTriangulation(T, [(-47, 51), (-27, -67), (74, 16), (22, 79), (-69, -28), (-61, -31), (34, -36)], mutable=False)
+            sage: fl.flip(2)
+            Traceback (most recent call last):
+            ...
+            ValueError: immutable flat veering triangulation; use a mutable copy instead
+
             sage: T = Triangulation("(0,1,2)")
-            sage: fl = FlatVeeringTriangulation(T, [(13,8), (-21, -3), (8,-5)])
+            sage: fl = FlatVeeringTriangulation(T, [(13,8), (-21, -3), (8,-5)], mutable=True)
             sage: fl.flip(1, folded_edge_convention=RIGHT)
             sage: fl
             FlatVeeringTriangulation(Triangulation("(0,2,1)"), [(13, 8), (-5, -13), (-8, 5)])
-            sage: fl = FlatVeeringTriangulation(T, [(13,8), (-21, -3), (8,-5)])
+            sage: fl = FlatVeeringTriangulation(T, [(13,8), (-21, -3), (8,-5)], mutable=True)
             sage: fl.flip(1, folded_edge_convention=LEFT)
             sage: fl
             FlatVeeringTriangulation(Triangulation("(0,2,1)"), [(-13, -8), (5, 13), (8, -5)])
         """
+        if not self._mutable:
+            raise ValueError("immutable flat veering triangulation; use a mutable copy instead")
+
         if not self.is_forward_flippable(e):
-            raise ValueError
+            raise ValueError("invalid edge")
 
         E = self._ep[e]
         if e == E:
@@ -485,11 +499,14 @@ class FlatVeeringTriangulation(Triangulation):
 
             sage: from veerer import Triangulation, FlatVeeringTriangulation
             sage: T = Triangulation("(0,1,2)(3,4,~0)(5,6,~1)")
-            sage: fl = FlatVeeringTriangulation(T, [(-47, 51), (-27, -67), (74, 16), (22, 79), (-69, -28), (-61, -31), (34, -36)])
+            sage: fl = FlatVeeringTriangulation(T, [(-47, 51), (-27, -67), (74, 16), (22, 79), (-69, -28), (-61, -31), (34, -36)], mutable=True)
             sage: fl.relabel('(1,0)(3,5,4,6)')
             sage: fl
             FlatVeeringTriangulation(Triangulation("(0,2,1)(3,~0,4)(5,6,~1)"), [(-27, -67), (-47, 51), (74, 16), (34, -36), (-61, -31), (22, 79), (-69, -28), (47, -51), (27, 67)])
         """
+        if not self._mutable:
+            raise ValueError("immutable flat veering triangulation; use a mutable copy instead")
+
         n = self._n
         if not perm_check(p, n):
             p = perm_init(p, n, self._ep)
@@ -512,9 +529,12 @@ class FlatVeeringTriangulation(Triangulation):
 
             sage: from veerer import Triangulation, FlatVeeringTriangulation
             sage: T = Triangulation("(0,1,2)(3,4,~0)(5,6,~1)")
-            sage: fl = FlatVeeringTriangulation(T, [(-47, 51), (-27, -67), (74, 16), (22, 79), (-69, -28), (-61, -31), (34, -36)])
+            sage: fl = FlatVeeringTriangulation(T, [(-47, 51), (-27, -67), (74, 16), (22, 79), (-69, -28), (-61, -31), (34, -36)], mutable=True)
             sage: fl.xy_scaling(2, 1/3)
             sage: fl
             FlatVeeringTriangulation(Triangulation("(0,1,2)(3,4,~0)(5,6,~1)"), [(-94, 17), (-54, -67/3), (148, 16/3), (44, 79/3), (-138, -28/3), (-122, -31/3), (68, -12), (54, 67/3), (94, -17)])
         """
+        if not self._mutable:
+            raise ValueError("immutable flat veering triangulation; use a mutable copy instead")
+
         self._holonomies = [self._V((a*x, b*y)) for x,y in self._holonomies]
