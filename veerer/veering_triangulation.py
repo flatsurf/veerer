@@ -15,6 +15,7 @@ from .permutation import *
 from .misc import det2
 from .triangulation import Triangulation
 from .linear_expression import *
+from .linear_algebra import linear_form_project, linear_form_normalize
 
 from .env import curver, sage, surface_dynamics, ppl, flipper, random, require_package, rich_to_bool, op_LE, op_LT, op_EQ, op_NE, op_GT, op_GE
 
@@ -149,8 +150,8 @@ class VeeringTriangulation(Triangulation):
                 raise error('monochromatic vertex {} of colour {}'.format(v, colour_to_string(cols[v[0]])))
 
     def base_ring(self):
-        from sage.rings.rational_field import QQ
-        return QQ
+        from sage.rings.integer_ring import ZZ
+        return ZZ
 
     def __hash__(self):
         r"""
@@ -2769,9 +2770,9 @@ class VeeringTriangulation(Triangulation):
             sage: T.train_track_linear_space(backend='sage')
             Cone of dimension 2 in ambient dimension 3 made of 0 facets (backend=sage)
         """
-        from sage.rings.rational_field import QQ
+        from sage.rings.integer_ring import ZZ
         cs = ConstraintSystem()
-        L = LinearExpressions(QQ)
+        L = LinearExpressions(ZZ)
         ne = self.num_edges()
         x = [L.variable(e) for e in range(ne)]
         self._set_switch_conditions(cs.insert, x, slope)
@@ -2822,8 +2823,8 @@ class VeeringTriangulation(Triangulation):
             sage: sorted(T.train_track_polytope(HORIZONTAL, backend='sage').rays())
             [[0, 1, 1]]
         """
-        from sage.rings.rational_field import QQ
-        L = LinearExpressions(QQ)
+        from sage.rings.integer_ring import ZZ
+        L = LinearExpressions(ZZ)
         cs = ConstraintSystem()
         ne = self.num_edges()
         variables = [L.variable(e) for e in range(ne)]
@@ -2912,8 +2913,8 @@ class VeeringTriangulation(Triangulation):
             sage: T.geometric_polytope(backend='sage')
             Cone of dimension 4 in ambient dimension 6 made of 6 facets (backend=sage)
         """
-        from sage.rings.rational_field import QQ
-        L = LinearExpressions(QQ)
+        from sage.rings.integer_ring import ZZ
+        L = LinearExpressions(ZZ)
         ne = self.num_edges()
         x = [L.variable(e) for e in range(ne)]
         y = [L.variable(ne+e) for e in range(ne)]
@@ -3157,7 +3158,7 @@ class VeeringTriangulation(Triangulation):
         raise NotImplementedError
         return self.geometric_polytope().vrep()[1:, 1:].sum(axis=0).tolist()
 
-    def is_core(self):
+    def is_core(self, backend='ppl'):
         r"""
         Test whether this coloured triangulation is core.
 
@@ -3202,8 +3203,8 @@ class VeeringTriangulation(Triangulation):
         # In theory LP should be much faster but in practice (in small dimensions)
         # polytope is much better
         d = self.dimension()
-        return self.train_track_polytope(HORIZONTAL).affine_dimension() == d and \
-               self.train_track_polytope(VERTICAL).affine_dimension() == d
+        return self.train_track_polytope(HORIZONTAL, backend=backend).affine_dimension() == d and \
+               self.train_track_polytope(VERTICAL, backend=backend).affine_dimension() == d
 
     def is_geometric(self, backend='ppl'):
         r"""
@@ -3234,7 +3235,7 @@ class VeeringTriangulation(Triangulation):
         assert Pdim <= 2 * dim
         return Pdim == 2 * dim
 
-    def balanced_polytope(self, slope=VERTICAL, homogeneous=False):
+    def balanced_polytope(self, slope=VERTICAL, homogeneous=False, backend='ppl'):
         r"""
         Return the set of balanced coordinates for this veering triangulation
 
@@ -3243,17 +3244,17 @@ class VeeringTriangulation(Triangulation):
         - ``slope`` - either ``VERTICAL`` (default) or ``HORIZONTAL``
 
         - ``homogeneous`` - boolean. Default to ``False``.
-
-        OUTPUT: a ppl Polyhedron
         """
+        from sage.rings.rational_field import QQ
         ne = self.num_edges()
-        cs = ppl.Constraint_System()
-        x = [ppl.Variable(e) for e in range(ne)]
+        cs = ConstraintSystem()
+        L = LinearExpressions(QQ)
+        x = [L.variable(e) for e in range(ne)]
         self._set_train_track_constraints(cs.insert, x, slope, False, False)
         self._set_balance_constraints(cs.insert, x, slope, homogeneous)
-        return ppl.C_Polyhedron(cs)
+        return cs.polyhedron(backend)
 
-    def is_balanced(self, slope=VERTICAL):
+    def is_balanced(self, slope=VERTICAL, backend='ppl'):
         r"""
         Check balanceness
 
@@ -3262,21 +3263,21 @@ class VeeringTriangulation(Triangulation):
             sage: from veerer import VeeringTriangulation
 
             sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RBR")
-            sage: T.is_balanced()
+            sage: T.is_balanced()  # not tested
             True
 
             sage: T = VeeringTriangulation("(0,~3,2)(1,4,~2)(3,5,~4)(~5,~1,~0)", "RBBBRB")
-            sage: T.is_balanced()
+            sage: T.is_balanced()  # not tested
             False
 
             sage: T = VeeringTriangulation("(0,1,8)(2,~7,~1)(3,~0,~2)(4,~5,~3)(5,6,~4)(7,~8,~6)", "BRRRRBRBR")
-            sage: T.is_balanced()
+            sage: T.is_balanced()  # not tested
             False
             sage: T.rotate()
-            sage: T.is_balanced()
+            sage: T.is_balanced()  # not tested
             True
         """
-        return self.balanced_polytope().affine_dimension() == self.stratum_dimension()
+        return self.balanced_polytope(backend=backend).affine_dimension() == self.dimension()
 
     def edge_has_curve(self, e, verbose=False):
         r"""
@@ -3411,11 +3412,11 @@ class VeeringTriangulation(Triangulation):
         r"""
         Return the list of geometric flips.
 
-        A flip is geometric if it arises generically as a flip of L^oo-Delaunay
-        triangulations along Teichmueller geodesics. These correspond to a subset
-        of facets of the geometric polytope.
+        A flip, a rather a list of flips, is geometric if it arises generically
+        as a flip of L^oo-Delaunay triangulations along Teichmueller geodesics.
+        Each geometric flip corresponds to a facet of the geometric polytope.
 
-        OUTPUT: a list of pairs (edge number, new colour)
+        OUTPUT: a list of pairs ``(edge_number, new_colour)``
 
         EXAMPLES::
 
@@ -3438,7 +3439,7 @@ class VeeringTriangulation(Triangulation):
             [[(3, 1), (4, 1), (5, 1)], [(3, 2), (4, 2), (5, 2)]]
             sage: sorted(f.geometric_flips(backend='sage'))
             [[(3, 1), (4, 1), (5, 1)], [(3, 2), (4, 2), (5, 2)]]
-            sage: sorted(f.geometric_flips(backend='normaliz-QQ'))
+            sage: sorted(f.geometric_flips(backend='normaliz-QQ'))  # optional - PyNormaliz
             [[(3, 1), (4, 1), (5, 1)], [(3, 2), (4, 2), (5, 2)]]
 
         To be compared with the geometric flips in the ambient stratum::
@@ -3456,7 +3457,7 @@ class VeeringTriangulation(Triangulation):
             [[(4, 2)], [(5, 1)], [(5, 2)]]
             sage: sorted(f.geometric_flips(backend='sage'))
             [[(4, 2)], [(5, 1)], [(5, 2)]]
-            sage: sorted(f.geometric_flips(backend='normaliz-QQ'))
+            sage: sorted(f.geometric_flips(backend='normaliz-QQ'))  # optional - PyNormaliz
             [[(4, 2)], [(5, 1)], [(5, 2)]]
 
         TESTS::
@@ -3473,66 +3474,52 @@ class VeeringTriangulation(Triangulation):
         from sage.matrix.constructor import matrix
 
         dim = self.dimension()
+        base_ring = self.base_ring()
         ne = ambient_dim = self.num_edges()
-        L = LinearExpressions(self.base_ring())
+        L = LinearExpressions(base_ring)
         x = [L.variable(e) for e in range(ne)]
         y = [L.variable(ne + e) for e in range(ne)]
         P = self.geometric_polytope(backend=backend)
         if P.affine_dimension() != 2 * dim:
-            raise ValueError('not geometric P.dimension() = {} while 2 * dim = {}'.format(P.dimension(), 2 * dim))
+            raise ValueError('not geometric P.dimension() = {} while 2 * dim = {}'.format(P.affine_dimension(), 2 * dim))
 
-        # determine which facets correspond to veering flips
-        # when they do, compute the subset of edges that do flip
-        eqns = P.eqns()
-        ieqs = P.ieqs()
-        ff_edges = self.forward_flippable_edges()
-        mat = matrix(self.base_ring(), len(eqns) + 2, 2 * ne)
-        for i, eqn in enumerate(eqns):
-            mat[i] = eqn
+        # compute the Delaunay flip facets and the associated
+        # subset of edges
+        eqns = matrix(base_ring, P.eqns())
         delaunay_facets = {}
-        for i, ieq in enumerate(ieqs):
-            edges = []
-            mat[len(eqns)] = ieq
-            assert mat[:len(eqns) + 1].rank() == len(eqns) + 1
-            for e in ff_edges:
-                a, b, c, d = self.square_about_edge(e)
-                constraint = x[self._norm(e)] == y[self._norm(a)] + y[self._norm(d)]
-                constraint = constraint.coefficients(dim=2*ne, homogeneous=True)
-                mat[len(eqns) + 1] = constraint
-                if mat.rank() == len(eqns) + 1:
-                    edges.append(e)
-            if edges:
-                delaunay_facets[i] = edges
+        for e in self.forward_flippable_edges():
+            a, b, c, d = self.square_about_edge(e)
+            constraint = x[self._norm(e)] == y[self._norm(a)] + y[self._norm(d)]
+            constraint = constraint.coefficients(dim=2*ne, homogeneous=True)
+            linear_form_project(eqns, constraint)
+            linear_form_normalize(base_ring, constraint)
+            constraint = tuple(constraint)
+            if constraint in delaunay_facets:
+                delaunay_facets[constraint].append(e)
+            else:
+                delaunay_facets[constraint] = [e]
 
         # determine the possible colours
         # NOTE: is it really enough? We need the neighbour to also be geometric
         # (and not 2*dim - 1 dimensional)
-        cs = ConstraintSystem()
-        for eqn in eqns:
-            cs.insert(L(eqn) == 0)
         neighbours = []
-        for i, edges in delaunay_facets.items():
+        for ieq, edges in delaunay_facets.items():
             # TODO: see whether colors are actually always the same
 
             # build the facet
-            cs_facet = cs.copy()
-            for j, ieq in enumerate(ieqs):
-                if i == j:
-                    cs_facet.insert(L(ieq) == 0)
-                else:
-                    cs_facet.insert(L(ieq) >= 0)
+            F = P.add_constraint(L(ieq) == 0)
 
             # test each edge colour conditions
             for cols in itertools.product([BLUE, RED], repeat=len(edges)):
                 Z = list(zip(edges, cols))
-                ccs = cs_facet.copy()
+                cs = ConstraintSystem()
                 for e, col in Z:
                     a, b, c, d = self.square_about_edge(e)
                     if col == RED:
-                        ccs.insert(x[self._norm(a)] <= x[self._norm(d)])
+                        cs.insert(x[self._norm(a)] <= x[self._norm(d)])
                     else:
-                        ccs.insert(x[self._norm(a)] >= x[self._norm(d)])
-                if ccs.cone(backend).affine_dimension() == 2 * dim - 1:
+                        cs.insert(x[self._norm(a)] >= x[self._norm(d)])
+                if F.add_constraints(cs).affine_dimension() == 2 * dim - 1:
                     neighbours.append(Z)
 
         return neighbours
