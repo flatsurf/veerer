@@ -16,7 +16,7 @@ setup(
     author='Mark Bell, Vincent Delecroix and Saul Schleimer',
     author_email='vincent.delecroix@u-bordeaux.fr',
     url='https://github.com/flatsurf/veerer',
-    packages=['veerer/'],
+    packages=['veerer/', 'veerer/polyhedron'],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Science/Research',
