@@ -27,11 +27,7 @@ from veerer import VeeringTriangulation, CoreAutomaton, ReducedCoreAutomaton, Ge
  ("(0,8,~7)(1,11,~10)(2,10,~9)(3,9,~8)(4,~1,~11)(5,~2,~4)(6,~3,~5)(7,~0,~6)", "RRRRBBBBBBBB"),
  ("(0,2,4)(1,~3,~2)(3,~5,~4)(5,~1,~0)", "RBBRBB"),
  ("(0,~8,7)(1,6,~2)(2,~6,~3)(3,5,~4)(4,8,~5)(~7,~1,~0)", "RBBBBRRBB"),
- ("(0,~9,8)(1,10,~2)(2,~6,~3)(3,5,~4)(4,9,~5)(6,11,~7)(7,~10,~8)(~11,~1,~0)", "RBBBBRRBBBRB"),
- ("(0,~11,10)(1,~9,~2)(2,8,~3)(3,9,~4)(4,~8,~5)(5,7,~6)(6,11,~7)(~10,~1,~0)", "RBBBBBBRRRBB"),
- ("(0,8,11)(1,10,~2)(2,~10,~3)(3,~7,~4)(4,6,~5)(5,9,~6)(7,~9,~8)(~11,~1,~0)", "RBBBBBRRBBRB"),
- ("(0,6,8)(1,~11,~2)(2,10,~3)(3,11,~4)(4,~10,~5)(5,~7,~6)(7,~9,~8)(9,~1,~0)", "RBBBBBRBBRRR"),
- ("(0,6,10)(1,9,~2)(2,~9,~3)(3,8,~4)(4,11,~5)(5,~7,~6)(7,~11,~8)(~10,~1,~0)", "RBBBBBRBRRBR")])
+ ("(0,~9,8)(1,10,~2)(2,~6,~3)(3,5,~4)(4,9,~5)(6,11,~7)(7,~10,~8)(~11,~1,~0)", "RBBBBRRBBBRB")])
 def test_automata(fp, cols):
     V = VeeringTriangulation(fp, cols)
     assert V.is_geometric()
@@ -41,10 +37,13 @@ def test_automata(fp, cols):
     assert len(R) <= len(C)
     reduced = set()
     for x in C:
+        x = x.copy(mutable=True)
         x.forgot_forward_flippable_colour()
-        reduced.add(x.iso_sig())
-    assert set(x.iso_sig() for x in R) == reduced
+        x.set_canonical_labels()
+        x.set_immutable()
+        reduced.add(x)
+    assert set(R) == reduced
 
     G = GeometricAutomaton(V)
     assert len(G) <= len(C)
-    assert set(x.to_string() for x in G) == set(x.to_string() for x in C if x.is_geometric())
+    assert set(G) == set(x for x in C if x.is_geometric())

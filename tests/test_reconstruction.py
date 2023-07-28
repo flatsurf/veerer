@@ -33,7 +33,7 @@ from veerer.flip_sequence import VeeringFlipSequence
  ("(0,1,2)", 20),
  ("(0,~5,4)(3,5,6)(1,2,~6)", 30)])
 def test_triangulation_reconstruction(fp, repeat):
-    T = Triangulation(fp)
+    T = Triangulation(fp, mutable=True)
     for _ in range(repeat):
         assert eval(repr(T)) == T
         e = random.choice(T.flippable_edges())
@@ -46,7 +46,7 @@ def test_triangulation_reconstruction(fp, repeat):
  ("(0,1,2)", "PBR", 30),
  ("(0,~5,4)(3,5,6)(1,2,~6)", "PPBPRBR", 30)])
 def test_veering_triangulation_reconstruction(fp, cols, repeat):
-    V = VeeringTriangulation(fp, cols)
+    V = VeeringTriangulation(fp, cols, mutable=True)
 
     # NOTE 1: is_core does not support PURPLE edges...
     # NOTE 2: is_core needs ppl...
@@ -78,7 +78,7 @@ def test_veering_triangulation_reconstruction(fp, cols, repeat):
  ("(0,1,2)", "PBR", 10),
  ("(0,~5,4)(3,5,6)(1,2,~6)", "PPBPRBR", 10)])
 def test_veering_flip_sequence_reconstruction(fp, cols, repeat):
-    V = VeeringTriangulation(fp, cols)
+    V = VeeringTriangulation(fp, cols, mutable=True)
     for _ in range(repeat):
         F = V.random_forward_flip_sequence(random.randint(0,10), relabel=True)
         assert eval(repr(F)) == F, F

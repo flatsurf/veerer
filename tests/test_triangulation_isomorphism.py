@@ -56,13 +56,13 @@ def test_veering_non_isomorphic():
 def test_isomorphism(fp, repeat):
     T = Triangulation(fp)
     for _ in range(repeat):
-        U = T.copy()
-        p = perm_random_centralizer(T.edge_permutation(copy=False))
-        T.relabel(p)
-        assert T.is_isomorphic_to(U) is True
-        ans, cert = T.is_isomorphic_to(U, True)
+        U = T.copy(mutable=True)
+        p = perm_random_centralizer(U.edge_permutation(copy=False))
+        U.relabel(p)
+        assert U.is_isomorphic_to(T) is True
+        ans, cert = U.is_isomorphic_to(T, True)
         assert ans is True
-        T.relabel(cert)
+        U.relabel(cert)
         assert T == U
 
 @pytest.mark.parametrize("fp, cols, repeat",
@@ -74,13 +74,13 @@ def test_isomorphism(fp, repeat):
 def test_veering_isomorphism(fp, cols, repeat):
     V = VeeringTriangulation(fp, cols)
     for _ in range(repeat):
-        W = V.copy()
-        p = perm_random_centralizer(V.edge_permutation(copy=False))
+        W = V.copy(mutable=True)
+        p = perm_random_centralizer(W.edge_permutation(copy=False))
         W.relabel(p)
-        assert V.is_isomorphic_to(W) is True
-        ans, cert = V.is_isomorphic_to(W, True)
+        assert W.is_isomorphic_to(V) is True
+        ans, cert = W.is_isomorphic_to(V, True)
         assert ans is True
-        V.relabel(cert)
+        W.relabel(cert)
         assert V == W
 
 if __name__ == '__main__':
