@@ -353,7 +353,7 @@ class Triangulation(object):
             sage: Triangulation("(0,1,3)")
             Traceback (most recent call last):
             ...
-            ValueError: inconsistent permutation data
+            ValueError: missing edge label 2
 
             sage: Triangulation("(0,1,~2)")
             Traceback (most recent call last):
@@ -1827,6 +1827,6 @@ class Triangulation(object):
         else:
             return True
 
-    def cover(self, c):
+    def cover(self, c, mutable=False, check=True):
         from .cover import TriangulationCover
-        return TriangulationCover(self, c)
+        return TriangulationCover(self, c, mutable=mutable, check=check)

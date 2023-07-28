@@ -15,7 +15,7 @@ from .permutation import *
 from .misc import det2
 from .triangulation import Triangulation
 from .polyhedron import LinearExpressions, ConstraintSystem
-from .linear_algebra import linear_form_project, linear_form_normalize
+from .polyhedron.linear_algebra import linear_form_project, linear_form_normalize
 
 from .env import curver, sage, surface_dynamics, ppl, flipper, random, require_package, rich_to_bool, op_LE, op_LT, op_EQ, op_NE, op_GT, op_GE
 
@@ -2916,7 +2916,7 @@ class VeeringTriangulation(Triangulation):
                     Ly[i, j] *= -1
         return Ly
 
-    def _flat_structure_from_train_track_lengths(self, VH, VV, base_ring=None):
+    def _flat_structure_from_train_track_lengths(self, VH, VV, base_ring=None, mutable=False, check=True):
         r"""
         Return a flat structure from two vectors ``VH`` and ``VV``
         satisfying the train track equations.
@@ -2959,7 +2959,7 @@ class VeeringTriangulation(Triangulation):
                 raise RuntimeError
 
         from .flat_structure import FlatVeeringTriangulation
-        return FlatVeeringTriangulation(self, vectors)
+        return FlatVeeringTriangulation(self, vectors, mutable=mutable, check=check)
 
     def flat_structure_middle(self, backend='ppl'):
         r"""
