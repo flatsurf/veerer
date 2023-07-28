@@ -864,7 +864,7 @@ class GeometricAutomaton(Automaton):
             self._backend = backend
 
     def _seed_setup(self, state):
-        if not isinstance(state, VeeringTriangulation) or not state.is_geometric():
+        if not isinstance(state, VeeringTriangulation) or not state.is_geometric(backend=self._backend):
             raise ValueError('invalid seed')
         state = state.copy(mutable=True)
         state.set_canonical_labels()
@@ -874,13 +874,13 @@ class GeometricAutomaton(Automaton):
         r"""
         Return the list of forward flippable edges from ``state``
         """
-        return state.geometric_flips()
+        return state.geometric_flips(backend=self._backend)
 
     def _flip(self, flip_data):
         flip_back_data = tuple((e, self._state.colour(e)) for e, _ in flip_data)
         for e, col in flip_data:
             self._state.flip(e, col)
-        if env.CHECK and not self._state.is_geometric():
+        if env.CHECK and not self._state.is_geometric(backend=self._backend):
             raise RuntimeError('that was indeed possible!')
         return True, flip_back_data
 
@@ -941,7 +941,7 @@ class GeometricAutomatonSubspace(Automaton):
         r"""
         Return the list of forward flippable edges from ``state``
         """
-        return state.geometric_flips(self._backend)
+        return state.geometric_flips(backend=self._backend)
 
     def _flip(self, flip_data):
         flip_back_data = tuple((e, self._state.colour(e)) for e, _ in flip_data)
