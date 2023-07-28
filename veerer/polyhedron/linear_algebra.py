@@ -18,11 +18,11 @@ def linear_form_project(equations, linear_form):
 
     EXAMPLES::
 
-        sage: from veerer.linear_algebra import linear_form_projector
+        sage: from veerer.polyhedron.linear_algebra import linear_form_project
         sage: equations = matrix(ZZ, [[3, -1, 0], [0, 0, 2]])
-        sage: linear_form_projector(equations, [1, 1, 1])
+        sage: linear_form_project(equations, [1, 1, 1])
         [0, 4/3, 0]
-        sage: linear_form_projector(equations, [1, -1, 7])
+        sage: linear_form_project(equations, [1, -1, 7])
         [0, -2/3, 0]
     """
     dim = equations.ncols()
@@ -33,6 +33,7 @@ def linear_form_project(equations, linear_form):
             coeff = linear_form[j] / ef[i, j]
             for k in range(dim):
                 linear_form[k] -= coeff * ef[i, k]
+    return linear_form
 
 def linear_form_normalize(base_ring, linear_form):
     r"""
@@ -40,9 +41,9 @@ def linear_form_normalize(base_ring, linear_form):
 
     EXAMPLES::
 
-        sage: from veerer.linear_algebra import linear_form_normalize
+        sage: from veerer.polyhedron.linear_algebra import linear_form_normalize
         sage: linear_form_normalize(ZZ, [-2, 0, 6])
-        [1, 0, 3]
+        [1, 0, -3]
         sage: linear_form_normalize(ZZ, [0, 1])
         [0, 1]
     """
