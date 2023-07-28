@@ -29,7 +29,7 @@ import itertools
 from .env import sage, ppl
 from .constants import VERTICAL, HORIZONTAL, BLUE, RED
 from .permutation import perm_cycle_string, perm_cycles, perm_check, perm_conjugate, perm_on_list
-from .linear_expression import LinearExpressions, ConstraintSystem
+from .polyhedron import LinearExpressions, ConstraintSystem
 
 
 from .veering_triangulation import VeeringTriangulation

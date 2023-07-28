@@ -24,7 +24,6 @@ cones and polyhedra.
 ######################################################################
 
 from sage.categories.modules import Modules
-from sage.categories.number_fields import NumberFields
 
 from sage.structure.unique_representation import UniqueRepresentation
 from sage.structure.element import ModuleElement, Vector, parent
@@ -33,17 +32,9 @@ from sage.structure.richcmp import op_LE, op_LT, op_EQ, op_NE, op_GT, op_GE
 
 from sage.rings.integer_ring import ZZ
 from sage.rings.rational_field import QQ
-from sage.rings.qqbar import AA, number_field_elements_from_algebraics
-from sage.rings.real_arb import RealBallField
-from sage.rings.real_double import RDF
 
 from sage.arith.functions import lcm
 from sage.arith.functions import LCM_list
-
-RBF = RealBallField(64)
-
-
-_NumberFields = NumberFields()
 
 
 # TODO: allow base_ring=int or Fraction so that we can handle pure
@@ -52,7 +43,7 @@ class LinearExpression(ModuleElement):
     r"""
     EXAMPLES::
 
-        sage: from veerer.linear_expression import LinearExpressions
+        sage: from veerer.polyhedron import LinearExpressions
         sage: L = LinearExpressions(QQ)
         sage: L()
         0
@@ -73,7 +64,7 @@ class LinearExpression(ModuleElement):
 
         EXAMPLES::
 
-            sage: from veerer.linear_expression import LinearExpressions
+            sage: from veerer.polyhedron import LinearExpressions
             sage: L = LinearExpressions(QQ)
             sage: L({0: 5}, 3)
             5*x0 + 3
@@ -195,7 +186,7 @@ class LinearExpression(ModuleElement):
         r"""
         EXAMPLES::
 
-            sage: from veerer.linear_expression import LinearExpressions
+            sage: from veerer.polyhedron import LinearExpressions
             sage: L = LinearExpressions(QQ)
             sage: (3 * L.variable(2) - 7/2 * L.variable(5) + 1/3).ppl()
             18*x2-21*x5+2
@@ -215,7 +206,7 @@ class LinearExpression(ModuleElement):
 
         EXAMPLES::
 
-            sage: from veerer.linear_expression import LinearExpressions
+            sage: from veerer.polyhedron import LinearExpressions
             sage: L = LinearExpressions(QQ)
             sage: lin = 3 * L.variable(2) - 7/2 * L.variable(5) + 1/3
             sage: lin.coefficients()
@@ -242,7 +233,7 @@ class LinearConstraint:
     r"""
     EXAMPLES::
 
-        sage: from veerer.linear_expression import LinearExpressions
+        sage: from veerer.polyhedron import LinearExpressions
         sage: L = LinearExpressions(QQ)
         sage: 3 * L.variable(0) - 5 * L.variable(2) == 7
         3*x0 - 5*x2 - 7 = 0
@@ -290,7 +281,7 @@ class LinearConstraint:
         r"""
         EXAMPLES::
 
-            sage: from veerer.linear_expression import LinearExpressions
+            sage: from veerer.polyhedron import LinearExpressions
             sage: L = LinearExpressions(QQ)
             sage: (3 * L.variable(0) >= 1).ppl()
             3*x0-1>=0
@@ -324,7 +315,7 @@ class ConstraintSystem:
     r"""
     EXAMPLES::
 
-        sage: from veerer.linear_expression import *
+        sage: from veerer.polyhedron import *
         sage: L = LinearExpressions(QQ)
         sage: cs = ConstraintSystem()
         sage: cs.insert(L.variable(0) >= 2)
@@ -361,7 +352,7 @@ class ConstraintSystem:
         r"""
         EXAMPLES::
 
-            sage: from veerer.linear_expression import LinearExpressions, ConstraintSystem
+            sage: from veerer.polyhedron import LinearExpressions, ConstraintSystem
             sage: L = LinearExpressions(QQ)
             sage: cs = ConstraintSystem()
             sage: cs.insert(2 * L.variable(0) - 3/5 * L.variable(2) >= 1)
@@ -379,7 +370,7 @@ class ConstraintSystem:
         r"""
         EXAMPLES::
 
-            sage: from veerer.linear_expression import LinearExpressions, ConstraintSystem
+            sage: from veerer.polyhedron import LinearExpressions, ConstraintSystem
             sage: L = LinearExpressions(QQ)
             sage: cs = ConstraintSystem()
             sage: cs.insert(2 * L.variable(0) - 3/5 * L.variable(2) >= 1)
@@ -429,9 +420,14 @@ class ConstraintSystem:
 
     def cone(self, backend='sage'):
         r"""
+        Return the cone defined from these constraints.
+
+        INPUT:
+
+        - ``backend`` (optional): either ``'ppl'``, ``'sage'``, ``'normaliz-QQ'`` or ``'noramliz-NF'``
         EXAMPLES::
 
-            sage: from veerer.linear_expression import LinearExpressions, ConstraintSystem
+            sage: from veerer.polyhedron import LinearExpressions, ConstraintSystem
 
             sage: L = LinearExpressions(QQ)
             sage: cs = ConstraintSystem()
@@ -441,22 +437,12 @@ class ConstraintSystem:
             sage: cs.insert(L.variable(3) >= 0)
             sage: cs.insert(L.variable(0) + 1/5 * L.variable(1) - 2/3 * L.variable(2) + 6 * L.variable(3) == 0)
 
-            sage: cone_sage = cs.cone('sage')
-            sage: cone_ppl = cs.cone('ppl')
-            sage: cone_nmz = cs.cone('normaliz-QQ')
-            sage: cones = [cone_sage, cone_ppl, cone_nmz]
-            sage: assert all(cone.space_dimension() == 4 for cone in cones)
-            sage: assert all(cone.affine_dimension() == 3 for cone in cones)
-            sage: assert all(sorted(cone.ieqs()) == [[-15, -3, 10, 0], [0, 1, 0, 0], [1, 0, 0, 0]] for cone in cones)
-            sage: assert all(sorted(cone.eqns()) == [[15, 3, -10, 90]] for cone in cones)
-            sage: assert all(sorted(cone.rays()) == [[0, 0, 9, 1], [0, 10, 3, 0], [2, 0, 3, 0]] for cone in cones)
-
-            sage: cone_ppl.add_constraint(L.variable(0) == L.variable(3))
-            Cone of dimension 2 in ambient dimension 4 made of 2 facets (backend=ppl)
-            sage: cone_sage.add_constraint(L.variable(0) == L.variable(3))
-            Cone of dimension 2 in ambient dimension 4 made of 2 facets (backend=sage)
-            sage: cone_nmz.add_constraint(L.variable(0) == L.variable(3))
-            Cone of dimension 2 in ambient dimension 4 made of 2 facets (backend=normaliz-QQ)
+            sage: cs.cone('sage')
+            Cone of dimension 3 in ambient dimension 4 made of 3 facets (backend=sage)
+            sage: cs.cone('ppl')
+            Cone of dimension 3 in ambient dimension 4 made of 3 facets (backend=ppl)
+            sage: cs.cone('normaliz-QQ')  # optional - pynormaliz
+            Cone of dimension 3 in ambient dimension 4 made of 3 facets (backend=normaliz-QQ)
 
         An example over a number field::
 
@@ -466,42 +452,29 @@ class ConstraintSystem:
             sage: cs = ConstraintSystem()
             sage: cs.insert(L.variable(0) - phi * L.variable(1) >= 0)
             sage: cs.insert(L.variable(0) + L.variable(1) + L.variable(2) == 0)
-            sage: cone_sage = cs.cone('sage')
-            sage: cone_nmz = cs.cone('normaliz-NF')
-
-        Note that sage and noramliz use different noramlization::
-
-            sage: cone_sage.ieqs()
-            [[1, -phi, 0]]
-            sage: cone_nmz.ieqs()
-            [[phi - 1, -1, 0]]
-
-            sage: cone_sage.eqns()
-            [[1, 1, 1]]
-            sage: cone_nmz.eqns()
-            [[1, 1, 1]]
-
-        Testing adding constraints::
-
-            sage: cone_sage.add_constraint(phi * L.variable(0) - 3 * L.variable(2) <= 0)
-            Cone of dimension 2 in ambient dimension 3 made of 2 facets (backend=sage)
-            sage: cone_nmz.add_constraint(phi * L.variable(0) - 3 * L.variable(2) <= 0)
-            Cone of dimension 2 in ambient dimension 3 made of 2 facets (backend=normaliz-NF)
+            sage: cs.cone('sage')
+            Cone of dimension 2 in ambient dimension 3 made of 1 facets (backend=sage)
+            sage: cs.cone('normaliz-NF')  # optional - pynormaliz
+            Cone of dimension 2 in ambient dimension 3 made of 1 facets (backend=normaliz-NF)
         """
         # homogeneous case
         if not all(constraint.is_homogeneous() for constraint in self):
             raise ValueError
 
         if backend == 'ppl':
+            from .cone import Cone_ppl
             import ppl
             return Cone_ppl(QQ, ppl.C_Polyhedron(self.ppl()))
         elif backend == 'sage':
+            from .cone import Cone_sage
             ieqs, eqns = self.ieqs_eqns()
             return Cone_sage._new(ieqs, eqns)
         elif backend == 'normaliz-QQ':
+            from .cone import Cone_normalizQQ
             ieqs, eqns = self.ieqs_eqns(homogeneous=True)
             return Cone_normalizQQ._new(ieqs, eqns)
         elif backend == 'normaliz-NF':
+            from .cone import Cone_normalizNF
             ieqs, eqns = self.ieqs_eqns(homogeneous=True)
             return Cone_normalizNF._new(ieqs, eqns)
         else:
@@ -510,9 +483,11 @@ class ConstraintSystem:
 
 class LinearExpressions(UniqueRepresentation, Parent):
     r"""
+    Linear expressions over a given base ring.
+
     EXAMPLES::
 
-        sage: from veerer.linear_expression import LinearExpressions
+        sage: from veerer.polyhedron import LinearExpressions
         sage: LinearExpressions(QQ)
         Linear expressions over Rational Field
         sage: LinearExpressions(QuadraticField(5))
@@ -531,7 +506,7 @@ class LinearExpressions(UniqueRepresentation, Parent):
         r"""
         EXAMPLES::
 
-        sage: from veerer.linear_expression import *
+        sage: from veerer.polyhedron import LinearExpressions
         sage: L = LinearExpressions(QQ)
         sage: L.variable(0)
         x0
@@ -577,293 +552,3 @@ class LinearExpressions(UniqueRepresentation, Parent):
             return LinearExpression(self, data0, data1)
         else:
             raise ValueError('can not construct linear expression from {}'.format(args))
-
-
-
-class Cone:
-    _name = 'none'
-
-    def __init__(self, base_ring, cone):
-        self._base_ring = base_ring
-        self._cone = cone
-
-    def __repr__(self):
-        return 'Cone of dimension {} in ambient dimension {} made of {} facets (backend={})'.format(
-                self.affine_dimension(), self.space_dimension(), len(self.ieqs()), self._name)
-
-    def space_dimension(self):
-        raise NotImplementedError
-
-    def affine_dimension(self):
-        raise NotImplementedError
-
-    def ieqs(self):
-        raise NotImplementedError
-
-    def eqns(self):
-        raise NotImplementedError
-
-    def rays(self):
-        raise NotImplementedError
-
-    def lines(self):
-        raise NotImplementedError
-
-    def facets(self):
-        raise NotImplementedError
-
-    def add_constraint(self, constraint):
-        cs = ConstraintSystem()
-        cs.insert(constraint)
-        return self.add_constraints(cs)
-
-    def add_constraints(self, constraints):
-        raise NotImplementedError
-
-
-class Cone_ppl(Cone):
-    r"""
-    PPL cone wrapper.
-    """
-    _name = 'ppl'
-
-    @staticmethod
-    def _new(base_ring, ieqs, eqns):
-        raise TypeError('do not use Cone_ppl._new')
-
-    def __hash__(self):
-        ieqs, eqns = self.ieqs_eqns()
-        ieqs.sort()
-        eqns.sort()
-        return hash(tuple(tuple(ieq) for ieq in ieqs), tuple(tuple(eqn) for eqn in eqns))
-
-    def copy(self):
-        r"""
-        EXAMPLES::
-
-            sage:
-        """
-        import ppl
-        return Cone_ppl(ZZ, ppl.C_Polyhedron(self._cone))
-
-    def space_dimension(self):
-        return self._cone.space_dimension()
-
-    def affine_dimension(self):
-        return self._cone.affine_dimension()
-
-    def ieqs(self):
-        return [[ZZ(x) for x in c.coefficients()] for c in self._cone.minimized_constraints() if c.is_inequality()]
-
-    def eqns(self):
-        return [[ZZ(x) for x in c.coefficients()] for c in self._cone.minimized_constraints() if c.is_equality()]
-
-    def rays(self):
-        return [[ZZ(x) for x in g.coefficients()] for g in self._cone.minimized_generators() if g.is_ray()]
-
-    def lines(self):
-        return [[ZZ(x) for x in g.coefficients()] for g in self._cone.minimized_generators() if g.is_line()]
-
-    def add_constraint(self, constraint):
-        r"""
-        Add a single constraint to the cone.
-
-        EXAMPLES::
-
-            sage: from veerer.linear_expression import LinearExpressions, ConstraintSystem
-            sage: L = LinearExpressions(ZZ)
-            sage: x0, x1, x2, x3 = (L.variable(i) for i in range(4))
-            sage: cs = ConstraintSystem()
-            sage: cs.insert(x0 >= 0)
-            sage: cs.insert(x1 >= 0)
-            sage: cs.insert(x2 >= 0)
-            sage: cs.insert(x3 >= 0)
-            sage: cs.insert(x0 + x1 - 2*x2 + 3*x3 == 0)
-
-            sage: cone = cs.cone('ppl')
-            sage: cone.add_constraint(x0 == x1)
-            Cone of dimension 2 in ambient dimension 4 made of 2 facets (backend=ppl)
-        """
-        import ppl
-        cone = ppl.C_Polyhedron(self._cone)
-        cone.add_constraint(constraint.ppl())
-        return Cone_ppl(ZZ, cone)
-
-    def add_constraints(self, constraints):
-        r"""
-        Add a system of constraints to the cone.
-        """
-        import ppl
-        cone = ppl.C_Polyhedron(self._cone)
-        for constraint in constraints:
-            cone.add_constraint(constraint.ppl())
-        return Cone_ppl(ZZ, cone)
-
-
-class Cone_sage(Cone):
-    r"""
-    Sage cone wrapper.
-    """
-    _name = 'sage'
-
-    @staticmethod
-    def _new(ieqs, eqns):
-        from sage.geometry.polyhedron.constructor import Polyhedron
-        P = Polyhedron(ieqs=ieqs, eqns=eqns)
-        return Cone_sage(P.base_ring(), P)
-
-    def __hash__(self):
-        return hash(self._cone)
-
-    def space_dimension(self):
-        return self._cone.ambient_dimension()
-
-    def affine_dimension(self):
-        return self._cone.dimension()
-
-    def ieqs(self):
-        return [ieq[1:] for ieq in self._cone.inequalities_list()]
-
-    def eqns(self):
-        return [eqn[1:] for eqn in self._cone.equations_list()]
-
-    def rays(self):
-        return self._cone.rays_list()
-
-    def lines(self):
-        return self._cone.lines_list()
-
-    def add_constraints(self, cs):
-        from sage.geometry.polyhedron.constructor import Polyhedron
-        ieqs, eqns = cs.ieqs_eqns(self._cone.ambient_dimension())
-        new_cone = self._cone.intersection(Polyhedron(ieqs=ieqs, eqns=eqns))
-        return Cone_sage(new_cone.base_ring(), new_cone)
-
-
-class NFElementHandler:
-    def __init__(self, nf):
-        self._nf = nf
-
-    def __call__(self, l):
-        nf = self._nf
-        l = list(l) + [0] * (nf.degree() - len(l))
-        l = nf(l)
-        return l
-
-
-class Cone_normaliz(Cone):
-    @property
-    def _rational_handler(self):
-        return lambda l: QQ((l[0], l[1]))
-
-    @property
-    def _nfelem_handler(self):
-        return NFElementHandler(self._base_ring)
-
-    def _nmz_result_raw(self, prop):
-        from PyNormaliz import NmzResult
-        return NmzResult(self._cone, prop)
-
-    def _nmz_result(self, prop):
-        from PyNormaliz import NmzResult
-        return NmzResult(self._cone, prop,
-                         RationalHandler=self._rational_handler,
-                         NumberfieldElementHandler=self._nfelem_handler)
-
-    def __hash__(self):
-        ieqs, eqns = self.ieqs_eqns()
-        ieqs.sort()
-        eqns.sort()
-        return hash(tuple(tuple(ieq) for ieq in ieqs), tuple(tuple(eqn) for eqn in eqns))
-
-    def space_dimension(self):
-        return self._nmz_result("EmbeddingDim")
-
-    def affine_dimension(self):
-        return self._nmz_result("Rank")
-
-    def ieqs(self):
-        return self._nmz_result("SupportHyperplanes")
-
-    def eqns(self):
-        return self._nmz_result("Equations")
-
-    def ieqs_eqns(self):
-        return self.ieqs(), self.eqns()
-
-    def rays(self):
-        return self._nmz_result("ExtremeRays")
-
-    def lines(self):
-        raise NotImplementedError
-
-
-class Cone_normalizQQ(Cone_normaliz):
-    r"""
-    Normaliz cone wrapper.
-    """
-    _name = 'normaliz-QQ'
-
-    @staticmethod
-    def _new(ieqs, eqns):
-        from PyNormaliz import NmzCone
-        return Cone_normalizQQ(QQ, NmzCone(inequalities=ieqs, equations=eqns))
-
-    def add_constraints(self, cs):
-        ieqs = self._nmz_result_raw("SupportHyperplanes")
-        eqns = self._nmz_result_raw("Equations")
-        ieqs2, eqns2 = cs.ieqs_eqns(self.space_dimension(), homogeneous=True)
-        ieqs2 = [[[int(x.numerator()), int(x.denominator())] for x in ieq] for ieq in ieqs2]
-        eqns2 = [[[int(x.numerator()), int(x.denominator())] for x in eqn] for eqn in eqns2]
-        return self._new(ieqs + ieqs2, eqns + eqns2)
-
-
-class Cone_normalizNF(Cone_normaliz):
-    _name='normaliz-NF'
-
-    @staticmethod
-    def _new(ieqs, eqns):
-        from PyNormaliz import NmzCone
-        base_ring = embedded_nf([x for l in (ieqs + eqns) for x in l])
-        ieqs = [[str(base_ring(x)) for x in ieq] for ieq in ieqs]
-        eqns = [[str(base_ring(x)) for x in eqn] for eqn in eqns]
-        nf_data = nmz_number_field_data(base_ring)
-        ans = Cone_normalizNF(base_ring, NmzCone(number_field=nf_data, inequalities=ieqs, equations=eqns))
-        ans._nf_data = nf_data
-        return ans
-
-    def add_constraints(self, cs):
-        from PyNormaliz import NmzCone
-        ieqs = self._nmz_result("SupportHyperplanes")
-        eqns = self._nmz_result("Equations")
-        ieqs2, eqns2 = cs.ieqs_eqns(self.space_dimension(), homogeneous=True)
-        base_ring = self._base_ring
-        ieqs.extend(ieqs2)
-        eqns.extend(eqns2)
-        ieqs = [[str(base_ring(x)) for x in ieq] for ieq in ieqs]
-        eqns = [[str(base_ring(x)) for x in eqn] for eqn in eqns]
-        ans = Cone_normalizNF(self._base_ring, NmzCone(number_field=self._nf_data, inequalities=ieqs, equations=eqns))
-        ans._nf_data = self._nf_data
-        return ans
-
-
-def embedded_nf(l):
-    from sage.structure.element import get_coercion_model
-    cm = get_coercion_model()
-    K = cm.common_parent(*l)
-    if K in _NumberFields:
-        if not RDF.has_coerce_map_from(K):
-            raise ValueError("invalid base ring {} (no embedding)".format(K))
-        return K
-    elif K == AA:
-        K, ll, hom = number_field_elements_from_algebraics(l, embedded=True, minimal=True)
-        if K == QQ:
-            raise ValueError('rational base ring')
-        return K
-
-
-def nmz_number_field_data(base_ring):
-    gen = base_ring.gen()
-    s_gen = str(gen)
-    emb = RBF(gen)
-    return [str(base_ring.polynomial()).replace("x", s_gen), s_gen, str(emb)]

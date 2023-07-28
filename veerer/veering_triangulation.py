@@ -14,7 +14,7 @@ from .constants import *
 from .permutation import *
 from .misc import det2
 from .triangulation import Triangulation
-from .linear_expression import *
+from .polyhedron import LinearExpressions, ConstraintSystem
 from .linear_algebra import linear_form_project, linear_form_normalize
 
 from .env import curver, sage, surface_dynamics, ppl, flipper, random, require_package, rich_to_bool, op_LE, op_LT, op_EQ, op_NE, op_GT, op_GE
