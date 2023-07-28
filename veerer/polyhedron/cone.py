@@ -1,6 +1,9 @@
 r"""
 Cone
 
+A cone in R^d is a domain delimited by finitely linear homogeneous inequalities
+`a_1 x_1 + a_2 x_2 + \ldots + a_d x_d \geq 0`.
+
 EXAMPLES::
 
     sage: from veerer.polyhedron.linear_expression import LinearExpressions, ConstraintSystem
@@ -18,8 +21,8 @@ EXAMPLES::
     sage: cones.append(cone_sage)
     sage: cone_ppl = cs.cone('ppl')
     sage: cones.append(cone_ppl)
-    sage: cone_nmz = cs.cone('normaliz-QQ') # optional - pynormaliz
-    sage: cones.append(cone_nmz) # optional - pynormaliz
+    sage: cone_nmz = cs.cone('normaliz-QQ')  # optional - pynormaliz
+    sage: cones.append(cone_nmz)  # optional - pynormaliz
     sage: assert all(cone.space_dimension() == 4 for cone in cones)
     sage: assert all(cone.affine_dimension() == 3 for cone in cones)
     sage: assert all(sorted(cone.ieqs()) == [[-15, -3, 10, 0], [0, 1, 0, 0], [1, 0, 0, 0]] for cone in cones)
@@ -231,10 +234,10 @@ class Cone_sage(Cone):
         return hash(self._cone)
 
     def space_dimension(self):
-        return self._cone.ambient_dimension()
+        return self._cone.ambient_dim()
 
     def affine_dimension(self):
-        return self._cone.dimension()
+        return self._cone.dim()
 
     def ieqs(self):
         return [ieq[1:] for ieq in self._cone.inequalities_list()]
@@ -250,7 +253,7 @@ class Cone_sage(Cone):
 
     def add_constraints(self, cs):
         from sage.geometry.polyhedron.constructor import Polyhedron
-        ieqs, eqns = cs.ieqs_eqns(self._cone.ambient_dimension())
+        ieqs, eqns = cs.ieqs_eqns(self._cone.ambient_dim())
         new_cone = self._cone.intersection(Polyhedron(ieqs=ieqs, eqns=eqns))
         return Cone_sage(new_cone.base_ring(), new_cone)
 

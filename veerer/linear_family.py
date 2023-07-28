@@ -229,7 +229,6 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
             sage: f
             VeeringTriangulationLinearFamily("(0,1,2)(3,4,5)(~5,~3,~1)(~4,~2,~0)", "RBBRBB", [(1, 0, -1, 0, 0, 0), (0, 1, 1, 0, 1, 1), (0, 0, 0, 1, 0, -1)])
 
- 
             sage: fp = "(0,12,~11)(1,13,~12)(2,14,~13)(3,15,~14)(4,17,~16)(5,~10,11)(6,~3,~17)(7,~2,~6)(8,~5,~7)(9,~0,~8)(10,~4,~9)(16,~15,~1)"
             sage: cols = "RRRRRRBBBBBBBBBBBB"
             sage: f = VeeringTriangulation(fp, cols).as_linear_family(mutable=True)
@@ -631,8 +630,10 @@ class VeeringTriangulationLinearFamilies:
             sage: f = VeeringTriangulationLinearFamilies.triangle_3_4_13_unfolding_orbit_closure()
             sage: f
             VeeringTriangulationLinearFamily("(0,9,~8)(1,8,2)(3,11,~10)(4,~14,15)(5,~15,12)(6,~16,13)(7,~0,22)(10,14,~9)(16,~12,~4)(17,20,~18)(18,~5,~23)(19,~22,~21)(21,~13,23)(~20,~6,~17)(~19,~7,~1)(~11,~2,~3)", "BBRBRBRRRRRRRRBRBBRRRBRR", [(1, phi, 0, 0, 0, 1, 0, 0, -phi, -phi - 1, 0, 0, -phi, -phi, phi + 1, -phi - 1, phi, 0, 0, -phi, 0, phi - 1, -1, -1), (0, 0, 1, 0, 0, 0, phi - 1, 0, 1, 1, 1, 1, 0, phi - 1, 0, 0, 0, 0, phi - 1, 0, phi - 1, 0, 0, phi - 1), (0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, phi - 1, 0, 0, -phi + 1, 0, 0, 0), (0, 0, 0, 0, 1, 0, 0, phi - 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, phi - 1, 0, 0, phi - 1, 0)])
+
+            sage: vt.stratum()  # optional - surface_dynamics
+            Q_4(11, 1)
         """
-        from surface_dynamics import QuadraticStratum
         from sage.rings.rational_field import QQ
         from sage.rings.number_field.number_field import NumberField
         from sage.rings.qqbar import AA
@@ -642,7 +643,6 @@ class VeeringTriangulationLinearFamilies:
         fp = "(0,9,~8)(1,8,2)(10,14,~9)(3,11,~10)(~2,~3,~11)(~14,15,4)(12,5,~15)(~4,16,~12)(13,6,~16)(23,21,~13)(18,~5,~23)(17,20,~18)(~6,~17,~20)(~0,22,7)(~21,19,~22)(~7,~1,~19)"
         cols = "BBRBRBRRRRRRRRBRBBRRRBRR"
         vt = VeeringTriangulation(fp, cols)
-        assert vt.stratum() == QuadraticStratum(11, 1)
 
         # equations (beyond switches)
         # B = phi A
