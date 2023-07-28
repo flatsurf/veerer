@@ -465,21 +465,28 @@ class ConstraintSystem:
             sage: L = LinearExpressions(K)
             sage: cs = ConstraintSystem()
             sage: cs.insert(L.variable(0) - phi * L.variable(1) >= 0)
-            sage: cs.insert(L.variable(0) + L.variable(1) == 0)
+            sage: cs.insert(L.variable(0) + L.variable(1) + L.variable(2) == 0)
             sage: cone_sage = cs.cone('sage')
             sage: cone_nmz = cs.cone('normaliz-NF')
 
-        Note that contrarily to sage, normaliz does some simplifications::
+        Note that sage and noramliz use different noramlization::
 
             sage: cone_sage.ieqs()
-            [[phi + 1, 0]]
+            [[1, -phi, 0]]
             sage: cone_nmz.ieqs()
-            [[1, 0]]
+            [[phi - 1, -1, 0]]
 
             sage: cone_sage.eqns()
-            [[1, 1]]
+            [[1, 1, 1]]
             sage: cone_nmz.eqns()
-            [[1, 1]]
+            [[1, 1, 1]]
+
+        Testing adding constraints::
+
+            sage: cone_sage.add_constraint(phi * L.variable(0) - 3 * L.variable(2) <= 0)
+            Cone of dimension 2 in ambient dimension 3 made of 2 facets (backend=sage)
+            sage: cone_nmz.add_constraint(phi * L.variable(0) - 3 * L.variable(2) <= 0)
+            Cone of dimension 2 in ambient dimension 3 made of 2 facets (backend=normaliz-NF)
         """
         # homogeneous case
         if not all(constraint.is_homogeneous() for constraint in self):
@@ -674,10 +681,8 @@ class Cone_ppl(Cone):
             sage: cs.insert(x0 + x1 - 2*x2 + 3*x3 == 0)
 
             sage: cone = cs.cone('ppl')
-            sage: cone2 = cone.copy()
-            sage: cone2.add_constraint(x0 == x1)
-            sage: cone
-            sage: cone2
+            sage: cone.add_constraint(x0 == x1)
+            Cone of dimension 2 in ambient dimension 4 made of 2 facets (backend=ppl)
         """
         import ppl
         cone = ppl.C_Polyhedron(self._cone)
@@ -814,6 +819,8 @@ class Cone_normalizQQ(Cone_normaliz):
 
 
 class Cone_normalizNF(Cone_normaliz):
+    _name='normaliz-NF'
+
     @staticmethod
     def _new(ieqs, eqns):
         from PyNormaliz import NmzCone
@@ -826,12 +833,18 @@ class Cone_normalizNF(Cone_normaliz):
         return ans
 
     def add_constraints(self, cs):
-        ieqs = self._nmz_result_raw("SupportHyperplanes")
-        eqns = self._nmz_result_raw("Equations")
+        from PyNormaliz import NmzCone
+        ieqs = self._nmz_result("SupportHyperplanes")
+        eqns = self._nmz_result("Equations")
         ieqs2, eqns2 = cs.ieqs_eqns(self.space_dimension(), homogeneous=True)
-        ieqs2 = [x._coefficients() for x in ieqs2]
-        eqns2 = [x._coefficients() for x in eqns2]
-        return self._new(ieqs + ieqs2, eqns + eqns2)
+        base_ring = self._base_ring
+        ieqs.extend(ieqs2)
+        eqns.extend(eqns2)
+        ieqs = [[str(base_ring(x)) for x in ieq] for ieq in ieqs]
+        eqns = [[str(base_ring(x)) for x in eqn] for eqn in eqns]
+        ans = Cone_normalizNF(self._base_ring, NmzCone(number_field=self._nf_data, inequalities=ieqs, equations=eqns))
+        ans._nf_data = self._nf_data
+        return ans
 
 
 def embedded_nf(l):
