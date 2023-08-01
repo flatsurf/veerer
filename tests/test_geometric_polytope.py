@@ -42,7 +42,8 @@ def test_geometric_flips(fp, cols, repeat):
 
     for _ in range(repeat):
         flips = random.choice(V.geometric_flips())
-        for e, col in flips:
+        edges, col = flips
+        for e in edges:
             V.flip(e, col)
         assert V.is_geometric()
 
