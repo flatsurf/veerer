@@ -17,7 +17,7 @@ from .triangulation import Triangulation
 from .polyhedron import LinearExpressions, ConstraintSystem
 from .polyhedron.linear_algebra import linear_form_project, linear_form_normalize
 
-from .env import curver, sage, surface_dynamics, ppl, flipper, random, require_package, rich_to_bool, op_LE, op_LT, op_EQ, op_NE, op_GT, op_GE
+from .env import curver, sage, surface_dynamics, ppl, flipper, random, require_package, rich_to_bool, op_LE, op_LT, op_EQ, op_NE, op_GT, op_GE, CHECK
 
 from random import choice, shuffle
 
@@ -1836,7 +1836,7 @@ class VeeringTriangulation(Triangulation):
 
         # flip and set colour
         E = self._ep[e]
-        Triangulation.flip(self, e)
+        Triangulation.flip(self, e, check=False)
         self._colouring[e] = self._colouring[E] = col
 
         if reduced:
@@ -2428,7 +2428,7 @@ class VeeringTriangulation(Triangulation):
 
         E = self._ep[e]
 
-        Triangulation.flip_back(self, e)
+        Triangulation.flip_back(self, e, check=False)
         old_col = self._colouring[e]
         self._colouring[e] = self._colouring[E] = col
 

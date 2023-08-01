@@ -707,12 +707,12 @@ class FlipGraph(Automaton):
 
     def _flip(self, flip_data):
         e = flip_data
-        self._state.flip(e)
+        self._state.flip(e, check=env.CHECK)
         return True, e
 
     def _flip_back(self, flip_back_data):
         e = flip_back_data
-        self._state.flip_back(e)
+        self._state.flip_back(e, check=env.CHECK)
 
 
 class CoreAutomaton(Automaton):
@@ -738,13 +738,13 @@ class CoreAutomaton(Automaton):
     def _flip(self, flip_data):
         e, col = flip_data
         old_col = self._state.colour(e)
-        self._state.flip(e, col)
+        self._state.flip(e, col, check=env.CHECK)
         flip_back_data = (e, old_col)
         return self._state.edge_has_curve(e), flip_back_data
 
     def _flip_back(self, flip_back_data):
         e, old_col = flip_back_data
-        self._state.flip_back(e, old_col)
+        self._state.flip_back(e, old_col, check=env.CHECK)
 
 
 class ReducedCoreAutomaton(Automaton):
@@ -777,7 +777,7 @@ class ReducedCoreAutomaton(Automaton):
         if env.CHECK:
             assert T.is_forward_flippable(e)
         old_col = self._state.colour(e)
-        self._state.flip(e, col, reduced=False)
+        self._state.flip(e, col, reduced=False, check=env.CHECK)
 
         if not self._state.edge_has_curve(e):
             return False, (e, old_col, ())
@@ -830,7 +830,7 @@ class ReducedCoreAutomaton(Automaton):
         for ee, ccol in recolorings:
             self._state._colouring[ee] = ccol
             self._state._colouring[self._state._ep[ee]] = ccol
-        self._state.flip_back(e, old_col)
+        self._state.flip_back(e, old_col, check=env.CHECK)
 
 
 class GeometricAutomaton(Automaton):

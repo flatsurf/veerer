@@ -1215,7 +1215,7 @@ class Triangulation(object):
         self._ep = perm_conjugate(self._ep, p)
         self._fp = perm_conjugate(self._fp, p)
 
-    def flip(self, e):
+    def flip(self, e, check=True):
         r"""
         Flip the edge ``e``.
 
@@ -1255,7 +1255,9 @@ class Triangulation(object):
         if not self._mutable:
             raise ValueError('immutable triangulation; use a mutable copy instead')
 
-        e = int(e)
+        if check:
+            e = self._check_half_edge(e)
+
         E = self._ep[e]
 
         a = self._fp[e]
@@ -1301,7 +1303,7 @@ class Triangulation(object):
         # self._vl[e] = x
         # self._vl[E] = v
 
-    def flip_back(self, e):
+    def flip_back(self, e, check=True):
         r"""
         Flip back the edge ``e``.
 
@@ -1346,7 +1348,9 @@ class Triangulation(object):
         if not self._mutable:
             raise ValueError('immutable triangulation; use a mutable copy instead')
 
-        e = int(e)
+        if check:
+            e = self._check_half_edge(e)
+
         E = self._ep[e]
 
         a = self._fp[e]
