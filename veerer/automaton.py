@@ -877,16 +877,19 @@ class GeometricAutomaton(Automaton):
         return state.geometric_flips(backend=self._backend)
 
     def _flip(self, flip_data):
-        flip_back_data = tuple((e, self._state.colour(e)) for e, _ in flip_data)
-        for e, col in flip_data:
-            self._state.flip(e, col)
+        edges, col = flip_data
+        assert all(self._state.colour(e) == self._state.colour(edges[0]) for e in edges)
+        flip_back_data = (edges, self._state.colour(edges[0]))
+        for e in edges:
+            self._state.flip(e, col, check=env.CHECK)
         if env.CHECK and not self._state.is_geometric(backend=self._backend):
             raise RuntimeError('that was indeed possible!')
         return True, flip_back_data
 
     def _flip_back(self, flip_back_data):
-        for e, old_col in flip_back_data:
-            self._state.flip_back(e, old_col)
+        edges, old_col = flip_back_data
+        for e in edges:
+            self._state.flip_back(e, old_col, check=env.CHECK)
 
 
 class GeometricAutomatonSubspace(Automaton):
@@ -944,9 +947,11 @@ class GeometricAutomatonSubspace(Automaton):
         return state.geometric_flips(backend=self._backend)
 
     def _flip(self, flip_data):
-        flip_back_data = tuple((e, self._state.colour(e)) for e, _ in flip_data)
-        for e, col in flip_data:
-            self._state.flip(e, col)
+        edges, col = flip_data
+        assert all(self._state.colour(e) == self._state.colour(edges[0]) for e in edges)
+        flip_back_data = (edges, self._state.colour(edges[0]))
+        for e in edges:
+            self._state.flip(e, col, check=env.CHECK)
         if env.CHECK:
             self._state._check(RuntimeError)
             if not self._state.is_geometric(backend=self._backend):
@@ -954,5 +959,6 @@ class GeometricAutomatonSubspace(Automaton):
         return True, flip_back_data
 
     def _flip_back(self, flip_back_data):
-        for e, old_col in flip_back_data:
-            self._state.flip_back(e, old_col)
+        edges, old_col = flip_back_data
+        for e in edges:
+            self._state.flip_back(e, old_col, check=env.CHECK)

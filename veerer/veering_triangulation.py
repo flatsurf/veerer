@@ -3334,9 +3334,9 @@ class VeeringTriangulation(Triangulation):
 
             sage: vt = VeeringTriangulation("(0,2,3)(1,4,~0)(5,6,~1)", "BRRBBBB")
             sage: sorted(vt.geometric_flips())
-            [[(3, 1)], [(3, 2)], [(4, 1)], [(4, 2)], [(5, 1)], [(5, 2)]]
+            [([3], 1), ([3], 2), ([4], 1), ([4], 2), ([5], 1), ([5], 2)]
             sage: sorted(vt.geometric_flips(backend='sage'))
-            [[(3, 1)], [(3, 2)], [(4, 1)], [(4, 2)], [(5, 1)], [(5, 2)]]
+            [([3], 1), ([3], 2), ([4], 1), ([4], 2), ([5], 1), ([5], 2)]
 
         L-shaped square tiled surface with 3 squares (given as a sphere with
         3 triangles). It has two geometric neighbors corresponding to simultaneous
@@ -3346,29 +3346,35 @@ class VeeringTriangulation(Triangulation):
             sage: T, s, t = VeeringTriangulations.L_shaped_surface(1, 1, 1, 1)
             sage: f = VeeringTriangulationLinearFamily(T, [s, t])
             sage: sorted(f.geometric_flips(backend='ppl'))
-            [[(3, 1), (4, 1), (5, 1)], [(3, 2), (4, 2), (5, 2)]]
+            [([3, 4, 5], 1), ([3, 4, 5], 2)]
             sage: sorted(f.geometric_flips(backend='sage'))
-            [[(3, 1), (4, 1), (5, 1)], [(3, 2), (4, 2), (5, 2)]]
+            [([3, 4, 5], 1), ([3, 4, 5], 2)]
             sage: sorted(f.geometric_flips(backend='normaliz-QQ'))  # optional - PyNormaliz
-            [[(3, 1), (4, 1), (5, 1)], [(3, 2), (4, 2), (5, 2)]]
+            [([3], 1), ([3], 2), ([4], 1), ([4], 2), ([5], 1), ([5], 2)]
+
 
         To be compared with the geometric flips in the ambient stratum::
 
             sage: sorted(T.geometric_flips())
-            [[(3, 1)], [(3, 2)], [(4, 1)], [(4, 2)], [(5, 1)], [(5, 2)]]
+            [([3], 1), ([3], 2), ([4], 1), ([4], 2), ([5], 1), ([5], 2)]
             sage: sorted(T.as_linear_family().geometric_flips())
-            [[(3, 1)], [(3, 2)], [(4, 1)], [(4, 2)], [(5, 1)], [(5, 2)]]
+            [([3], 1), ([3], 2), ([4], 1), ([4], 2), ([5], 1), ([5], 2)]
 
-        A more complicated example::
+
+        A more complicated example in which edge 4 have a forced colour after
+        flip and where the flippable edges 0 and 3 are not part of any geometric
+        flips::
 
             sage: T, s, t = VeeringTriangulations.L_shaped_surface(2, 3, 5, 2, 1, 1)
             sage: f = VeeringTriangulationLinearFamily(T, [s, t])
+            sage: T.flippable_edges()
+            [0, 3, 4, 5, 6]
             sage: sorted(f.geometric_flips(backend='ppl'))
-            [[(4, 2)], [(5, 1)], [(5, 2)]]
+            [([4], 2), ([5], 1), ([5], 2)]
             sage: sorted(f.geometric_flips(backend='sage'))
-            [[(4, 2)], [(5, 1)], [(5, 2)]]
+            [([4], 2), ([5], 1), ([5], 2)]
             sage: sorted(f.geometric_flips(backend='normaliz-QQ'))  # optional - PyNormaliz
-            [[(4, 2)], [(5, 1)], [(5, 2)]]
+            [([4], 2), ([5], 1), ([5], 2)]
 
         TESTS::
 
@@ -3377,9 +3383,9 @@ class VeeringTriangulation(Triangulation):
             sage: cols = "RBRRRRBBR"
             sage: vt = VeeringTriangulation(fp, cols)
             sage: sorted(vt.geometric_flips())
-            [[(2, 1)], [(2, 2)], [(4, 1), (8, 1)], [(4, 2), (8, 2)]]
+            [([2], 1), ([2], 2), ([4, 8], 1), ([4, 8], 2)]
             sage: sorted(vt.as_linear_family().geometric_flips())
-            [[(2, 1)], [(2, 2)], [(4, 1), (8, 1)], [(4, 2), (8, 2)]]
+            [([2], 1), ([2], 2), ([4, 8], 1), ([4, 8], 2)]
         """
         from sage.matrix.constructor import matrix
 
@@ -3410,27 +3416,27 @@ class VeeringTriangulation(Triangulation):
                 delaunay_facets[constraint] = [e]
 
         # determine the possible colours
-        # NOTE: is it really enough? We need the neighbour to also be geometric
-        # (and not 2*dim - 1 dimensional)
         neighbours = []
         for ieq, edges in delaunay_facets.items():
-            # TODO: see whether colors are actually always the same
-
             # build the facet
             F = P.add_constraint(L(ieq) == 0)
+            if not F.affine_dimension() == 2 * dim - 1:
+                continue
 
             # test each edge colour conditions
-            for cols in itertools.product([BLUE, RED], repeat=len(edges)):
-                Z = list(zip(edges, cols))
-                cs = ConstraintSystem()
-                for e, col in Z:
-                    a, b, c, d = self.square_about_edge(e)
-                    if col == RED:
-                        cs.insert(x[self._norm(a)] <= x[self._norm(d)])
-                    else:
-                        cs.insert(x[self._norm(a)] >= x[self._norm(d)])
-                if F.add_constraints(cs).affine_dimension() == 2 * dim - 1:
-                    neighbours.append(Z)
+            # NOTE: all simultaneous flips must be of the same colour
+            assert all(self._colouring[e] == self._colouring[edges[0]] for e in edges)
+            # NOTE: the equations for the different edges are all equivalent, it
+            # is hence enough to use the first edge
+            a, b, c, d = self.square_about_edge(edges[0])
+            Fred = F.add_constraint(x[self._norm(a)] <= x[self._norm(d)])
+            if Fred.affine_dimension() == 2 * dim - 1:
+                neighbours.append((edges, RED))
+                Fblue = F.add_constraint(x[self._norm(a)] >= x[self._norm(d)])
+                if Fblue.affine_dimension() == 2 * dim - 1:
+                    neighbours.append((edges, BLUE))
+            else:
+                neighbours.append((edges, BLUE))
 
         return neighbours
 
