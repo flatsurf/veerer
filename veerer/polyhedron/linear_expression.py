@@ -23,10 +23,14 @@ cones and polyhedra.
 # along with veerer. If not, see <https://www.gnu.org/licenses/>.
 ######################################################################
 
+from ..env import require_package, sage, ppl
+
+require_package('sage', 'linear_expression')
+
 from sage.categories.modules import Modules
 
 from sage.structure.unique_representation import UniqueRepresentation
-from sage.structure.element import ModuleElement, Vector, parent
+from sage.structure.element import ModuleElement, Vector, parent, get_coercion_model
 from sage.structure.parent import Parent
 from sage.structure.richcmp import op_LE, op_LT, op_EQ, op_NE, op_GT, op_GE
 
@@ -35,6 +39,9 @@ from sage.rings.rational_field import QQ
 
 from sage.arith.functions import lcm
 from sage.arith.functions import LCM_list
+
+
+cm = get_coercion_model()
 
 
 # TODO: allow base_ring=int or Fraction so that we can handle pure
@@ -191,8 +198,8 @@ class LinearExpression(ModuleElement):
             sage: (3 * L.variable(2) - 7/2 * L.variable(5) + 1/3).ppl()
             18*x2-21*x5+2
         """
+        require_package('ppl', 'ppl')
         from gmpy2 import mpz
-        import ppl
         lin = self.integral()
         # TODO: the line below is too costly : it accounts for 80% of the
         # geometric automaton computation
@@ -327,6 +334,22 @@ class ConstraintSystem:
         self._data = []
         self._dim = None
 
+    def base_ring(self):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer.polyhedron import *
+            sage: L = LinearExpressions(QQ)
+            sage: cs = ConstraintSystem()
+            sage: cs.insert(L.variable(0) >= 2)
+            sage: cs.insert(2 * L.variable(1) - L.variable(3) <= 18)
+            sage: cs.base_ring()
+            Rational Field
+        """
+        if not self._data:
+            raise ValueError
+        return cm.common_parent(*[constraint._expression.parent().base_ring() for constraint in self._data])
+
     def __repr__(self):
         return '{' + ', '.join(map(str, self)) + '}'
 
@@ -360,7 +383,6 @@ class ConstraintSystem:
             sage: cs.ppl()
             Constraint_System {10*x0-3*x2-5>=0, x0+x1+x2-3==0}
         """
-        import ppl
         cs = ppl.Constraint_System()
         for constraint in self._data:
             cs.insert(constraint.ppl())
@@ -461,24 +483,31 @@ class ConstraintSystem:
         if not all(constraint.is_homogeneous() for constraint in self):
             raise ValueError
 
+        if backend is None:
+            from .cone import default_backend
+            backend = default_backend(self.base_ring())
+
         if backend == 'ppl':
+            require_package('ppl', 'cone')
             from .cone import Cone_ppl
-            import ppl
             return Cone_ppl(QQ, ppl.C_Polyhedron(self.ppl()))
         elif backend == 'sage':
+            require_package('sage', 'cone')
             from .cone import Cone_sage
             ieqs, eqns = self.ieqs_eqns()
             return Cone_sage._new(ieqs, eqns)
         elif backend == 'normaliz-QQ':
+            require_package('PyNormaliz', 'cone')
             from .cone import Cone_normalizQQ
             ieqs, eqns = self.ieqs_eqns(homogeneous=True)
             return Cone_normalizQQ._new(ieqs, eqns)
         elif backend == 'normaliz-NF':
+            require_package('PyNormaliz', 'cone')
             from .cone import Cone_normalizNF
             ieqs, eqns = self.ieqs_eqns(homogeneous=True)
             return Cone_normalizNF._new(ieqs, eqns)
         else:
-            raise RuntimeError
+            raise ValueError('invalid backend')
 
 
 class LinearExpressions(UniqueRepresentation, Parent):

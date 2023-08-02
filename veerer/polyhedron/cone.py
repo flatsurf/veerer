@@ -85,16 +85,39 @@ Testing adding constraints::
 # along with veerer. If not, see <https://www.gnu.org/licenses/>.
 ######################################################################
 
-from sage.categories.number_fields import NumberFields
+from ..env import sage, ppl, PyNormaliz
+if sage is not None:
+    from sage.categories.number_fields import NumberFields
 
-from sage.rings.integer_ring import ZZ
-from sage.rings.rational_field import QQ
-from sage.rings.real_arb import RealBallField
-from sage.rings.real_double import RDF
-from sage.rings.qqbar import AA, number_field_elements_from_algebraics
+    from sage.rings.integer_ring import ZZ
+    from sage.rings.rational_field import QQ
+    from sage.rings.real_arb import RealBallField
+    from sage.rings.real_double import RDF
+    from sage.rings.qqbar import AA, number_field_elements_from_algebraics
 
-RBF = RealBallField(64)
-_NumberFields = NumberFields()
+    RBF = RealBallField(64)
+    _NumberFields = NumberFields()
+
+
+_backends = {}
+from fractions import Fraction
+if ppl is not None:
+    _backends[int] = _backends[Fraction] = 'ppl'
+elif PyNormaliz is not None:
+    _backends[int] = _backends[Fraction] = 'normaliz-QQ'
+if sage is not None:
+    from sage.rings.integer_ring import ZZ
+    from sage.rings.rational_field import QQ
+    _backends[ZZ] = _backends[QQ] = 'ppl'
+def default_backend(base_ring):
+    try:
+        return _backends[base_ring]
+    except KeyError:
+        pass
+    if sage is not None:
+        if base_ring in _NumberFields:
+            return 'normaliz-NF' if PyNormaliz is not None else 'sage'
+    raise ValueError('no suitable polytope backend for base ring {}'.format(base_ring))
 
 
 class Cone:

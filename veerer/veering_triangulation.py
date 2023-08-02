@@ -1032,7 +1032,7 @@ class VeeringTriangulation(Triangulation):
     # TODO: change the names
     # TODO: compute it combinatorially, not via polytope computation
     # (these are the cycles and, if not orientable, the dumbbells)
-    def vertex_cycles(self, slope=VERTICAL, backend='ppl'):
+    def vertex_cycles(self, slope=VERTICAL, backend=None):
         r"""
         Return the rays of the train-track polytope.
 
@@ -2688,7 +2688,7 @@ class VeeringTriangulation(Triangulation):
             else:
                 raise ValueError("slope must be HORIZONTAL or VERTICAL")
 
-    def train_track_linear_space(self, slope=VERTICAL, backend='ppl'):
+    def train_track_linear_space(self, slope=VERTICAL, backend=None):
         r"""
         Return the polytope determined by the switch equations (a linear subspace)
 
@@ -2713,7 +2713,7 @@ class VeeringTriangulation(Triangulation):
         self._set_switch_conditions(cs.insert, x, slope)
         return cs.cone(backend)
 
-    def train_track_polytope(self, slope=VERTICAL, low_bound=0, backend='ppl'):
+    def train_track_polytope(self, slope=VERTICAL, low_bound=0, backend=None):
         r"""
         Return the polytope determined by the constraints.
 
@@ -2804,7 +2804,7 @@ class VeeringTriangulation(Triangulation):
         self._set_train_track_constraints(M.add_constraint, x, slope, 1, allow_degenerations)
         return M.optimizing_point()
 
-    def geometric_polytope(self, x_low_bound=0, y_low_bound=0, hw_bound=0, backend='ppl'):
+    def geometric_polytope(self, x_low_bound=0, y_low_bound=0, hw_bound=0, backend=None):
         r"""
         Return the geometric polytope of this veering triangulation.
 
@@ -2961,7 +2961,7 @@ class VeeringTriangulation(Triangulation):
         from .flat_structure import FlatVeeringTriangulation
         return FlatVeeringTriangulation(self, vectors, mutable=mutable, check=check)
 
-    def flat_structure_middle(self, backend='ppl'):
+    def flat_structure_middle(self, backend=None):
         r"""
         Return a flat structure with this Veering triangulation.
 
@@ -3044,7 +3044,7 @@ class VeeringTriangulation(Triangulation):
 
         return self._flat_structure_from_train_track_lengths(VH, VV)
 
-    def flat_structure_geometric_middle(self, backend='ppl'):
+    def flat_structure_geometric_middle(self, backend=None):
         r"""
         Return a geometric flat structure obtained by averaging the
         vertices of the geometric polytope.
@@ -3068,7 +3068,7 @@ class VeeringTriangulation(Triangulation):
         raise NotImplementedError
         return self.geometric_polytope().vrep()[1:, 1:].sum(axis=0).tolist()
 
-    def is_core(self, backend='ppl'):
+    def is_core(self, backend=None):
         r"""
         Test whether this coloured triangulation is core.
 
@@ -3116,7 +3116,7 @@ class VeeringTriangulation(Triangulation):
         return self.train_track_polytope(HORIZONTAL, backend=backend).affine_dimension() == d and \
                self.train_track_polytope(VERTICAL, backend=backend).affine_dimension() == d
 
-    def is_geometric(self, backend='ppl'):
+    def is_geometric(self, backend=None):
         r"""
         Test whether this coloured triangulation is geometric.
 
@@ -3145,7 +3145,7 @@ class VeeringTriangulation(Triangulation):
         assert Pdim <= 2 * dim
         return Pdim == 2 * dim
 
-    def balanced_polytope(self, slope=VERTICAL, homogeneous=False, backend='ppl'):
+    def balanced_polytope(self, slope=VERTICAL, homogeneous=False, backend=None):
         r"""
         Return the set of balanced coordinates for this veering triangulation
 
@@ -3164,7 +3164,7 @@ class VeeringTriangulation(Triangulation):
         self._set_balance_constraints(cs.insert, x, slope, homogeneous)
         return cs.polyhedron(backend)
 
-    def is_balanced(self, slope=VERTICAL, backend='ppl'):
+    def is_balanced(self, slope=VERTICAL, backend=None):
         r"""
         Check balanceness
 
@@ -3318,7 +3318,7 @@ class VeeringTriangulation(Triangulation):
 
         return False
 
-    def geometric_flips(self, backend='ppl'):
+    def geometric_flips(self, backend=None):
         r"""
         Return the list of geometric flips.
 

@@ -858,14 +858,14 @@ class GeometricAutomaton(Automaton):
     _name = 'geometric veering'
 
     def _setup(self, backend=None):
-        if backend is None:
-            self._backend = 'ppl'
-        else:
-            self._backend = backend
+        self._backend = backend
 
     def _seed_setup(self, state):
         if not isinstance(state, VeeringTriangulation) or not state.is_geometric(backend=self._backend):
             raise ValueError('invalid seed')
+        if self._backend is None:
+            from .polyhedron.cone import default_backend
+            self._backend = default_backend(state.base_ring())
         state = state.copy(mutable=True)
         state.set_canonical_labels()
         return state
@@ -919,7 +919,7 @@ class GeometricAutomatonSubspace(Automaton):
         sage: for n in range(3, 7):
         ....:     vt, s, t = VeeringTriangulations.L_shaped_surface(1, n-2, 1, 1)
         ....:     f = VeeringTriangulationLinearFamily(vt, [s, t])
-        ....:     print('n={}: {}'.format(n, GeometricAutomatonSubspace(f, backend='ppl')))
+        ....:     print('n={}: {}'.format(n, GeometricAutomatonSubspace(f)))
         n=3: Geometric veering linear constraint automaton with 6 vertices
         n=4: Geometric veering linear constraint automaton with 86 vertices
         n=5: Geometric veering linear constraint automaton with 276 vertices
@@ -928,14 +928,14 @@ class GeometricAutomatonSubspace(Automaton):
     _name = 'geometric veering linear constraint'
     
     def _setup(self, backend=None):
-        if backend is None:
-            self._backend = 'ppl'
-        else:
-            self._backend = backend
+        self._backend = backend
 
     def _seed_setup(self, state):
         if not isinstance(state, VeeringTriangulationLinearFamily) or not state.is_geometric(backend=self._backend):
             raise ValueError('invalid seed')
+        if self._backend is None:
+            from .polyhedron.cone import default_backend
+            self._backend = default_backend(state.base_ring())
         state = state.copy(mutable=True)
         state.set_canonical_labels()
         return state

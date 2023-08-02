@@ -61,6 +61,12 @@ try:
 except ImportError:
     ppl = None
 
+
+try:
+    import PyNormaliz
+except ImportError:
+    PyNormaliz = None
+
 error_msg = {
     'curver': 'the function {} can only be called when the package curver is installed.',
 
@@ -70,7 +76,9 @@ error_msg = {
 
     'flipper': 'the function {} only works when the package flipper is installed. See https://pypi.org/project/flipper/ for instructions',
 
-    'ppl': 'the function {} only works when the package pplpy is installed. See https://pypi.org/project/pplpy/ for instructions.'
+    'ppl': 'the function {} only works when the package pplpy is installed. See https://pypi.org/project/pplpy/ for instructions.',
+
+    'PyNormaliz': 'the function {} only works when the package PyNormaliz is installed.'
     }
 
 missing_mods = {
@@ -78,7 +86,8 @@ missing_mods = {
     'sage': sage is None,
     'flipper': flipper is None,
     'ppl': ppl is None,
-    'surface_dynamics': surface_dynamics is None
+    'surface_dynamics': surface_dynamics is None,
+    'PyNormaliz': PyNormaliz is None
     }
 
 # TODO: use the traceback to find out who called this function!
