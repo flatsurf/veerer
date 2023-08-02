@@ -25,6 +25,7 @@ from array import array
 from copy import copy
 import collections
 import itertools
+import numbers
 
 from .env import sage, ppl
 from .constants import VERTICAL, HORIZONTAL, BLUE, RED
@@ -38,11 +39,13 @@ if sage is not None:
     from sage.structure.element import get_coercion_model
     from sage.matrix.constructor import matrix
     from sage.geometry.polyhedron.constructor import Polyhedron
+    from sage.arith.misc import gcd
 
     cm = get_coercion_model()
 else:
     matrix = None
     Polyhedron = None
+    gcd = None
 
     cm = None
 
@@ -616,6 +619,153 @@ class VeeringTriangulationLinearFamilies:
     r"""
     A collection of linear families.
     """
+    @staticmethod
+    def H2_prototype_parameters(D, spin=None):
+        r"""
+        Return the list of prototypes in a given discriminant ``D``.
+
+        If ``spin`` is provided, then return only the prototypes with the given
+        spin parameter.
+
+        EXAMPLES::
+
+            sage: from veerer.linear_family import VeeringTriangulationLinearFamilies
+            sage: list(VeeringTriangulationLinearFamilies.H2_prototype_parameters(5))
+            [(0, 1, 1, -1)]
+            sage: list(VeeringTriangulationLinearFamilies.H2_prototype_parameters(8))
+            [(0, 2, 1, 0), (0, 2, 1, 0), (0, 1, 1, -2)]
+            sage: list(VeeringTriangulationLinearFamilies.H2_prototype_parameters(9))
+            [(0, 2, 1, -1)]
+            sage: list(VeeringTriangulationLinearFamilies.H2_prototype_parameters(12))
+            [(0, 3, 1, 0), (0, 3, 1, 0), (0, 1, 2, -2), (0, 2, 1, -2)]
+            sage: list(VeeringTriangulationLinearFamilies.H2_prototype_parameters(13))
+            [(0, 3, 1, 1), (0, 3, 1, -1), (0, 1, 1, -3)]
+            sage: list(VeeringTriangulationLinearFamilies.H2_prototype_parameters(16))
+            [(0, 4, 1, 0), (0, 4, 1, 0), (0, 3, 1, -2)]
+
+            sage: list(VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=0))
+            [(1, 2, 2, -1), (0, 4, 1, 1), (0, 2, 1, -3)]
+            sage: list(VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=1))
+            [(0, 2, 2, -1), (0, 4, 1, -1), (0, 1, 2, -3)]
+        """
+        # NOTE: for the spin computation, decompose D = E f^2 and the spin is
+        #  (e - f) / 2 + (c + 1)(a + b + a*b) mod 2
+
+        from sage.rings.integer_ring import ZZ
+
+        if not isinstance(D, numbers.Integral):
+            raise ValueError('D must be an integer')
+        D = ZZ(D)
+        if D <= 4 or not D % 4 in [0, 1]:
+            raise ValueError('D must be an integer > 4 congruent to either 0 or 1 mod 4')
+
+        if spin is not None:
+            if D % 8 != 1:
+                raise ValueError('spin can only be specified if D is congruent to 1 mod 8')
+            if not isinstance(spin, numbers.Integral):
+                raise ValueError('spin must be an integer')
+            spin = ZZ(spin)
+            if spin not in [0, 1]:
+                raise ValueError('spin must either be 0 or 1')
+
+        E = D.squarefree_part()
+        f = (D // E).sqrtrem()[0]
+
+        e = D % 4
+        while e**2 < D:
+            assert (D - e**2) % 4 == 0
+            bc = (D - e**2) // 4
+            for b in bc.divisors():
+                c = bc // b
+                # need c + e < b
+                for s in (1,-1):
+                    if c + s*e < b:
+                        for a in range(gcd(b, c)):
+                            if gcd([a, b, c, e]) == 1:
+                                if spin is None or ((s*e - f) // 2 + (c + 1) * (a + b + a*b)) % 2 == spin:
+                                    yield (a, b, c, s*e)
+            e += 2
+
+    @staticmethod
+    def prototype_H2(a, b, c, e, mutable=False):
+        r"""
+        Return the Mcmullen prototype with parameters ``(a, b, c, e)`` or rather
+        its quotient in `Q(1, -1^5)`.
+
+        EXAMPLES::
+
+            sage: from veerer.linear_family import VeeringTriangulationLinearFamilies
+            sage: from veerer.automaton import GeometricAutomatonSubspace
+
+            sage: X9 = VeeringTriangulationLinearFamilies.prototype_H2(0, 2, 1, -1)
+            sage: X9.base_ring()
+            Rational Field
+            sage: X9.is_geometric()
+            True
+            sage: GeometricAutomatonSubspace(X9)
+            Geometric veering linear constraint automaton with 6 vertices
+
+            sage: X17 = VeeringTriangulationLinearFamilies.prototype_H2(0, 2, 2, -1)
+            sage: X17.base_ring()
+            Number Field in sqrt17 with defining polynomial x^2 - 17 with sqrt17 = 4.123105625617660?
+            sage: X17.is_geometric()
+            True
+            sage: GeometricAutomatonSubspace(X17)
+            Geometric veering linear constraint automaton with 210 vertices
+
+        We check below part of McMullen theorem about connectedness::
+
+            sage: a0, b0, c0, e0 = next(VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=0))
+            sage: X17_0 = VeeringTriangulationLinearFamilies.prototype_H2(a0, b0, c0, e0)
+            sage: A0 = GeometricAutomatonSubspace(X17_0, backend='sage')
+            sage: for a, b, c, e in VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=0):
+            ....:     X = VeeringTriangulationLinearFamilies.prototype_H2(a, b, c, e, mutable=True)
+            ....:     X.set_canonical_labels()
+            ....:     assert X in A0
+            sage: a1, b1, c1, e1 = next(VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=1))
+            sage: X17_1 = VeeringTriangulationLinearFamilies.prototype_H2(a1, b1, c1, e1)
+            sage: A1 = GeometricAutomatonSubspace(X17_1, backend='sage')
+            sage: for a, b, c, e in VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=1):
+            ....:     X = VeeringTriangulationLinearFamilies.prototype_H2(a, b, c, e, mutable=True)
+            ....:     X.set_canonical_labels()
+            ....:     assert X in A1
+        """
+        from sage.rings.integer_ring import ZZ
+        from sage.rings.rational_field import QQ
+        from sage.rings.number_field.number_field import NumberField
+        from sage.rings.qqbar import AA
+        if not all(isinstance(x, numbers.Integral) for x in (a, b, c, e)):
+            raise ValueError('a, b, c, e must be integers')
+        a = ZZ(a)
+        b = ZZ(b)
+        c = ZZ(c)
+        e = ZZ(e)
+        if not (0 < b and 0 < c and 0 <= a < gcd(b, c) and c + e < b and gcd([a, b, c, e]) == 1):
+            raise ValueError('a, b, c, e must satisfy: 0 < b, 0 < c, 0 <= a < gcd(b, c), c + e < b and gcd(a, b, c, e) = 1')
+        D = e**2 + 4*b*c
+        if D.is_square():
+            K = QQ
+            sqrtD = D.sqrtrem()[0]
+        else:
+            E = D.squarefree_part()
+            f = (D // E).sqrtrem()[0]
+            x = QQ['x'].gen()
+            K = NumberField(x**2 - E, 'sqrt%d' % E, embedding=AA(E).sqrt())
+            sqrtD = f * K.gen()
+
+        assert sqrtD**2 == D
+
+        lbda = (e + sqrtD) / 2
+
+        fp = "(~0,5,6)(0,2,4)(~2,3,1)"
+        cols = "BBRRRRR"
+        vt = VeeringTriangulation(fp, cols, mutable=mutable)
+
+        sx = (lbda, b-lbda, a, b+a-lbda, lbda+a, 0, lbda)
+        sy = (0, 0, c, c, c, lbda, lbda)
+
+        return VeeringTriangulationLinearFamily(vt, [sx, sy], mutable=mutable)
+
     @staticmethod
     def L_shaped_surface(a1, a2, b1, b2, t1=0, t2=0):
         vt, s, t = VeeringTriangulations.L_shaped_surface(a1, a2, b1, b2, t1, t2)
