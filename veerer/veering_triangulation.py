@@ -699,16 +699,41 @@ class VeeringTriangulation(Triangulation):
 
         if not self._mutable and not mutable:
             # avoid copies of immutable objects
-            return self
+            if type(self) is VeeringTriangulation:
+                return self
+            else:
+                T = VeeringTriangulation.__new__(VeeringTriangulation)
+                T._n = self._n
+                T._vp = self._vp
+                T._ep = self._ep
+                T._fp = self._fp
+                T._colouring = self._colouring
+                T._mutable = mutable
 
-        T = VeeringTriangulation.__new__(VeeringTriangulation)
-        T._n = self._n
-        T._vp = self._vp[:]
-        T._ep = self._ep[:]
-        T._fp = self._fp[:]
-        T._colouring = self._colouring[:]
-        T._mutable = mutable
-        return T
+                return T
+        else:
+            T = VeeringTriangulation.__new__(VeeringTriangulation)
+            T._n = self._n
+            T._vp = self._vp[:]
+            T._ep = self._ep[:]
+            T._fp = self._fp[:]
+            T._colouring = self._colouring[:]
+            T._mutable = mutable
+
+            return T
+
+    def triangulation(self, mutable=False):
+        r"""
+        Return the underlying triangulation.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], "RRB")
+            sage: T.triangulation()
+            Triangulation("(0,1,2)(~2,~0,~1)")
+        """
+        return Triangulation.copy(self, mutable)
 
     def _colouring_string(self, short=False):
         n = self.num_half_edges()

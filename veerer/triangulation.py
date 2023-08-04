@@ -485,16 +485,26 @@ class Triangulation(object):
 
         if not self._mutable and not mutable:
             # avoid copies of immutable objects
-            return self
+            if type(self) is Triangulation:
+                return self
+            else:
+                T = Triangulation.__new__(Triangulation)
+                T._n = self._n
+                T._fp = self._fp
+                T._ep = self._ep
+                T._vp = self._vp
+                T._mutable = mutable
 
-        T = Triangulation.__new__(Triangulation)
-        T._n = self._n
-        T._fp = self._fp[:]
-        T._ep = self._ep[:]
-        T._vp = self._vp[:]
-        T._mutable = mutable
+                return T
+        else:
+            T = Triangulation.__new__(Triangulation)
+            T._n = self._n
+            T._fp = self._fp[:]
+            T._ep = self._ep[:]
+            T._vp = self._vp[:]
+            T._mutable = mutable
 
-        return T
+            return T
 
     def to_flipper(self):
         r"""

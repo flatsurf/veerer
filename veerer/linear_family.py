@@ -199,6 +199,19 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
         if check:
             self._check(ValueError)
 
+    def veering_triangulation(self, mutable=False):
+        r"""
+        Return the underlying veering triangulation.
+
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation
+            sage: vt = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
+            sage: vt.as_linear_family().veering_triangulation()
+            VeeringTriangulation("(0,1,2)(~2,~0,~1)", "RRB")
+        """
+        return VeeringTriangulation.copy(self, mutable)
+
     def _horizontal_subspace(self):
         mat = copy(self._subspace)
         ne = self.num_edges()
