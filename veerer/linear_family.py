@@ -807,7 +807,7 @@ class VeeringTriangulationLinearFamilies:
         #           x-------x------o--x  (a+b+r,c)
         #          /                 /
         #         /                 /
-        # (0,0)  o-------o--x------x  (b+r,0)
+        # (0,0)  o-------o--x------o  (b+r,0)
         #        \        \   (lbda+r,0)
         #         \        \
         #          \        \
