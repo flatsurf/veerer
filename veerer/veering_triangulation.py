@@ -2551,7 +2551,30 @@ class VeeringTriangulation(Triangulation):
     @staticmethod
     def _tt_check(x):
         if not x:
-            raise AssertionError("does not satisfy train-track constraints".format(x))
+            raise AssertionError("does not satisfy train-track constraints")
+
+    def train_track_switch_constraints(self, slope=VERTICAL):
+        r"""
+        Return the linear constraints of the train-track.
+
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation
+            sage: fp = "(0,3,8)(~0,5,6)(~3,4,2)(~4,1,7)"
+            sage: cols = "BBBRRRRRR"
+            sage: vt = VeeringTriangulation(fp, cols)
+            sage: cs = vt.train_track_switch_constraints()
+            sage: cs
+            {x0 + x3 - x8 == 0, x1 - x4 + x7 == 0, x2 + x3 - x4 == 0, x0 + x5 - x6 == 0}
+        """
+        from sage.rings.integer_ring import ZZ
+        from .polyhedron.linear_expression import LinearExpressions
+        L = LinearExpressions(ZZ)
+        cs = ConstraintSystem()
+        ne = self.num_edges()
+        variables = [L.variable(e) for e in range(ne)]
+        self._set_switch_conditions(cs.insert, variables, slope)
+        return cs
 
     def _set_train_track_constraints(self, insert, x, slope, low_bound, allow_degenerations):
         r"""
