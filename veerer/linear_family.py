@@ -743,6 +743,16 @@ class VeeringTriangulationLinearFamilies:
             ....:     X.set_canonical_labels()
             ....:     assert X in A1
         """
+        #         (a,c)
+        #           x-------x---------x  (a+b,c)
+        #          /                 /
+        #         /                 /
+        # (0,0)  x-------x---------x  (b,0)
+        #        |       |
+        #        |       |
+        #        |       |
+        #        x-------x
+        #     (0,-lbda)    (lbda,-lbda)
         from sage.rings.integer_ring import ZZ
         from sage.rings.rational_field import QQ
         from sage.rings.number_field.number_field import NumberField
@@ -778,6 +788,67 @@ class VeeringTriangulationLinearFamilies:
         sy = (0, 0, c, c, c, lbda, lbda)
 
         return VeeringTriangulationLinearFamily(vt, [sx, sy], mutable=mutable)
+
+    @staticmethod
+    def prototype_H1_1(a, b, c, e, mutable=False):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer.linear_family import VeeringTriangulationLinearFamilies
+            sage: from veerer.automaton import GeometricAutomatonSubspace
+
+            sage: X9 = VeeringTriangulationLinearFamilies.prototype_H1_1(0, 2, 1, -1)
+            sage: X9.base_ring()
+            Rational Field
+            sage: X9.geometric_automaton()
+            Geometric veering linear constraint automaton with 1244 vertices
+        """
+        #         (a+r,c)         (a+b,c)
+        #           x-------x------o--x  (a+b+r,c)
+        #          /                 /
+        #         /                 /
+        # (0,0)  o-------o--x------x  (b+r,0)
+        #        \        \   (lbda+r,0)
+        #         \        \
+        #          \        \
+        #           x--------x
+        #     (r,-lbda)    (lbda+r,-lbda)
+        from sage.rings.integer_ring import ZZ
+        from sage.rings.rational_field import QQ
+        from sage.rings.number_field.number_field import NumberField
+        from sage.rings.qqbar import AA
+        if not all(isinstance(x, numbers.Integral) for x in (a, b, c, e)):
+            raise ValueError('a, b, c, e must be integers')
+        a = ZZ(a)
+        b = ZZ(b)
+        c = ZZ(c)
+        e = ZZ(e)
+        if not (0 < b and 0 < c and 0 <= a < gcd(b, c) and c + e < b and gcd([a, b, c, e]) == 1):
+            raise ValueError('a, b, c, e must satisfy: 0 < b, 0 < c, 0 <= a < gcd(b, c), c + e < b and gcd(a, b, c, e) = 1')
+        D = e**2 + 4*b*c
+        if D.is_square():
+            K = QQ
+            sqrtD = D.sqrtrem()[0]
+        else:
+            E = D.squarefree_part()
+            f = (D // E).sqrtrem()[0]
+            x = QQ['x'].gen()
+            K = NumberField(x**2 - E, 'sqrt%d' % E, embedding=AA(E).sqrt())
+            sqrtD = f * K.gen()
+
+        assert sqrtD**2 == D
+
+        lbda = (e + sqrtD) / 2
+
+        fp = "(0,3,8)(~0,5,6)(~3,4,2)(~4,1,7)"
+        cols = "BBBRRRRRR"
+        vt = VeeringTriangulation(fp, cols, mutable=mutable)
+
+        sx = (lbda, 0, b-lbda, a, a+b-lbda, 0, lbda, a+b-lbda, lbda+a)
+        sy = (0, 0, 0, c, c, lbda, lbda, c, c)
+        sr = (0, 1, -1, 1, 0, -1, -1, -1, 1)
+
+        return VeeringTriangulationLinearFamily(vt, [sx, sy, sr], mutable=mutable)
 
     @staticmethod
     def L_shaped_surface(a1, a2, b1, b2, t1=0, t2=0):
