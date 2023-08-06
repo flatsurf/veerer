@@ -628,6 +628,44 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
             A.run()
         return A
 
+    def random_forward_flip(self, repeat=1):
+        r"""
+        Apply a random forward flip randomly among the ones that keeps the family core.
+
+        INPUT:
+
+        - ``repeat`` - integer (default 1) - if provided, make ``repeat`` flips instead
+          of 1
+
+        EXAMPLES::
+
+            sage: from veerer.linear_family import VeeringTriangulationLinearFamilies
+            sage: X = VeeringTriangulationLinearFamilies.prototype_H1_1(0, 4, 1, 0, mutable=True)
+            sage: X.is_core()
+            True
+            sage: X.is_geometric()
+            False
+            sage: while not X.is_geometric():
+            ....:     X.random_forward_flip()
+        """
+        if not self._mutable:
+            raise ValueError('immutable veering triangulation family; use a mutable copy instead')
+
+        cols = [RED, BLUE]
+        for _ in range(repeat):
+            e = choice(self.forward_flippable_edges())
+            old_col = self._colouring[e]
+            shuffle(cols)
+            for c in cols:
+                self.flip(e, c)
+                # NOTE: for veering triangulation, the following check is made much faster
+                # with edge_has_curve. However for families, we have additional linear
+                # constraints on the curve that makes it harder to build.
+                if self.is_core():
+                    break
+                else:
+                    self.flip_back(e, old_col)
+
 class VeeringTriangulationLinearFamilies:
     r"""
     A collection of linear families.
@@ -904,3 +942,4 @@ class VeeringTriangulationLinearFamilies:
         cs.insert(U == phi * V)
 
         return VeeringTriangulationLinearFamily(vt, cs.linear_generators_matrix())
+
