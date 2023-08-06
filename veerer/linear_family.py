@@ -426,7 +426,7 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
         c = subspace_cmp(self._subspace, other._subspace)
         return rich_to_bool(op, c)
 
-    def train_track_polytope(self, slope=VERTICAL, low_bound=0, backend='ppl'):
+    def train_track_polytope(self, slope=VERTICAL, low_bound=0, backend=None):
         r"""
         Return the polytope of non-negative elements in the subspace.
 
@@ -574,7 +574,7 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
         VeeringTriangulation.flip_back(self, e, col, Gx=self._subspace, check=check)
         self._subspace.echelonize()
 
-    def geometric_polytope(self, x_low_bound=0, y_low_bound=0, hw_bound=0, backend='sage'):
+    def geometric_polytope(self, x_low_bound=0, y_low_bound=0, hw_bound=0, backend=None):
         r"""
         Return the geometric polytope.
 
@@ -620,7 +620,7 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
         self._set_geometric_constraints(cs.insert, x, y, hw_bound=hw_bound)
         return cs.cone(backend)
 
-    def geometric_automaton(self, run=True, backend='ppl'):
+    def geometric_automaton(self, run=True, backend=None):
         from .automaton import GeometricAutomatonSubspace
         A = GeometricAutomatonSubspace(backend=backend)
         A.set_seed(self)
