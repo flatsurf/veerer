@@ -115,6 +115,36 @@ class LinearExpression(ModuleElement):
         else:
             return lin_part
 
+    def __call__(self, x=None):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer.polyhedron import LinearExpressions
+            sage: L = LinearExpressions(QQ)
+            sage: l = L({0: 5, 7: -1}, 3)
+            sage: l
+            5*x0 - x7 + 3
+            sage: l([])
+            3
+            sage: l([1, 2, 3, 4, 5])
+            8
+            sage: l([1, 2, 3, 4, 5, 6, 7, 8, 9])
+            0
+
+            sage: l({0: 1, 1: 1, 7: 5})
+            3
+        """
+        if not x or not self._f:
+            return self._inhomogeneous_term
+        if isinstance(x, dict):
+            lin = sum(coeff * x[i] for i, coeff in self._f.items() if i in x)
+            return lin + self._inhomogeneous_term
+        elif isinstance(x, (tuple, list, Vector)):
+            lin = sum(coeff * x[i] for i, coeff in self._f.items() if i < len(x))
+            return lin + self._inhomogeneous_term
+        else:
+            raise TypeError('invalid input')
+
     def _lmul_(self, other):
         f = {i: other * coeff for i, coeff in self._f.items()}
         inhomogeneous_term = other * self._inhomogeneous_term
@@ -243,7 +273,7 @@ class LinearConstraint:
         sage: from veerer.polyhedron import LinearExpressions
         sage: L = LinearExpressions(QQ)
         sage: 3 * L.variable(0) - 5 * L.variable(2) == 7
-        3*x0 - 5*x2 - 7 = 0
+        3*x0 - 5*x2 - 7 == 0
     """
     def __init__(self, op, left, right):
         self._expression = left - right
@@ -267,7 +297,7 @@ class LinearConstraint:
         elif self._op == op_LT:
             op = '<'
         elif self._op == op_EQ:
-            op = '='
+            op = '=='
         elif self._op == op_NE:
             op = '!='
         elif self._op == op_GT:
@@ -277,6 +307,40 @@ class LinearConstraint:
         else:
             raise RuntimeError
         return '{} {} 0'.format(self._expression, op)
+
+    def __call__(self, x=None):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer.polyhedron import LinearExpressions
+            sage: L = LinearExpressions(QQ)
+            sage: x0 = L.variable(0)
+            sage: x1 = L.variable(1)
+            sage: x2 = L.variable(2)
+            sage: constraint = 3*x0 - 2*x1 + 7*x2 >= 5
+            sage: constraint([-4, 7, 3])
+            False
+            sage: constraint([0, 1, 1])
+            True
+
+            sage: constraint({0:1, 1:1, 2:1})
+            True
+        """
+        ev = self._expression(x)
+        if self._op == op_LE:
+            return ev <= 0
+        elif self._op == op_LT:
+            return ev < 0
+        elif self._op == op_EQ:
+            return ev == 0
+        elif self._op == op_NE:
+            return ev != 0
+        elif self._op == op_GT:
+            return ev > 0
+        elif self._op == op_GE:
+            return ev >= 0
+        else:
+            raise RuntimeError
 
     def is_homogeneous(self):
         return self._expression.is_homogeneous()
@@ -353,6 +417,9 @@ class ConstraintSystem:
     def __repr__(self):
         return '{' + ', '.join(map(str, self)) + '}'
 
+    def __call__(self, x=None):
+        return [constraint(x) for constraint in self._data]
+
     def copy(self):
         cs = ConstraintSystem.__new__(ConstraintSystem)
         cs._data = self._data[:]
@@ -423,6 +490,9 @@ class ConstraintSystem:
         return ieqs, eqns
 
     def is_linear_subspace(self):
+        r"""
+        Return whether all constraints are equalities with vanishing inhomogeneous term.
+        """
         return all(constraint._op == op_EQ and constraint._expression._inhomogeneous_term.is_zero() for constraint in self)
 
     def linear_generators_matrix(self, dim=None):
