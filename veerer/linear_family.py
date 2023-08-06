@@ -26,14 +26,14 @@ from copy import copy
 import collections
 import itertools
 import numbers
+from random import choice, shuffle
 
 from .env import sage, ppl
 from .constants import VERTICAL, HORIZONTAL, BLUE, RED
 from .permutation import perm_cycle_string, perm_cycles, perm_check, perm_conjugate, perm_on_list
 from .polyhedron import LinearExpressions, ConstraintSystem
-
-
 from .veering_triangulation import VeeringTriangulation
+
 
 if sage is not None:
     from sage.structure.element import get_coercion_model
@@ -761,22 +761,22 @@ class VeeringTriangulationLinearFamilies:
             Number Field in sqrt17 with defining polynomial x^2 - 17 with sqrt17 = 4.123105625617660?
             sage: X17.is_geometric()
             True
-            sage: GeometricAutomatonSubspace(X17)
+            sage: GeometricAutomatonSubspace(X17)  # long time
             Geometric veering linear constraint automaton with 210 vertices
 
         We check below part of McMullen theorem about connectedness::
 
             sage: a0, b0, c0, e0 = next(VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=0))
             sage: X17_0 = VeeringTriangulationLinearFamilies.prototype_H2(a0, b0, c0, e0)
-            sage: A0 = GeometricAutomatonSubspace(X17_0, backend='sage')
-            sage: for a, b, c, e in VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=0):
+            sage: A0 = GeometricAutomatonSubspace(X17_0, backend='sage')  # long time
+            sage: for a, b, c, e in VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=0):  # long time
             ....:     X = VeeringTriangulationLinearFamilies.prototype_H2(a, b, c, e, mutable=True)
             ....:     X.set_canonical_labels()
             ....:     assert X in A0
             sage: a1, b1, c1, e1 = next(VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=1))
             sage: X17_1 = VeeringTriangulationLinearFamilies.prototype_H2(a1, b1, c1, e1)
-            sage: A1 = GeometricAutomatonSubspace(X17_1, backend='sage')
-            sage: for a, b, c, e in VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=1):
+            sage: A1 = GeometricAutomatonSubspace(X17_1, backend='sage')  # long time
+            sage: for a, b, c, e in VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=1):  # long time
             ....:     X = VeeringTriangulationLinearFamilies.prototype_H2(a, b, c, e, mutable=True)
             ....:     X.set_canonical_labels()
             ....:     assert X in A1
@@ -838,7 +838,7 @@ class VeeringTriangulationLinearFamilies:
             sage: X9 = VeeringTriangulationLinearFamilies.prototype_H1_1(0, 2, 1, -1)
             sage: X9.base_ring()
             Rational Field
-            sage: X9.geometric_automaton()
+            sage: X9.geometric_automaton()  # long time
             Geometric veering linear constraint automaton with 1244 vertices
         """
         #         (a+r,c)         (a+b,c)
