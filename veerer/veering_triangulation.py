@@ -9,6 +9,7 @@ representatives.
 import collections
 import itertools
 import numbers
+from random import choice, shuffle
 
 from .constants import *
 from .permutation import *
@@ -18,8 +19,6 @@ from .polyhedron import LinearExpressions, ConstraintSystem
 from .polyhedron.linear_algebra import linear_form_project, linear_form_normalize
 
 from .env import curver, sage, surface_dynamics, ppl, flipper, random, require_package, rich_to_bool, op_LE, op_LT, op_EQ, op_NE, op_GT, op_GE, CHECK
-
-from random import choice, shuffle
 
 
 # TODO: better to make something topological (ie no equations)
@@ -273,7 +272,7 @@ class VeeringTriangulation(Triangulation):
         return (None, None, None, None)
 
     @classmethod
-    def from_pseudo_anosov(cls, h):
+    def from_pseudo_anosov(cls, h, mutable=False, check=True):
         r"""
         Construct the coloured triangulation of a pseudo-Anosov homeomorphism.
 
@@ -297,10 +296,10 @@ class VeeringTriangulation(Triangulation):
 
         triangles = [[x.label for x in t] for t in FS.triangulation]
         colours = [RED if X[e]*Y[e] > 0 else BLUE for e in range(n)]
-        return VeeringTriangulation(triangles, colours)
+        return VeeringTriangulation(triangles, colours, mutable=mutable, check=check)
 
     @classmethod
-    def from_square_tiled(cls, s, col=RED):
+    def from_square_tiled(cls, s, col=RED, mutable=False, check=True):
         r"""
         Build a veering triangulation from a square-tiled surface (or origami).
 
@@ -371,10 +370,10 @@ class VeeringTriangulation(Triangulation):
 
         return cls.from_face_edge_perms(array('l', colouring),
                                         array('l', fp),
-                                        array('l', ep))
+                                        array('l', ep), mutable=mutable, check=check)
 
     @classmethod
-    def from_stratum(cls, c, folded_edges=False):
+    def from_stratum(cls, c, folded_edges=False, mutable=False, check=True):
         r"""
         Return a Veering triangulation from either a stratum, a component
         of stratum or a cylinder diagram.
@@ -483,7 +482,7 @@ class VeeringTriangulation(Triangulation):
         nseps = c.nseps()
 
         colours = [RED] * nseps + [BLUE] * (2*nseps)
-        return VeeringTriangulation(triangles, colours)
+        return VeeringTriangulation(triangles, colours, mutable=mutable, check=check)
 
     @classmethod
     def from_face_edge_perms(self, colouring, fp, ep, vp=None, mutable=False, check=True):
@@ -509,7 +508,7 @@ class VeeringTriangulation(Triangulation):
         return T
 
     @classmethod
-    def from_string(cls, s, check=True):
+    def from_string(cls, s, mutable=False, check=True):
         r"""
         Deserialization from the string ``s``.
 
@@ -537,7 +536,7 @@ class VeeringTriangulation(Triangulation):
         ep = perm_from_base64_str(eps, n)
         assert perm_base64_str(ep) == eps
         cols = array('l', [colour_from_char(c) for c in cols])
-        return VeeringTriangulation.from_face_edge_perms(cols, fp, ep, check=check)
+        return VeeringTriangulation.from_face_edge_perms(cols, fp, ep, mutable=mutable, check=check)
 
     def forgot_forward_flippable_colour(self, folded=True):
         r"""
@@ -3619,4 +3618,3 @@ class VeeringTriangulations:
             [(2*m-1, ~(3*m-1), m)]
         colouring = [RED] * (2*m) + [BLUE] * m
         return VeeringTriangulation(T, colouring)
-
