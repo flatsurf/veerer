@@ -486,8 +486,7 @@ class Automaton(object):
         if self._state is not None:
             raise ValueError('seed already set')
 
-        state = state.copy()
-        self._seed_setup(state)
+        state = self._seed_setup(state)
 
         # TODO: check to be removed
         if env.CHECK:
@@ -726,6 +725,7 @@ class CoreAutomaton(Automaton):
     def _seed_setup(self, state):
         if not isinstance(state, VeeringTriangulation) or not state.is_core():
             raise ValueError('invalid seed')
+        return state.copy()
 
     def _serialize(self, state):
         return state.iso_sig()
@@ -761,8 +761,10 @@ class ReducedCoreAutomaton(Automaton):
     def _seed_setup(self, state):
         if not isinstance(state, VeeringTriangulation) or not state.is_core():
             raise ValueError('invalid seed')
-        
+
+        state = state.copy() 
         state.forgot_forward_flippable_colour()
+        return state
 
     def _forward_flips(self, state):
         r"""
@@ -840,7 +842,11 @@ class ReducedCoreAutomaton(Automaton):
 
 class GeometricAutomaton(Automaton):
     r"""
-    Automaton of core veering triangulations.
+    Automaton of geometric veering triangulations.
+
+    A veering triangulation is called geometric, if the set of
+    associated L^oo-vector data is full dimensional in the
+    ambient stratum.
 
     EXAMPLES::
 
@@ -861,6 +867,7 @@ class GeometricAutomaton(Automaton):
     def _seed_setup(self, state):
         if not isinstance(state, VeeringTriangulation) or not state.is_geometric():
             raise ValueError('invalid seed')
+        return state.copy()
 
     def _serialize(self, state):
         return state.iso_sig()
@@ -883,3 +890,56 @@ class GeometricAutomaton(Automaton):
     def _flip_back(self, flip_back_data):
         for e, old_col in flip_back_data:
             self._state.flip_back(e, old_col)
+
+class GeometricAutomatonWithLinearConstraint(Automaton):
+    r"""
+    Automaton of core veering triangulations with a linear constraint.
+
+    This class can be used to certify linear invariant suborbifolds.
+
+    EXAMPLES::
+
+        sage: from veerer import *
+        sage: fp = "(0,~7,6)(1,~8,~2)(2,~6,~3)(3,5,~4)(4,8,~5)(7,~1,~0)"
+        sage: cols = "RBRBRBBBB"
+        sage: vt = VeeringTriangulation(fp, cols)
+        sage: GeometricAutomaton(vt)
+        Geometric veering automaton with 54 vertices
+
+    One can check that the cardinality is indeed correct::
+
+        sage: sum(x.is_geometric() for x in CoreAutomaton(vt))
+        54
+    """
+    _name = 'geometric'
+
+    def _seed_setup(self, state):
+        if not isinstance(state, (tuple, list)):
+            raise TypeError('seed must be a pair (triangulation, linear constraint)')
+        vt, L = state
+        if not isinstance(vt, VeeringTriangulation) or not vt.is_geometric():
+            raise ValueError('invalid triangulation')
+
+    def _serialize(self, state):
+        return state.iso_sig()
+
+    def _unserialize(self):
+        return VeeringTriangulation.from_string(string)
+
+    def _forward_flips(self, state):
+        r"""
+        Return the list of forward flippable edges from ``state``
+        """
+        return state.geometric_flips()
+
+    def _flip(self, flip_data):
+        flip_back_data = tuple((e, self._state.colour(e)) for e, _ in flip_data)
+        for e, col in flip_data:
+            self._state.flip(e, col)
+        return True, flip_back_data
+
+    def _flip_back(self, flip_back_data):
+        for e, old_col in flip_back_data:
+            self._state.flip_back(e, old_col)
+
+
