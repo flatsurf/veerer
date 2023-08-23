@@ -928,7 +928,7 @@ class GeometricAutomatonSubspace(Automaton):
             self._backend = backend
 
     def _seed_setup(self, state):
-        if not isinstance(state, VeeringTriangulationLinearFamily) or not state.is_geometric():
+        if not isinstance(state, VeeringTriangulationLinearFamily) or not state.is_geometric(backend=self._backend):
             raise ValueError('invalid seed')
         state = state.copy(mutable=True)
         state.set_canonical_labels()
@@ -946,7 +946,7 @@ class GeometricAutomatonSubspace(Automaton):
             self._state.flip(e, col)
         if env.CHECK:
             self._state._check(RuntimeError)
-            if not self._state.is_geometric():
+            if not self._state.is_geometric(backend=self._backend):
                 raise RuntimeError
         return True, flip_back_data
 
