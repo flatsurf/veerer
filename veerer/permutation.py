@@ -10,6 +10,26 @@ TODO:
   such array should not be allocated each time the function
   is called.
 """
+######################################################################
+# This file is part of veering.
+#
+#       Copyright (C) 2018 Mark Bell
+#                     2018-2023 Vincent Delecroix
+#                     2018 Saul Schleimer
+#
+# veerer is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# veerer is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with veerer. If not, see <https://www.gnu.org/licenses/>.
+######################################################################
 
 from array import array
 from math import log

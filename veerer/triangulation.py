@@ -1,12 +1,33 @@
 r"""
 Triangulation of surfaces.
 """
+######################################################################
+# This file is part of veering.
+#
+#       Copyright (C) 2018 Mark Bell
+#                     2018-2023 Vincent Delecroix
+#                     2018 Saul Schleimer
+#
+# veerer is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# veerer is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with veerer. If not, see <https://www.gnu.org/licenses/>.
+######################################################################
 
 import numbers
 from array import array
 
 from .permutation import *
 from .env import require_package, flipper, curver, sage, rich_to_bool, op_LE, op_LT, op_EQ, op_NE, op_GT, op_GE
+
 
 def face_edge_perms_init(data):
     r"""
