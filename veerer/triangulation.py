@@ -261,20 +261,14 @@ class Triangulation(object):
             ....:         assert (triangulations[i] == triangulations[j]) == (i == j), (i, j)
             ....:         assert (triangulations[i] != triangulations[j]) == (i != j), (i, j)
 
-            sage: hashes1 = {}
-            sage: hashes2 = {}
+            sage: hashes = {}
             sage: for t in triangulations:
-            ....:     h1 = hash(t) % (2 ** 16)
-            ....:     h2 = (hash(t) >> 16) % (2 ** 16)
-            ....:     if h1 in hashes1:
-            ....:         print('collision 1: {} {}'.format(hashes1[h1], t))
+            ....:     h = hash(t)
+            ....:     if h in hashes:
+            ....:         print('collision: {} {}'.format(hashes[h], t))
             ....:     else:
-            ....:         hashes1[h1] = t
-            ....:     if h2 in hashes2:
-            ....:         print('collision 2: {} {}'.format(hashes2[h2], t))
-            ....:     else:
-            ....:         hashes2[h2] = t
-            sage: assert len(hashes1) == len(hashes2) == len(triangulations), (len(hashes1), len(hashes2), len(triangulations))
+            ....:         hashes[h] = t
+            sage: assert len(hashes) == len(triangulations), (len(hashes), len(triangulations))
         """
         if self._mutable:
             raise ValueError('mutable veering triangulation not hashable')
@@ -471,6 +465,13 @@ class Triangulation(object):
             sage: U.flip(0)
             sage: T
             Triangulation("(0,2,~1)(1,~0,~2)")
+
+        TESTS::
+
+            sage: from veerer import Triangulation
+            sage: T = Triangulation("(0,1,2)(~0,~1,~2)", mutable=True)
+            sage: U = T.copy(mutable=False)
+            sage: _ = hash(U)
         """
         if mutable is None:
             mutable = self._mutable
