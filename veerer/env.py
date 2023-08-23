@@ -6,7 +6,7 @@ TESTS::
     sage: from veerer.env import sage, flipper, surface_dynamics, ppl
 """
 
-CHECK = True
+CHECK = False
 
 try:
     import sage.all
@@ -14,13 +14,37 @@ try:
 except ImportError:
     sage = None
     import random
+    op_LT = 0
+    op_LE = 1
+    op_EQ = 2
+    op_NE = 3
+    op_GT = 4
+    op_GE = 5
+    def rich_to_bool(op, c):
+        if op == op_EQ:
+            return c == 0
+        elif op == op_NE:
+            return c != 0
+        elif op == op_LT:
+            return c < 0
+        elif op == op_LE:
+            return c <= 0
+        elif op == op_GE:
+            return c >= 0
+        elif op == op_GT:
+            return c > 0
+        else:
+            raise RuntimeError
 else:
     import sage.misc.prandom as random
+    from sage.structure.richcmp import op_LT, op_LE, op_EQ, op_NE, op_GT, op_GE, rich_to_bool
+
 
 try:
     import surface_dynamics
 except ImportError:
     surface_dynamics = None
+
 
 try:
     import flipper
