@@ -10,7 +10,7 @@ from .triangulation import Triangulation
 from .cover import TriangulationCover
 from .veering_triangulation import VeeringTriangulation, VeeringTriangulations
 from .linear_family import VeeringTriangulationLinearFamily
-from .automaton import CoreAutomaton, ReducedCoreAutomaton, GeometricAutomaton
+from .automaton import FlipGraph, CoreAutomaton, ReducedCoreAutomaton, GeometricAutomaton, GeometricAutomatonSubspace
 from .flip_sequence import VeeringFlipSequence
 
 from .env import sage
