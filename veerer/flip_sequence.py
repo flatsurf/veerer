@@ -99,10 +99,10 @@ class VeeringFlipSequence(object):
         elif reduced is False and any(c == PURPLE for c in start._colouring):
             raise ValueError("wrong usage of 'reduced'")
 
-        self._start = start.copy()
+        self._start = start.copy(mutable=True)
         if reduced:
             self._start.forgot_forward_flippable_colour()
-        self._end = self._start.copy()
+        self._end = self._start.copy(mutable=True)
         self._relabelling = perm_id(self._start._n)
         self._flips = []   # list of triples (e, col_after, col_before)
 
