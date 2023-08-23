@@ -6,7 +6,7 @@ import numbers
 from array import array
 
 from .permutation import *
-from .env import require_package, flipper, curver
+from .env import require_package, flipper, curver, sage, rich_to_bool, op_LE, op_LT, op_EQ, op_NE, op_GT, op_GE
 
 def face_edge_perms_init(data):
     r"""
@@ -424,6 +424,30 @@ class Triangulation(object):
         if type(self) != type(other):
             raise TypeError
         return self._n != other._n or self._fp != other._fp or self._ep != other._ep
+
+    def _richcmp_(self, other, op):
+        c = (self._n > other._n) - (self._n < other._n)
+        if c:
+            return rich_to_bool(op, c)
+
+        c = (self._fp > other._fp) - (self._fp < other._fp)
+        if c:
+            return rich_to_bool(op, c)
+
+        c = (self._ep > other._ep) - (self._ep < other._ep)
+        return rich_to_bool(op, c)
+
+    def __lt__(self, other):
+        return self._richcmp_(other, op_LT)
+
+    def __le__(self, other):
+        return self._richcmp_(other, op_LE)
+
+    def __gt__(self, other):
+        return self._richcmp_(other, op_GT)
+
+    def __ge__(self, other):
+        return self._richcmp_(other, op_GE)
 
     def copy(self, mutable=None):
         r"""
