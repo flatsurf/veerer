@@ -22,17 +22,20 @@ triangulations. It is written by
 part of a project that also involve
 `Vaibhav Gadre <http://www.maths.gla.ac.uk/~vgadre/>`_ and
 `Rodolfo Gutiérrez-Romo <http://rodol.fo>`_, see
-`arXiv:1909.00890 [math.DS] https://arxiv.org/abs/1909.00890`_.
+`arXiv:1909.00890 [math.DS] <https://arxiv.org/abs/1909.00890>`_.
 
 ``veerer`` works in conjunction with
-- `pplpy https://pypi.org/project/pplpy/`_ (rational polytope computations and
-   linear optimiation),
-- `PyNormaliz https://pypi.org/project/PyNormaliz/`_ (polytope, in particular
-   over number fields),
-- `surface_dynamics https://pypi.org/project/surface-dynamics/` (for analyzing
-  stratum components)
-- `SageMath https://www.sagemath.org/`_ (plotting, linear algebra and many
-   other things).
+
+- the Python library `pplpy <https://pypi.org/project/pplpy/>`_ (rational
+  polytope computations and linear optimiation). Note that it is shipped
+  with SageMath (see below).
+- The Python library `PyNormaliz <https://pypi.org/project/PyNormaliz/>`_
+  (polytope, in particular over number fields).
+- The software `SageMath <https://www.sagemath.org/>`_ (plotting, linear algebra
+  and many other things)
+- The SageMath library `surface_dynamics
+  <https://pypi.org/project/surface-dynamics/>`_ (for analyzing stratum
+  components)
 
 To import all features from veerer one usually starts with the following
 lines::

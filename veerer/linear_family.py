@@ -837,7 +837,7 @@ class VeeringTriangulationLinearFamilies:
             sage: X9 = VeeringTriangulationLinearFamilies.prototype_H1_1(0, 2, 1, -1)
             sage: X9.base_ring()
             Rational Field
-            ....: X9.geometric_automaton()  # long time
+            sage: X9.geometric_automaton()  # long time
             Geometric veering linear constraint automaton with 1244 vertices
         """
         #         (a+r,c)         (a+b,c)
