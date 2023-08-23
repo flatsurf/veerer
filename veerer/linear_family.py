@@ -717,7 +717,13 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
 
         return neighbours
 
-
+    def geometric_automaton(self, run=True):
+        from .automaton import GeometricAutomatonSubspace
+        A = GeometricAutomatonSubspace(backend='sage')
+        A.set_seed(self)
+        if run:
+            A.run()
+        return A
 
 class VeeringTriangulationLinearFamilies:
     r"""
