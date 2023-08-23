@@ -626,6 +626,48 @@ def perm_cycles(p, singletons=True, n=None):
 
     return res
 
+def perm_cycles_lengths(p, n=None):
+    r"""
+    Return the array of orbit sizes.
+
+    INPUT:
+
+    - ``p`` -- the permutation
+
+    - ``n`` -- (optional) only use the first ``n`` elements of the permutation ``p``
+
+    EXAMPLES::
+
+        sage: from veerer.permutation import perm_cycles_lengths
+
+        sage: perm_cycles_lengths([0,2,1])
+        [1, 2, 2]
+        sage: perm_cycles_lengths([2,-1,0])
+        [2, -1, 2]
+        sage: perm_cycles_lengths([2,0,1,None,None], n=3)
+        [3, 3, 3]
+    """
+    if n is None:
+        n = len(p)
+    elif n < 0 or n > len(p):
+        raise ValueError
+
+    lengths = [-1] * n
+    for i in range(n):
+        if lengths[i] != -1 or p[i] == -1:
+            continue
+        j = i
+        m = 0
+        while lengths[j] == -1:
+            lengths[j] = 0
+            j = p[j]
+            m += 1
+        while lengths[j] == 0:
+            lengths[j] = m
+            j = p[j]
+
+    return lengths
+
 def perm_num_cycles(p, n=None):
     r"""
     Return the number of cycles of the permutation ``p``.
