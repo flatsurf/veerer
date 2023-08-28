@@ -125,6 +125,7 @@ def subspace_cmp(subspace1, subspace2, check=True):
             return c
     return 0
 
+
 def relabel_on_edges(ep, r, n, m):
     r"""
     INPUT:
@@ -144,12 +145,12 @@ def relabel_on_edges(ep, r, n, m):
         sage: from array import array
         sage: from veerer.linear_family import relabel_on_edges
 
-        sage: ep = array('l', [8, 1, 2, 7, 4, 5, 6, 3, 0])
-        sage: r = array('l', [3, 0, 5, 4, 6, 2, 1, 8, 7])
+        sage: ep = array('i', [8, 1, 2, 7, 4, 5, 6, 3, 0])
+        sage: r = array('i', [3, 0, 5, 4, 6, 2, 1, 8, 7])
         sage: relabel_on_edges(ep, r, 9, 7)
-        array('l', [3, 0, 5, 4, 6, 2, 1])
+        array('i', [3, 0, 5, 4, 6, 2, 1])
     """
-    rr = array('l', [-1] * m)
+    rr = array('i', [-1] * m)
     for i in range(m):
         if ep[i] < i:
             raise ValueError("not in canonical form")
@@ -165,6 +166,20 @@ def relabel_on_edges(ep, r, n, m):
 
 
 def matrix_permutation(mat, perm):
+    r"""
+    Permute in place the columnns of ``mat`` according to the permutation ``perm``
+
+    EXAMPLES::
+
+        sage: from array import array
+        sage: from veerer.linear_family import matrix_permutation
+
+        sage: p = array('i', [2, 0, 1])
+        sage: m = matrix([[0, 1, 2]])
+        sage: matrix_permutation(m, p)
+        sage: print(m)
+        [1 2 0]
+    """
     m = mat.ncols()
     for c in perm_cycles(perm, False, m):
         for i in range(1, len(c)):

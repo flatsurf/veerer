@@ -7,8 +7,8 @@ TODO:
 
 - In many situations, we need a bitarray of the size of
   the permutation (conjugation, composition, etc). But
-  such array should not be allocated each time the function
-  is called.
+  such array would better not be allocated each time the
+  function is called.
 """
 ######################################################################
 # This file is part of veering.
@@ -31,7 +31,7 @@ TODO:
 # along with veerer. If not, see <https://www.gnu.org/licenses/>.
 ######################################################################
 
-from array import array
+from cpython cimport array
 from math import log
 
 try:
@@ -41,6 +41,7 @@ except ImportError:
 else:
     from sage.misc.prandom import shuffle, randint
 
+
 def argmin(l):
     r"""
     Return the position of the minimal element in the list ``l``.
@@ -48,9 +49,9 @@ def argmin(l):
     EXAMPLES::
 
         sage: from veerer.permutation import argmin
-        sage: argmin([3,0,1,2])
+        sage: argmin([3, 0, 1, 2])
         1
-        sage: argmin([-1,3,5,-2,50])
+        sage: argmin([-1, 3, 5, -2, 50])
         3
     """
     if not(l):
@@ -62,6 +63,7 @@ def argmin(l):
             jmin = j
             imin = i
     return imin
+
 
 def least_rotation(S):
     """
@@ -121,7 +123,7 @@ def least_rotation(S):
 # Initialization and conversion
 #####################################################################
 
-def perm_check(l, n=None, involution=None):
+def perm_check(l, int n=-1, involution=None):
     r"""
     Checks that ``l`` is a partial permutation of `\{0, 1, ..., n-1\}`.
 
@@ -136,38 +138,37 @@ def perm_check(l, n=None, involution=None):
 
     Good permutations::
 
-        sage: perm_check(array('l', [1, 0, 3, 2]), 4)
+        sage: perm_check(array('i', [1, 0, 3, 2]), 4)
         True
-        sage: perm_check(array('l', [-1]), 1)
+        sage: perm_check(array('i', [-1]), 1)
         True
-        sage: perm_check(array('l', [-1, 3, -1, 1]), 4)
+        sage: perm_check(array('i', [-1, 3, -1, 1]), 4)
         True
 
-        sage: perm_check(array('l', [1,0,-1,-1,-1]), 2)
+        sage: perm_check(array('i', [1,0,-1,-1,-1]), 2)
         True
 
     Bad permutations::
 
-        sage: perm_check(array('l', [1, 0, 3, 2]), 3)
+        sage: perm_check(array('i', [1, 0, 3, 2]), 3)
         False
-        sage: perm_check(array('l', [2, 0]))
+        sage: perm_check(array('i', [2, 0]))
         False
-        sage: perm_check(array('l', [1, 0, 1]))
+        sage: perm_check(array('i', [1, 0, 1]))
         False
 
     With involution::
 
-        sage: perm_check(array('l', [2,1,0]), involution=array('l', [2,1,0]))
+        sage: perm_check(array('i', [2,1,0]), involution=array('i', [2,1,0]))
         True
-        sage: perm_check(array('l', [1,0,2]), involution=array('l', [2,1,0]))
+        sage: perm_check(array('i', [1,0,2]), involution=array('i', [2,1,0]))
         False
     """
-    if not isinstance(l, array):
+    if not isinstance(l, array.array):
         return False
-    if n is None:
+    if n == -1:
         n = len(l)
     else:
-        n = int(n)
         if len(l) < n:
             return False
 
@@ -186,7 +187,8 @@ def perm_check(l, n=None, involution=None):
 
     return True
 
-def perm_id(n):
+
+def perm_id(int n):
     r"""
     Return the identity permutation.
 
@@ -195,19 +197,22 @@ def perm_id(n):
         sage: from veerer.permutation import perm_id
 
         sage: perm_id(4)
-        array('l', [0, 1, 2, 3])
+        array('i', [0, 1, 2, 3])
     """
-    return array('l', range(n))
+    return array.array('i', range(n))
 
-def perm_is_one(p, n=None):
-    if n is None:
+
+def perm_is_one(array.array p, int n=-1):
+    if n == -1:
         n = len(p)
+    cdef int i
     for i in range(n):
-        if p[i] != i:
+        if p.data.as_ints[i] != i:
             return False
     return True
 
-def perm_init(data, n=None, involution=None):
+
+def perm_init(data, int n=-1, involution=None):
     """
     Return a permutation from the given data.
 
@@ -223,31 +228,31 @@ def perm_init(data, n=None, involution=None):
     As a list of integers::
 
         sage: perm_init([3,2,1,4])
-        array('l', [3, 2, 1, 4])
+        array('i', [3, 2, 1, 4])
         sage: perm_init([3,1,None,0])
-        array('l', [3, 1, -1, 0])
+        array('i', [3, 1, -1, 0])
 
     Cycle notation (not mentioned elements are considered to be fixed
     point)::
 
         sage: perm_init(([2,1],[3,4,0]))
-        array('l', [3, 2, 1, 4, 0])
+        array('i', [3, 2, 1, 4, 0])
         sage: perm_init([[2,1],[3,4,0]])
-        array('l', [3, 2, 1, 4, 0])
+        array('i', [3, 2, 1, 4, 0])
 
     As a string::
 
         sage: perm_init('(0,1)(3,2)')
-        array('l', [1, 0, 3, 2])
+        array('i', [1, 0, 3, 2])
 
     Initialize a permutation in the centralizer of an involution::
 
         sage: perm_init('(0,2)(1,3)', involution=[0,4,2,5,1,3])
-        array('l', [2, 3, 0, 1, 5, 4])
+        array('i', [2, 3, 0, 1, 5, 4])
         sage: perm_init('(0,~1)', involution=[0,1])
-        array('l', [1, 0])
+        array('i', [1, 0])
         sage: perm_init('(0,~1)', involution=[2,3,0,1])
-        array('l', [3, 2, 1, 0])
+        array('i', [3, 2, 1, 0])
         sage: perm_init('(0,3)', involution=[0,4,2,5,1,3])
         Traceback (most recent call last):
         ...
@@ -256,26 +261,26 @@ def perm_init(data, n=None, involution=None):
     Zerology::
 
         sage: perm_init([])
-        array('l')
+        array('i')
         sage: perm_init([[]])
-        array('l')
+        array('i')
         sage: perm_init('')
-        array('l')
+        array('i')
         sage: perm_init('()')
-        array('l')
+        array('i')
     """
-    if n is None and involution is not None:
+    if n == -1 and involution is not None:
         n = len(involution)
-    if isinstance(data, (array, tuple, list)):
+    if isinstance(data, (array.array, tuple, list)):
         if not data:
             if n is not None:
-                return array('l', range(n))
+                return array.array('i', range(n))
             else:
-                return array('l', [])
+                return array.array('i', [])
         elif isinstance(data[0], (tuple, list)):
             return perm_from_cycles(data, n=n, involution=involution)
         else:
-            return array('l', (-1 if x is None else x for x in data))
+            return array.array('i', (-1 if x is None else x for x in data))
 
     if isinstance(data, str):
         c = str_to_cycles(data)
@@ -290,7 +295,8 @@ def perm_init(data, n=None, involution=None):
 
     raise TypeError("The input must be list, tuple or string")
 
-def perm_from_cycles(t, n=None, involution=None):
+
+def perm_from_cycles(t, int n=-1, involution=None):
     r"""
     Return a permutation on `[0, n-1]` from a list of cycles on `[0, n-1]`
 
@@ -308,25 +314,23 @@ def perm_from_cycles(t, n=None, involution=None):
         sage: from veerer.permutation import perm_from_cycles
 
         sage: perm_from_cycles([[1,3,5],[0,2,4],[6]])
-        array('l', [2, 3, 4, 5, 0, 1, 6])
+        array('i', [2, 3, 4, 5, 0, 1, 6])
 
         sage: perm_from_cycles([])
-        array('l')
+        array('i')
         sage: perm_from_cycles([[],[]])
-        array('l')
+        array('i')
 
         sage: perm_from_cycles([[1,-2],[0,3]], n=6, involution=[0,4,5,3,1,2])
-        array('l', [3, 4, 2, 0, 1, 5])
+        array('i', [3, 4, 2, 0, 1, 5])
     """
     if not any(tt for tt in t):
-        return array('l', [])
+        return array.array('i', [])
 
-    if n is None:
+    if n == -1:
         n = max(map(max, t)) + 1
-    else:
-        n = int(n)
 
-    res = array('l', range(n))
+    res = array.array('i', range(n))
 
     for c in t:
         a = int(c[0])
@@ -354,6 +358,7 @@ def perm_from_cycles(t, n=None, involution=None):
 
     return res
 
+
 def str_to_cycles(s):
     """
     Return a list of cycles from a string.
@@ -379,7 +384,8 @@ def str_to_cycles(s):
         r.append([~int(c[1:]) if c[0] == '~' else int(c) for c in c_str.replace(' ', '').split(',')])
     return r
 
-def perm_random(n):
+
+def perm_random(int n):
     r"""
     Return a random permutation.
 
@@ -391,7 +397,8 @@ def perm_random(n):
     """
     r = list(range(n))
     shuffle(r)
-    return array('l', r)
+    return array.array('i', r)
+
 
 def perm_random_centralizer(p):
     r"""
@@ -411,7 +418,7 @@ def perm_random_centralizer(p):
     cyc = perm_cycles(p)
     cyc.sort(key = lambda c: len(c))
     i = 0
-    ans = array('l', [-1] * len(p))
+    cdef array.array ans = array.array('i', [-1] * len(p))
     while i < len(cyc):
         j = i + 1
         s = len(cyc[i])
@@ -432,26 +439,27 @@ def perm_random_centralizer(p):
 
     return ans
 
+
 def perm_random_conjugacy_class(c):
     r"""
     Return a random permutation with given conjugacy class ``c``.
 
     EXAMPLES::
 
-        sage: from veerer.permutation import *
+        sage: from veerer.permutation import perm_random_conjugacy_class, perm_cycle_type
 
-        sage: p = perm_random_conjugacy_class([5,2])
+        sage: p = perm_random_conjugacy_class([5, 2])
         sage: perm_cycle_type(p)
         [5, 2]
 
-        sage: p = perm_random_conjugacy_class([7,3,3,1])
+        sage: p = perm_random_conjugacy_class([7, 3, 3, 1])
         sage: perm_cycle_type(p)
         [7, 3, 3, 1]
     """
     n = sum(c)
     r = list(range(n))
     shuffle(r)
-    p = array('l', [-1]*n)
+    p = array.array('i', [-1]*n)
     i = 0
     for k in c:
         # add a k-cycle following the list r
@@ -464,7 +472,6 @@ def perm_random_conjugacy_class(c):
 #####################################################################
 # Serialization
 #####################################################################
-# TODO: this is called often and would better be cythonized
 
 CHARS = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+-'
 CHARS_INV = {j:i for i,j in enumerate(CHARS)}
@@ -492,6 +499,7 @@ def uint_base64_str(n, l=None):
             s = CHARS[0] * (l - len(s)) + s
     return s
 
+
 def uint_from_base64_str(s):
     r"""
     EXAMPLES::
@@ -513,6 +521,7 @@ def uint_from_base64_str(s):
         d *= 64
     return n
 
+
 def perm_base64_str(p):
     r"""
     Make a canonical ASCII string out of ``p``.
@@ -527,15 +536,16 @@ def perm_base64_str(p):
         sage: s = perm_base64_str(range(2048))
         sage: s
         '00010203...v+v-'
-        sage: perm_from_base64_str(s, 2048) == array('l', range(2048))
+        sage: perm_from_base64_str(s, 2048) == array('i', range(2048))
         True
 
         sage: perm_from_base64_str('vdh0keigmcjfpxtnrwsouyqba987654321zl', 36)
-        array('l', [31, 13, 17, 0, 20, 14, 18, 16, 22, 12, 19, 15, 25, 33, 29, 23, 27, 32, 28, 24, 30, 34, 26, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 35, 21])
+        array('i', [31, 13, 17, 0, 20, 14, 18, 16, 22, 12, 19, 15, 25, 33, 29, 23, 27, 32, 28, 24, 30, 34, 26, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 35, 21])
     """
     n = len(p)
     l = int(log(n, 64)) + 1 # number of digits used for each entry
     return ''.join(uint_base64_str(i, l) for i in p)
+
 
 def perm_from_base64_str(s, n):
     r"""
@@ -544,45 +554,46 @@ def perm_from_base64_str(s, n):
         sage: from veerer.permutation import perm_from_base64_str, perm_base64_str
         sage: from array import array
 
-        sage: p = array('l', [3,0,2,1])
+        sage: p = array('i', [3,0,2,1])
         sage: s = perm_base64_str(p)
         sage: perm_from_base64_str(s, 4) == p
         True
 
         sage: r = list(range(3000))
         sage: shuffle(r)
-        sage: p = array('l', r)
+        sage: p = array('i', r)
         sage: perm_from_base64_str(perm_base64_str(p), 3000) == p
         True
     """
     l = int(log(n, 64)) + 1 # number of digits used for each entry
     if len(s) != n * l:
         raise ValueError('wrong length')
-    return array('l', (uint_from_base64_str(s[i:i+l]) for i in range(0,len(s),l)))
+    return array.array('i', (uint_from_base64_str(s[i:i+l]) for i in range(0,len(s),l)))
 
 #####################################################################
 # Cycles and action
 #####################################################################
 
-def perm_dense_cycles(p, n=None):
+def perm_dense_cycles(array.array p, int n=-1):
     r"""
     EXAMPLES::
 
+        sage: from array import array
         sage: from veerer.permutation import perm_dense_cycles
 
-        sage: perm_dense_cycles([1,2,0])
+        sage: perm_dense_cycles(array('i', [1,2,0]))
         ([0, 0, 0], [3])
 
-        sage: perm_dense_cycles([0,2,1])
+        sage: perm_dense_cycles(array('i', [0,2,1]))
         ([0, 1, 1], [1, 2])
 
-        sage: perm_dense_cycles([2,1,0])
+        sage: perm_dense_cycles(array('i', [2,1,0]))
         ([0, 1, 0], [2, 1])
     """
-    if n is None:
+    if n == -1:
         n = len(p)
-    deg = []
-    res = [-1] * n
+    cdef list deg = []
+    cdef list res = [-1] * n
     k = 0
     for i in range(n):
         if res[i] != -1:
@@ -590,13 +601,14 @@ def perm_dense_cycles(p, n=None):
         d = 0
         while res[i] == -1:
             res[i] = k
-            i = p[i]
+            i = p.data.as_ints[i]
             d += 1
         k += 1
         deg.append(d)
     return res, deg
 
-def perm_cycles(p, singletons=True, n=None):
+
+def perm_cycles(array.array p, singletons=True, int n=-1):
     r"""
     Return the cycle decomposition of ``p`` as a list of lists.
 
@@ -610,43 +622,47 @@ def perm_cycles(p, singletons=True, n=None):
 
     EXAMPLES::
 
+        sage: from array import array
         sage: from veerer.permutation import perm_cycles
 
-        sage: perm_cycles([0,2,1])
+        sage: perm_cycles(array('i', [0,2,1]))
         [[0], [1, 2]]
-        sage: perm_cycles([0,2,1], False)
+        sage: perm_cycles(array('i', [0,2,1]), False)
         [[1, 2]]
 
-        sage: perm_cycles([2,-1,0])
+        sage: perm_cycles(array('i', [2,-1,0]))
         [[0, 2]]
 
-        sage: perm_cycles([2,0,1,None,None], n=3)
+        sage: perm_cycles(array('i', [2,0,1,-1,-1]), n=3)
         [[0, 2, 1]]
     """
-    if n is None:
+    if n == -1:
         n = len(p)
     elif n < 0 or n > len(p):
         raise ValueError
 
-    seen = [False] * n
-    res = []
+    cdef array.array seen = array.clone(p, n, True)
+    cdef list res = []
+    cdef list cycle
+    cdef int i, j
 
     for i in range(n):
-        if seen[i] or p[i] == -1:
+        if seen.data.as_ints[i] or p.data.as_ints[i] == -1:
             continue
-        if p[i] == i and not singletons:
+        if p.data.as_ints[i] == i and not singletons:
             continue
         cycle = []
         j = i
-        while not seen[j]:
+        while not seen.data.as_ints[j]:
             seen[j] = True
             cycle.append(j)
-            j = p[j]
+            j = p.data.as_ints[j]
         res.append(cycle)
 
     return res
 
-def perm_cycles_lengths(p, n=None):
+
+def perm_cycles_lengths(array.array p, int n=-1):
     r"""
     Return the array of orbit sizes.
 
@@ -658,114 +674,127 @@ def perm_cycles_lengths(p, n=None):
 
     EXAMPLES::
 
+        sage: from array import array
         sage: from veerer.permutation import perm_cycles_lengths
 
-        sage: perm_cycles_lengths([0,2,1])
-        [1, 2, 2]
-        sage: perm_cycles_lengths([2,-1,0])
-        [2, -1, 2]
-        sage: perm_cycles_lengths([2,0,1,None,None], n=3)
-        [3, 3, 3]
+        sage: perm_cycles_lengths(array('i', [0,2,1]))
+        array('i', [1, 2, 2])
+        sage: perm_cycles_lengths(array('i', [2,-1,0]))
+        array('i', [2, -1, 2])
+        sage: perm_cycles_lengths(array('i', [2,0,1,-1,-1]), n=3)
+        array('i', [3, 3, 3])
     """
-    if n is None:
+    if n == -1:
         n = len(p)
     elif n < 0 or n > len(p):
         raise ValueError
 
-    lengths = [-1] * n
+    cdef array.array lengths = array.array('i', [-1] * n)
+    cdef int i, j, m
+
     for i in range(n):
-        if lengths[i] != -1 or p[i] == -1:
+        if lengths.data.as_ints[i] != -1 or p.data.as_ints[i] == -1:
             continue
         j = i
         m = 0
-        while lengths[j] == -1:
-            lengths[j] = 0
-            j = p[j]
+        while lengths.data.as_ints[j] == -1:
+            lengths.data.as_ints[j] = 0
+            j = p.data.as_ints[j]
             m += 1
-        while lengths[j] == 0:
-            lengths[j] = m
+        while lengths.data.as_ints[j] == 0:
+            lengths.data.as_ints[j] = m
             j = p[j]
 
     return lengths
 
-def perm_num_cycles(p, n=None):
+
+def perm_num_cycles(array.array p, n=-1):
     r"""
     Return the number of cycles of the permutation ``p``.
 
     EXAMPLES::
 
+        sage: from array import array
         sage: from veerer.permutation import perm_num_cycles
-        sage: perm_num_cycles([1,2,3,0])
+
+        sage: perm_num_cycles(array('i', [1,2,3,0]))
         1
-        sage: perm_num_cycles([0,2,3,1])
+        sage: perm_num_cycles(array('i', [0,2,3,1]))
         2
-        sage: perm_num_cycles([3,2,1,0])
+        sage: perm_num_cycles(array('i', [3,2,1,0]))
         2
-        sage: perm_num_cycles([3,1,2,0])
+        sage: perm_num_cycles(array('i', [3,1,2,0]))
         3
-        sage: perm_num_cycles([0,1,2,3])
+        sage: perm_num_cycles(array('i', [0,1,2,3]))
         4
     """
-    if n is None:
+    if n == -1:
         n = len(p)
-    seen = [False] * n
+    cdef array.array seen = array.clone(p, n, True)
     ans = 0
+    cdef int i, j
     for i in range(n):
-        if seen[i] or p[i] == -1:
+        if seen.data.as_ints[i] or p.data.as_ints[i] == -1:
             continue
         ans += 1
         j = i
-        while not seen[j]:
-            seen[j] = True
-            j = p[j]
+        while not seen.data.as_ints[j]:
+            seen.data.as_ints[j] = 1
+            j = p.data.as_ints[j]
     return ans
 
-def perm_cycle_type(p, n=None):
+
+def perm_cycle_type(array.array p, int n=-1):
     r"""
     Return the lengths of the cycles of the permutation ``p`` in size of
     decreasing order.
 
     EXAMPLES::
 
+        sage: from array import array
         sage: from veerer.permutation import perm_cycle_type
-        sage: perm_cycle_type([1,2,3,0])
+        sage: perm_cycle_type(array('i', [1,2,3,0]))
         [4]
-        sage: perm_cycle_type([0,2,3,1])
+        sage: perm_cycle_type(array('i', [0,2,3,1]))
         [3, 1]
-        sage: perm_cycle_type([3,2,1,0])
+        sage: perm_cycle_type(array('i', [3,2,1,0]))
         [2, 2]
-        sage: perm_cycle_type([3,1,2,0])
+        sage: perm_cycle_type(array('i', [3,1,2,0]))
         [2, 1, 1]
-        sage: perm_cycle_type([0,1,2,3])
+        sage: perm_cycle_type(array('i', [0,1,2,3]))
         [1, 1, 1, 1]
     """
-    if n is None:
+    if n == -1:
         n = len(p)
-    seen = [False] * n
-    c = []
+    cdef array.array seen = array.clone(p, n, True)
+    cdef list c = []
+    cdef int i, j, k
     for i in range(n):
-        if seen[i] or p[i] == -1:
+        if seen.data.as_ints[i] or p.data.as_ints[i] == -1:
             continue
         k = 0
         j = i
-        while not seen[j]:
-            seen[j] = True
+        while not seen.data.as_ints[j]:
+            seen.data.as_ints[j] = 1
             k += 1
-            j = p[j]
+            j = p.data.as_ints[j]
         c.append(k)
     c.sort(reverse=True)
     return c
 
-def perm_cycle_string(p, singletons=True, n=None, involution=None):
+
+def perm_cycle_string(array.array p, singletons=True, n=-1, involution=None):
     r"""
     Return a string representing the cycle decomposition of `p`
 
     EXAMPLES::
 
+        sage: from array import array
         sage: from veerer.permutation import perm_cycle_string
-        sage: perm_cycle_string([0,2,1])
+
+        sage: perm_cycle_string(array('i', [0,2,1]))
         '(0)(1,2)'
-        sage: perm_cycle_string([0,2,1],False)
+        sage: perm_cycle_string(array('i', [0,2,1]), False)
         '(1,2)'
     """
     if involution:
@@ -776,61 +805,75 @@ def perm_cycle_string(p, singletons=True, n=None, involution=None):
     return ''.join(map(lambda x: '('+','.join(map(elt, x))+')',
                        perm_cycles(p, singletons, n)))
 
-def perm_orbit(p, i):
+
+def perm_orbit(array.array p, int i):
     r"""
     Return the orbit of ``i`` under the permutation ``p``.
 
     EXAMPLES::
 
+        sage: from array import array
         sage: from veerer.permutation import perm_orbit
-        sage: perm_orbit([0,3,1,2],2)
+
+        sage: perm_orbit(array('i', [0,3,1,2]), 2)
         [2, 1, 3]
     """
-    res = [i]
-    j = p[i]
+    cdef int j
+    cdef list res = [i]
+    j = p.data.as_ints[i]
     while j != i:
         res.append(j)
-        j = p[j]
+        j = p.data.as_ints[j]
     return res
 
-def perm_orbit_size(p, i):
+
+def perm_orbit_size(array.array p, int i):
     r"""
     Return the size of the orbit of ``i`` under the permutation ``p``.
 
     EXAMPLES::
 
+        sage: from array import array
         sage: from veerer.permutation import perm_orbit_size
-        sage: perm_orbit_size([0,3,1,2], 2)
+
+        sage: perm_orbit_size(array('i', [0,3,1,2]), 2)
         3
-        sage: perm_orbit_size([0,3,1,2], 0)
+        sage: perm_orbit_size(array('i', [0,3,1,2]), 0)
         1
     """
+    if i < 0 or i >= len(p):
+        raise ValueError
+    cdef int j, s
     s = 1
-    j = p[i]
+    j = p.data.as_ints[i]
     while j != i:
         s += 1
-        j = p[j]
+        j = p.data.as_ints[j]
     return s
 
-def perm_preimage(p, i):
+
+def perm_preimage(array.array p, int i):
     r"""
     Return the preimage of ``i`` under ``p``.
 
     EXAMPLES::
 
+        sage: from array import array
         sage: from veerer.permutation import perm_init, perm_preimage
+
         sage: p = perm_init("(0,3,1,5)(2,4)")
         sage: perm_preimage(p, 3)
         0
         sage: perm_preimage(p, 2)
         4
     """
-    j = i
-    while p[j] != i:
-        j = p[j]
+    cdef int j = i
+    while p.data.as_ints[j] != i:
+        j = p.data.as_ints[j]
     return j
 
-def perm_on_list(p, a, n=None, swap=None):
+
+def perm_on_list(array.array p, a, int n=-1, swap=None):
     r"""
     Inplace action of permutation on list-like objects.
 
@@ -846,10 +889,12 @@ def perm_on_list(p, a, n=None, swap=None):
 
     EXAMPLES::
 
+        sage: from array import array
         sage: from veerer.permutation import *
+
         sage: l = [0,1,2,3,4]
-        sage: p = [4,2,3,0,1]
-        sage: perm_on_list(p,l)
+        sage: p = array('i', [4,2,3,0,1])
+        sage: perm_on_list(p, l)
         sage: l
         [3, 4, 1, 2, 0]
 
@@ -866,48 +911,51 @@ def perm_on_list(p, a, n=None, swap=None):
         sage: m == m2 * m1
         True
     """
-    if n is None:
+    if n == -1:
         n = len(p)
-    seen = [False] * n
+    cdef array.array seen = array.clone(p, n, True)
+    cdef int i, j
     for i in range(n):
-        if seen[i]:
+        if seen.data.as_ints[i]:
             continue
-        seen[i] = True
-        j = p[i]
-        while seen[j] is False:
+        seen.data.as_ints[i] = 1
+        j = p.data.as_ints[i]
+        while not seen.data.as_ints[j]:
             if swap:
                 swap(a, i, j)
             else:
                 tmp = a[i]
                 a[i] = a[j]
                 a[j] = tmp
-            seen[j] = True
-            j = p[j]
+            seen.data.as_ints[j] = 1
+            j = p.data.as_ints[j]
+
 
 # WARNING: this is NOT inplace
-def perm_on_cyclic_list(p, t):
+def perm_on_cyclic_list(array.array p, t):
     r"""
     Action of the permutation ``p`` on the list ``t`` up to cyclic order.
 
     EXAMPLES::
 
+        sage: from array import array
         sage: from veerer.permutation import perm_on_cyclic_list
 
-        sage: perm_on_cyclic_list([0,1,2], [2,1,2])
+        sage: perm_on_cyclic_list(array('i', [0,1,2]), [2,1,2])
         [1, 2, 2]
-        sage: perm_on_cyclic_list([0,1], [0,1,0,0,1,0,0,0,1,1])
+        sage: perm_on_cyclic_list(array('i', [0,1]), [0,1,0,0,1,0,0,0,1,1])
         [0, 0, 0, 1, 1, 0, 1, 0, 0, 1]
 
-        sage: a = [1, 0, 3, 2, 5, 4]
+        sage: a = array('i', [1, 0, 3, 2, 5, 4])
         sage: perm_on_cyclic_list(a, [0, 5, 3])
         [1, 4, 2]
         sage: perm_on_cyclic_list(a, [1, 4, 2])
         [0, 5, 3]
 
-        sage: a1 = [0, 1, 4, 2, 3, 5]
-        sage: a2 = [1, 5, 3, 4, 2, 0]
-        sage: a3 = [2, 3, 1, 5, 0, 4]
-        sage: a4 = [5, 0, 2, 3, 4, 1]
+        sage: a1 = array('i', [0, 1, 4, 2, 3, 5])
+        sage: a2 = array('i', [1, 5, 3, 4, 2, 0])
+        sage: a3 = array('i', [2, 3, 1, 5, 0, 4])
+        sage: a4 = array('i', [5, 0, 2, 3, 4, 1])
         sage: t1 = [0, 5, 1]
         sage: t2 = [2, 4, 3]
         sage: perm_on_cyclic_list(a1, t1) == perm_on_cyclic_list(a2, t1) == perm_on_cyclic_list(a4, t1) == t1
@@ -929,31 +977,34 @@ def perm_on_cyclic_list(p, t):
 # Group operations
 #####################################################################
 
-def perm_invert(l, n=None):
+def perm_invert(array.array p, int n=-1):
     r"""
     Return the inverse of the permutation ``l``.
 
     EXAMPLES::
 
+        sage: from array import array
         sage: from veerer.permutation import perm_invert
 
-        sage: perm_invert([0, 3, 1, 2])
-        array('l', [0, 2, 3, 1])
+        sage: perm_invert(array('i', [0, 3, 1, 2]))
+        array('i', [0, 2, 3, 1])
 
-        sage: perm_invert([2, -1, 5, 0, -1, 3])
-        array('l', [3, -1, 0, 5, -1, 2])
+        sage: perm_invert(array('i', [2, -1, 5, 0, -1, 3]))
+        array('i', [3, -1, 0, 5, -1, 2])
     """
-    if n is None:
-        n = len(l)
-    res = array('l', [0]*n)
+    if n == -1:
+        n = len(p)
+    cdef array.array res = array.clone(p, n, False)
+    cdef int i
     for i in range(n):
-        if l[i] == -1:
-            res[i] = -1
+        if p.data.as_ints[i] == -1:
+            res.data.as_ints[i] = -1
         else:
-            res[l[i]] = i
+            res.data.as_ints[p.data.as_ints[i]] = i
     return res
 
-def perm_compose(p1, p2, n=None):
+
+def perm_compose(array.array p1, array.array p2, int n=-1):
     r"""
     Return the product ``p1 p2``.
 
@@ -962,50 +1013,57 @@ def perm_compose(p1, p2, n=None):
 
     EXAMPLES::
 
+        sage: from array import array
         sage: from veerer.permutation import perm_compose
 
-        sage: perm_compose([0,2,1], [0,2,1])
-        array('l', [0, 1, 2])
-        sage: perm_compose([-1,2,3,1],[-1,2,1,3])
-        array('l', [-1, 1, 3, 2])
+        sage: perm_compose(array('i', [0,2,1]), array('i', [0,2,1]))
+        array('i', [0, 1, 2])
+        sage: perm_compose(array('i', [-1,2,3,1]), array('i', [-1,2,1,3]))
+        array('i', [-1, 1, 3, 2])
 
-        sage: perm_compose([1,0,2,None,None], [2,1,0,None], 3)
-        array('l', [1, 2, 0])
+        sage: perm_compose(array('i', [1,0,2,-1,-1]), array('i', [2,1,0,-1]), 3)
+        array('i', [1, 2, 0])
     """
-    if n is None:
+    if n == -1:
         n = len(p1)
-    r = array('l', [-1] * n)
+    cdef array.array r = array.array('i', [-1] * n)
+    cdef int i
     for i in range(n):
-        if p1[i] != -1:
-            r[i] = p2[p1[i]]
+        if p1.data.as_ints[i] != -1:
+            r.data.as_ints[i] = p2.data.as_ints[p1.data.as_ints[i]]
     return r
+
 
 perm_compose_00 = perm_compose
 
+
 # TODO: do something less stupid
 # (do it for each cycle independently, detecting if needed period)
-def perm_pow(p, k, n=None):
-    if n is None:
+def perm_pow(array.array p, int k, int n=-1):
+    if n == -1:
         n = len(p)
     if k == 0:
         return perm_id(n)
 
-    q = p[:]
+    cdef array.array q = array.copy(p)
     k -= 1
     while k:
         q = perm_compose(q, p)
         k -= 1
     return q
 
-def perm_compose_10(p1, p2, n=None):
+
+def perm_compose_10(array.array p1, array.array p2, int n=-1):
     r"""
     Return the product ``p1^(-1) p2``
 
     EXAMPLES::
 
+        sage: from array import array
         sage: from veerer.permutation import perm_compose, perm_invert, perm_compose_10
-        sage: p1 = [0,5,2,1,3,4]
-        sage: p2 = [3,1,5,4,2,0]
+
+        sage: p1 = array('i', [0,5,2,1,3,4])
+        sage: p2 = array('i', [3,1,5,4,2,0])
         sage: perm_compose_10(p1, p2) == perm_compose(perm_invert(p1), p2)
         True
         sage: shuffle(p1)
@@ -1013,22 +1071,26 @@ def perm_compose_10(p1, p2, n=None):
         sage: perm_compose_10(p1, p2) == perm_compose(perm_invert(p1), p2)
         True
     """
-    if n is None:
+    if n == -1:
         n = len(p1)
-    r = array('l', [-1] * n)
+    cdef int i
+    cdef array.array r = array.clone(p1, n, False)
     for i in range(n):
-        r[p1[i]] = p2[i]
+        r.data.as_ints[p1.data.as_ints[i]] = p2.data.as_ints[i]
     return r
 
-def perm_compose_01(p1, p2, n=None):
+
+def perm_compose_01(array.array p1, array.array p2, int n=-1):
     r"""
     Return the product ``p1 p2^(-1)``
 
     EXAMPLES::
 
+        sage: from array import array
         sage: from veerer.permutation import perm_compose, perm_invert, perm_compose_01
-        sage: p1 = [0,5,2,1,3,4]
-        sage: p2 = [3,1,5,4,2,0]
+
+        sage: p1 = array('i', [0,5,2,1,3,4])
+        sage: p2 = array('i', [3,1,5,4,2,0])
         sage: perm_compose_01(p1, p2) == perm_compose(p1, perm_invert(p2)) # not tested
         True
         sage: shuffle(p1)
@@ -1038,15 +1100,18 @@ def perm_compose_01(p1, p2, n=None):
     """
     raise NotImplementedError
 
-def perm_compose_11(p1, p2, n=None):
+
+def perm_compose_11(array.array p1, array.array p2, int n=-1):
     r"""
     Return the product `p1^(-1) p2^(-1)`.
 
     EXAMPLES::
 
+        sage: from array import array
         sage: from veerer.permutation import perm_compose, perm_invert, perm_compose_11
-        sage: p1 = [0,5,2,1,3,4]
-        sage: p2 = [3,1,5,4,2,0]
+
+        sage: p1 = array('i', [0,5,2,1,3,4])
+        sage: p2 = array('i', [3,1,5,4,2,0])
         sage: perm_compose_11(p1, p2) == perm_compose(perm_invert(p1), perm_invert(p2))
         True
         sage: shuffle(p1)
@@ -1061,16 +1126,19 @@ def perm_compose_11(p1, p2, n=None):
 
         sage: for p1 in permutations(range(4)):
         ....:     for p2 in permutations(range(4)):
-        ....:         assert perm_compose_11(p1, p2) == perm_compose(perm_invert(p1), perm_invert(p2))
+        ....:         q1 = perm_compose_11(array('i', p1), array('i', p2))
+        ....:         q2 = perm_compose(perm_invert(array('i', p1)), perm_invert(array('i', p2)))
+        ....:         assert q1 == q2, (p1, p2, q1, q2)
     """
-    if n is None:
+    if n == -1:
         n = len(p1)
-    r = array('l', [-1] * n)
+    cdef array.array r = array.clone(p1, n, False)
     for i in range(n):
-        r[p1[p2[i]]] = i
+        r.data.as_ints[p1.data.as_ints[p2.data.as_ints[i]]] = i
     return r
 
-def perm_conjugate(p1, p2, n=None):
+
+def perm_conjugate(array.array p1, array.array p2, int n=-1):
     r"""
     Conjugate ``p1`` by ``p2``.
 
@@ -1085,23 +1153,22 @@ def perm_conjugate(p1, p2, n=None):
         sage: p1 = perm_random(23)
         sage: p2 = perm_random(23)
         sage: res = perm_conjugate(p1, p2)
-        sage: res[p2[14]] == p2[p1[14]]
-        True
-        sage: res[p2[19]] == p2[p1[19]]
+        sage: all(res[p2[i]] == p2[p1[i]] for i in range(23))
         True
     """
-    if n is None:
+    if n == -1:
         n = len(p1)
-    res = array('l', [-1] * n)
+    cdef array.array res = array.clone(p1, n, False)
+    cdef int i
     for i in range(n):
-        res[p2[i]] = p2[p1[i]]
+        res.data.as_ints[p2.data.as_ints[i]] = p2.data.as_ints[p1.data.as_ints[i]]
     return res
 
 #####################################################################
 # Transitivity test
 #####################################################################
 
-def perms_transitive_components(p, n=None):
+def perms_transitive_components(p, int n=-1):
     r"""
     Return the list of transitive components of the subgroup generated by the
     permutations ``p``.
@@ -1123,7 +1190,7 @@ def perms_transitive_components(p, n=None):
         sage: perms_transitive_components([[3,1,2,0], [0,3,2,1], [0,1,3,2]])
         [(0, 1, 2, 3)]
     """
-    if n is None:
+    if n == -1:
         n = len(p[0])
     seen = [-1] * n
     cc_num = 0
@@ -1145,7 +1212,7 @@ def perms_transitive_components(p, n=None):
     return [tuple(i for i in range(n) if seen[i] == j) for j in range(cc_num)]
 
 
-def perms_are_transitive(p, n=None):
+def perms_are_transitive(p, int n=-1):
     """
     Test whether the group generated by the permutations in ``p`` is transitive.
 
@@ -1178,7 +1245,7 @@ def perms_are_transitive(p, n=None):
         raise ValueError("empty list")
 
     p0 = p[0]
-    if n is None:
+    if n == -1:
         n = len(p0)
 
     # compute the connected component of 0
@@ -1321,3 +1388,56 @@ def perms_canonical_labels(p, e=None):
             m_win = m_test
 
     return c_win, m_win
+
+#####################################################################
+# Triangulation relabellings
+#####################################################################
+
+def triangulation_relabelling_from(array.array vp, array.array ep, int start_edge):
+    # NOTE: the algorithm is as follows
+    # 0) we set k=0 and m=n-1 (labelling counter), any time we choose a new
+    #    label it is k and k is incremented. If it is not a folded edge, its
+    #    twin gets labelled m and m is decremented.
+    # 1) the start_edge is relabelled 0 and set as pending
+    # 2) while there is a pending half-edge, we look at its vp-cycle and
+    #    relabel each edge if needed
+    cdef int n = len(vp)
+
+    cdef int k = 0      # current available label at the front.
+    cdef int m = n - 1  # current available label at the back.
+    cdef array.array relabelling = array.clone(vp, n, False)
+    cdef int i
+    for i in range(n):
+        relabelling.data.as_ints[i] = -1
+
+    relabelling.data.as_ints[start_edge] = 0
+    k += 1
+
+    if ep.data.as_ints[start_edge] != start_edge:
+        relabelling.data.as_ints[ep.data.as_ints[start_edge]] = m
+        m -= 1
+
+    cdef array.array to_process = array.clone(vp, n, False)
+    cdef int s = 1
+    to_process.data.as_ints[0] = start_edge
+    if ep.data.as_ints[start_edge] != start_edge:
+        to_process.data.as_ints[1] = ep.data.as_ints[start_edge]
+        s = 2
+
+    cdef int e, e0
+    while s:
+        s -= 1
+        e0 = to_process.data.as_ints[s]
+        e = vp.data.as_ints[e0]
+        while e != e0:
+            if relabelling.data.as_ints[e] == -1:
+                relabelling.data.as_ints[e] = k
+                k += 1
+                if ep.data.as_ints[e] != e:
+                    relabelling.data.as_ints[ep.data.as_ints[e]] = m
+                    m -= 1
+                    to_process.data.as_ints[s] = ep.data.as_ints[e]
+                    s += 1
+            e = vp.data.as_ints[e]
+
+    return relabelling

@@ -29,7 +29,7 @@ from .permutation import (perm_init, perm_check, perm_cycles,
                           perm_invert, perm_conjugate, perm_cycle_string, perm_cycles_lengths,
                           perm_num_cycles, str_to_cycles, perm_compose, perm_from_base64_str,
                           uint_base64_str, uint_from_base64_str, perm_base64_str,
-                          perms_are_transitive)
+                          perms_are_transitive, triangulation_relabelling_from)
 from .env import require_package, flipper, curver, sage, rich_to_bool, op_LE, op_LT, op_EQ, op_NE, op_GT, op_GE
 
 
@@ -40,10 +40,10 @@ def face_edge_perms_init(data):
         sage: from veerer.triangulation import face_edge_perms_init
 
         sage: face_edge_perms_init('(0,1,2)(~0,~1,~2)')
-        (array('l', [1, 2, 0, 5, 3, 4]), array('l', [5, 4, 3, 2, 1, 0]))
+        (array('i', [1, 2, 0, 5, 3, 4]), array('i', [5, 4, 3, 2, 1, 0]))
 
         sage: face_edge_perms_init('(0,1,2)')
-        (array('l', [1, 2, 0]), array('l', [0, 1, 2]))
+        (array('i', [1, 2, 0]), array('i', [0, 1, 2]))
 
     TESTS:
 
@@ -240,7 +240,7 @@ class Triangulation(object):
         # TODO: edge labels are disabled for now.
         # el = self._fl = [None] * E # edge labels
 
-        vp = self._vp = array('l', [-1] * n)
+        vp = self._vp = array('i', [-1] * n)
         for i in range(n):
             vp[fp[ep[i]]] = i
 
@@ -328,9 +328,9 @@ class Triangulation(object):
             sage: from veerer import Triangulation
             sage: from array import array
 
-            sage: fp = array('l', [1, 2, 0, 4, 8, 6, 7, 5, 3])
-            sage: ep = array('l', [8, 7, 2, 3, 4, 5, 6, 1, 0])
-            sage: vp = array('l', [2, 8, 7, 0, 3, 1, 5, 6, 4])
+            sage: fp = array('i', [1, 2, 0, 4, 8, 6, 7, 5, 3])
+            sage: ep = array('i', [8, 7, 2, 3, 4, 5, 6, 1, 0])
+            sage: vp = array('i', [2, 8, 7, 0, 3, 1, 5, 6, 4])
             sage: Triangulation.from_face_edge_perms(fp, ep, vp)
             Triangulation("(0,1,2)(3,4,~0)(5,6,~1)")
         """
@@ -341,7 +341,7 @@ class Triangulation(object):
         if vp is None:
             fp = T._fp
             ep = T._ep
-            vp = array('l', [-1] * n)
+            vp = array('i', [-1] * n)
             for i in range(n):
                 vp[fp[ep[i]]] = i
         T._vp = vp
@@ -392,17 +392,17 @@ class Triangulation(object):
             ValueError: broken face permutation
 
             sage: from array import array
-            sage: fp = array('l', [1,2,0])
-            sage: ep = array('l', [0,1,2])
-            sage: vp = array('l', [1,2,0])
+            sage: fp = array('i', [1,2,0])
+            sage: ep = array('i', [0,1,2])
+            sage: vp = array('i', [1,2,0])
             sage: Triangulation.from_face_edge_perms(fp, ep, vp)
             Traceback (most recent call last):
             ...
             ValueError: fev relation not satisfied
 
-            sage: fp = array('l', [1,2,0])
-            sage: ep = array('l', [1,2,0])
-            sage: vp = array('l', [1,2,0])
+            sage: fp = array('i', [1,2,0])
+            sage: ep = array('i', [1,2,0])
+            sage: vp = array('i', [1,2,0])
             sage: Triangulation.from_face_edge_perms(fp, ep, vp)
             Traceback (most recent call last):
             ...
@@ -1512,12 +1512,12 @@ class Triangulation(object):
 
         The torus example (6 symmetries)::
 
-            sage: fp = array('l', [1, 5, 4, 2, 3, 0])
-            sage: ep = array('l', [4, 3, 5, 1, 0, 2])
-            sage: vp = array('l', [2, 4, 1, 0, 5, 3])
+            sage: fp = array('i', [1, 5, 4, 2, 3, 0])
+            sage: ep = array('i', [4, 3, 5, 1, 0, 2])
+            sage: vp = array('i', [2, 4, 1, 0, 5, 3])
             sage: T = Triangulation.from_face_edge_perms(fp, ep, vp, mutable=True)
             sage: T._relabelling_from(3)
-            array('l', [4, 5, 3, 0, 1, 2])
+            array('i', [4, 5, 3, 0, 1, 2])
 
             sage: p = T._relabelling_from(0)
             sage: T.relabel(p)
@@ -1529,12 +1529,12 @@ class Triangulation(object):
 
         The sphere example (3 symmetries)::
 
-            sage: fp = array('l', [1, 2, 0])
-            sage: ep = array('l', [0, 1, 2])
-            sage: vp = array('l', [2, 0, 1])
+            sage: fp = array('i', [1, 2, 0])
+            sage: ep = array('i', [0, 1, 2])
+            sage: vp = array('i', [2, 0, 1])
             sage: T = Triangulation.from_face_edge_perms(fp, ep, vp, mutable=True)
             sage: T._relabelling_from(1)
-            array('l', [1, 0, 2])
+            array('i', [1, 0, 2])
             sage: p = T._relabelling_from(0)
             sage: T.relabel(p)
             sage: for i in range(3):
@@ -1555,41 +1555,9 @@ class Triangulation(object):
             ....:     S._check()
             ....:     assert S != T
         """
-        n = self._n
-        ep = self._ep
-        vp = self._vp
-
-        k = 0      # current available label at the front.
-        m = n - 1  # current available label at the back.
-        relabelling = array('l', [-1] * n)
-        relabelling[start_edge] = 0
-        k += 1
-
-        if ep[start_edge] != start_edge:
-            relabelling[ep[start_edge]] = m
-            m = m - 1
-
-        to_process = [start_edge]
-        if ep[start_edge] != start_edge:
-            to_process.append(ep[start_edge])
-
-        while to_process:
-            e0 = to_process.pop()
-            e = vp[e0]
-            while e != e0:
-                if relabelling[e] == -1:
-                    relabelling[e] = k
-                    k = k + 1
-                    if ep[e] != e:
-                        relabelling[ep[e]] = m
-                        m = m - 1
-                        to_process.append(ep[e])
-                e = vp[e]
-
-        # check that everybody has a name!
-        assert k == m + 1
-
-        return relabelling
+        if start_edge < 0 or start_edge >= len(self._vp):
+            raise ValueError
+        return triangulation_relabelling_from(self._vp, self._ep, start_edge)
 
     def _automorphism_good_starts(self):
         # we discriminate based on the lengths of cycles in
@@ -1599,19 +1567,19 @@ class Triangulation(object):
         lv = perm_cycles_lengths(self._vp, n)
         le = perm_cycles_lengths(self._ep, n)
         lf = perm_cycles_lengths(self._fp, n)
-        vef = perm_compose(perm_compose(self._fp, self._ep), self._vp)
+        vef = perm_compose(perm_compose(self._fp, self._ep, n), self._vp, n)
         lvef = perm_cycles_lengths(vef, n)
 
         d = {}
         for i in range(n):
-            s = (lv[i], le[i], lf[i], lvef[i])
+            s = ((lv[i] * n + le[i]) * n + lf[i]) * n + lvef[i]
             if s in d:
                 d[s].append(i)
             else:
                 d[s] = [i]
+
         m = min(len(x) for x in d.values())
-        candidates = [s for s, v in d.items() if len(v) == m]
-        winner = min(candidates)
+        winner = min(s for s, v in d.items() if len(v) == m)
 
         return d[winner]
 

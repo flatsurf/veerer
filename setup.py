@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 import codecs
-from distutils.core import setup
-
+from setuptools import setup, Extension
+from Cython.Build import cythonize
 
 def readfile(filename):
     with codecs.open(filename,  encoding='utf-8') as f:
         return f.read()
 
+
+extensions = [
+    Extension('veerer.permutation', sources=['veerer/permutation.pyx'])
+    ]
 
 setup(
     name='veerer',
@@ -17,6 +21,7 @@ setup(
     author_email='vincent.delecroix@u-bordeaux.fr',
     url='https://github.com/flatsurf/veerer',
     packages=['veerer/', 'veerer/polyhedron'],
+    ext_modules=cythonize(extensions),
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Science/Research',

@@ -69,10 +69,10 @@ class VeeringQuadrangulation:
     """
     __slots__ = ['_n', '_pr', '_pl']
 
-    def __init__(self, pr, pl, n=None, check=True):
+    def __init__(self, pr, pl, n=-1, check=True):
         self._pr = perm_init(pr, n)  # right permutation
 
-        if n is None:
+        if n == -1:
             n = len(self._pr)
         elif isinstance(n, numbers.Integral):
             n = int(n)
@@ -376,7 +376,7 @@ class VeeringQuadrangulation:
         """
         n = self._n
         if not perm_check(p, n):
-            p = perm_init(p, self._n)
+            p = perm_init(p, n)
             if not perm_check(p, n):
                 raise ValueError('invalid relabeling permutation')
 
@@ -567,10 +567,14 @@ class FlatVeeringQuadrangulation:
     """
     __slots__ = ['_n', '_pr', '_pl', '_zr', '_zl', '_V', '_K']
 
-    def __init__(self, pr, pl, zr, zl, n=None, base_ring=None, check=True):
+    def __init__(self, pr, pl, zr, zl, n=-1, base_ring=None, check=True):
         self._pr = perm_init(pr, n)
-        if n is None:
+        if n == -1:
             n = len(self._pr)
+        elif isinstance(n, numbers.Integral):
+            n = int(n)
+        else:
+            raise TypeError('n must be integral')
         self._pl = perm_init(pl, n)
         if base_ring is None:
             from sage.structure.sequence import Sequence
@@ -592,6 +596,8 @@ class FlatVeeringQuadrangulation:
             self._check()
 
     def _check(self):
+        if not isinstance(self._n, int) or self._n < 0:
+            raise ValueError('invalid n={}'.format(self._n))
         if not perm_check(self._pr, self._n):
             raise ValueError('invalid right permutation')
         if not perm_check(self._pl, self._n):
