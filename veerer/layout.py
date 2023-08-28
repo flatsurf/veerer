@@ -56,26 +56,6 @@ TIKZ_FACE_COLORS = {
     RED: 'veeringred!20'}
 
 
-def has_intersection(triangles, new_triangle, pos):
-    r"""
-    Check whether ``new_triangle`` intersects one of the triangles in ``triangles``
-    where the positions of the vertices have to be found in ``pos``.
-    """
-    for t in triangles:
-        for i in range(3):
-            p1 = t[i]
-            p2 = t[(i + 1) % 3]
-            for j in range(3):
-                q1 = new_triangle[j]
-                q2 = new_triangle[(j + 1) % 3]
-
-                if (orientation(p1, p2, q1) != orientation(p1, p2, q2) and
-                        orientation(q1, q2, p1) != orientation(q1, q2, p2)):
-                    return True
-
-    return False
-
-
 class FlatVeeringTriangulationLayout(object):
     r"""
     A flat triangulation layout in the plane.
