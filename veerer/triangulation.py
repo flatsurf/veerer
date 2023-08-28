@@ -26,10 +26,10 @@ import numbers
 from array import array
 
 from .permutation import (perm_init, perm_check, perm_cycles,
-                          perm_invert, perm_conjugate, perm_cycle_string, perm_num_cycles,
-                          str_to_cycles, perm_compose, perm_from_base64_str,
-                          uint_base64_str, uint_from_base64_str,
-                          perm_base64_str, perms_are_transitive)
+                          perm_invert, perm_conjugate, perm_cycle_string, perm_cycles_lengths,
+                          perm_num_cycles, str_to_cycles, perm_compose, perm_from_base64_str,
+                          uint_base64_str, uint_from_base64_str, perm_base64_str,
+                          perms_are_transitive)
 from .env import require_package, flipper, curver, sage, rich_to_bool, op_LE, op_LT, op_EQ, op_NE, op_GT, op_GE
 
 
