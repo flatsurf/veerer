@@ -62,17 +62,29 @@
 <li><p>20 Sept. 2018 Temple</p></li>
 <li><p>25 Sept. 2018 Villetaneuse and CUNY</p></li>
 </ul>
-<p><code class="docutils literal notranslate"><span class="pre">veerer</span></code> is a Python library for exploration of veering
+<p><code class="docutils literal notranslate"><span class="pre">veerer</span></code> is a Python and SageMath library for exploration of veering
 triangulations. It is written by
 <a class="reference external" href="https://markcbell.github.io">Mark Bell</a>,
 <a class="reference external" href="http://www.labri.fr/perso/vdelecro/">Vincent Delecroix</a> and
 <a class="reference external" href="http://homepages.warwick.ac.uk/~masgar/">Saul Schleimer</a>. It is
 part of a project that also involve
 <a class="reference external" href="http://www.maths.gla.ac.uk/~vgadre/">Vaibhav Gadre</a> and
-<a class="reference external" href="http://rodol.fo">Rodolfo Gutiérrez-Romo</a>.</p>
-<p><code class="docutils literal notranslate"><span class="pre">veerer</span></code> works in conjunction with <code class="docutils literal notranslate"><span class="pre">pplpy</span></code> (for rational polytope
-computations and optimiation) and <code class="docutils literal notranslate"><span class="pre">surface_dynamics</span></code> (for analyzing
-stratum components). The plotting part is only available in SageMath.</p>
+<a class="reference external" href="http://rodol.fo">Rodolfo Gutiérrez-Romo</a>, see
+<a class="reference external" href="https://arxiv.org/abs/1909.00890">arXiv:1909.00890 [math.DS]</a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">veerer</span></code> works in conjunction with</p>
+<ul class="simple">
+<li><p>the Python library <a class="reference external" href="https://pypi.org/project/pplpy/">pplpy</a> (rational
+polytope computations and linear optimiation). Note that it is shipped
+with SageMath (see below).</p></li>
+<li><p>The Python library <a class="reference external" href="https://pypi.org/project/PyNormaliz/">PyNormaliz</a>
+(polytope, in particular over number fields).</p></li>
+<li><p>The software <a class="reference external" href="https://www.sagemath.org/">SageMath</a> (plotting, linear algebra
+and many other things)</p></li>
+<li><p>The SageMath library <a class="reference external" href="https://pypi.org/project/surface-dynamics/">surface_dynamics</a> (for analyzing stratum
+components)</p></li>
+</ul>
+<p>To import all features from veerer one usually starts with the following
+lines:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span> <span class="nn">veerer</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="n">sage</span><span class="p">:</span> <span class="kn">from</span> <span class="nn">surface_dynamics</span> <span class="kn">import</span> <span class="o">*</span>   <span class="c1"># optional - surface_dynamics</span>
 </pre></div>
@@ -185,7 +197,7 @@ train-tracks.</p>
 <section id="core-vs-not-core">
 <h2>Core vs not core<a class="headerlink" href="#core-vs-not-core" title="Permalink to this heading">¶</a></h2>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="c1"># start from our surface in H(2) and let us flip some edges</span>
-<span class="n">sage</span><span class="p">:</span> <span class="n">S</span> <span class="o">=</span> <span class="n">T1</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">S</span> <span class="o">=</span> <span class="n">T1</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">mutable</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">S</span><span class="o">.</span><span class="n">is_core</span><span class="p">())</span>
 <span class="kc">True</span>
 <span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">S</span><span class="o">.</span><span class="n">flippable_edges</span><span class="p">())</span>
@@ -225,16 +237,16 @@ train-tracks.</p>
 </pre></div>
 </div>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">S</span><span class="o">.</span><span class="n">train_track_polytope</span><span class="p">(</span><span class="n">HORIZONTAL</span><span class="p">))</span>
-<span class="n">A</span> <span class="mi">4</span><span class="o">-</span><span class="n">dimensional</span> <span class="n">polyhedron</span> <span class="ow">in</span> <span class="n">QQ</span><span class="o">^</span><span class="mi">9</span> <span class="n">defined</span> <span class="k">as</span> <span class="n">the</span> <span class="n">convex</span> <span class="n">hull</span> <span class="n">of</span> <span class="mi">1</span> <span class="n">point</span><span class="p">,</span> <span class="mi">5</span> <span class="n">rays</span>
+<span class="n">Cone</span> <span class="n">of</span> <span class="n">dimension</span> <span class="mi">4</span> <span class="ow">in</span> <span class="n">ambient</span> <span class="n">dimension</span> <span class="mi">9</span> <span class="n">made</span> <span class="n">of</span> <span class="mi">5</span> <span class="n">facets</span> <span class="p">(</span><span class="n">backend</span><span class="o">=</span><span class="n">ppl</span><span class="p">)</span>
 <span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">S</span><span class="o">.</span><span class="n">train_track_polytope</span><span class="p">(</span><span class="n">VERTICAL</span><span class="p">))</span>
-<span class="n">A</span> <span class="mi">3</span><span class="o">-</span><span class="n">dimensional</span> <span class="n">polyhedron</span> <span class="ow">in</span> <span class="n">QQ</span><span class="o">^</span><span class="mi">9</span> <span class="n">defined</span> <span class="k">as</span> <span class="n">the</span> <span class="n">convex</span> <span class="n">hull</span> <span class="n">of</span> <span class="mi">1</span> <span class="n">point</span><span class="p">,</span> <span class="mi">3</span> <span class="n">rays</span>
+<span class="n">Cone</span> <span class="n">of</span> <span class="n">dimension</span> <span class="mi">3</span> <span class="ow">in</span> <span class="n">ambient</span> <span class="n">dimension</span> <span class="mi">9</span> <span class="n">made</span> <span class="n">of</span> <span class="mi">3</span> <span class="n">facets</span> <span class="p">(</span><span class="n">backend</span><span class="o">=</span><span class="n">ppl</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="c1"># check that we indeed started with a core veering triangulation</span>
 <span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">T1</span><span class="o">.</span><span class="n">train_track_polytope</span><span class="p">(</span><span class="n">HORIZONTAL</span><span class="p">))</span>
-<span class="n">A</span> <span class="mi">4</span><span class="o">-</span><span class="n">dimensional</span> <span class="n">polyhedron</span> <span class="ow">in</span> <span class="n">QQ</span><span class="o">^</span><span class="mi">9</span> <span class="n">defined</span> <span class="k">as</span> <span class="n">the</span> <span class="n">convex</span> <span class="n">hull</span> <span class="n">of</span> <span class="mi">1</span> <span class="n">point</span><span class="p">,</span> <span class="mi">4</span> <span class="n">rays</span>
+<span class="n">Cone</span> <span class="n">of</span> <span class="n">dimension</span> <span class="mi">4</span> <span class="ow">in</span> <span class="n">ambient</span> <span class="n">dimension</span> <span class="mi">9</span> <span class="n">made</span> <span class="n">of</span> <span class="mi">4</span> <span class="n">facets</span> <span class="p">(</span><span class="n">backend</span><span class="o">=</span><span class="n">ppl</span><span class="p">)</span>
 <span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">T1</span><span class="o">.</span><span class="n">train_track_polytope</span><span class="p">(</span><span class="n">VERTICAL</span><span class="p">))</span>
-<span class="n">A</span> <span class="mi">4</span><span class="o">-</span><span class="n">dimensional</span> <span class="n">polyhedron</span> <span class="ow">in</span> <span class="n">QQ</span><span class="o">^</span><span class="mi">9</span> <span class="n">defined</span> <span class="k">as</span> <span class="n">the</span> <span class="n">convex</span> <span class="n">hull</span> <span class="n">of</span> <span class="mi">1</span> <span class="n">point</span><span class="p">,</span> <span class="mi">5</span> <span class="n">rays</span>
+<span class="n">Cone</span> <span class="n">of</span> <span class="n">dimension</span> <span class="mi">4</span> <span class="ow">in</span> <span class="n">ambient</span> <span class="n">dimension</span> <span class="mi">9</span> <span class="n">made</span> <span class="n">of</span> <span class="mi">5</span> <span class="n">facets</span> <span class="p">(</span><span class="n">backend</span><span class="o">=</span><span class="n">ppl</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -252,7 +264,7 @@ of the product of the two train-track polytopes.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">T1</span><span class="o">.</span><span class="n">is_geometric</span><span class="p">())</span>
 <span class="kc">True</span>
 <span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">T1</span><span class="o">.</span><span class="n">geometric_polytope</span><span class="p">())</span>
-<span class="n">A</span> <span class="mi">8</span><span class="o">-</span><span class="n">dimensional</span> <span class="n">polyhedron</span> <span class="ow">in</span> <span class="n">QQ</span><span class="o">^</span><span class="mi">18</span> <span class="n">defined</span> <span class="k">as</span> <span class="n">the</span> <span class="n">convex</span> <span class="n">hull</span> <span class="n">of</span> <span class="mi">1</span> <span class="n">point</span><span class="p">,</span> <span class="mi">61</span> <span class="n">rays</span>
+<span class="n">Cone</span> <span class="n">of</span> <span class="n">dimension</span> <span class="mi">8</span> <span class="ow">in</span> <span class="n">ambient</span> <span class="n">dimension</span> <span class="mi">18</span> <span class="n">made</span> <span class="n">of</span> <span class="mi">13</span> <span class="n">facets</span> <span class="p">(</span><span class="n">backend</span><span class="o">=</span><span class="n">ppl</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -271,9 +283,9 @@ from <cite>T_i</cite> by a flip.</p>
 </div>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">A0</span><span class="o">.</span><span class="n">num_states</span><span class="p">(),</span> <span class="n">A0</span><span class="o">.</span><span class="n">num_transitions</span><span class="p">())</span>
 <span class="mi">2</span> <span class="mi">4</span>
-<span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">A0</span><span class="o">.</span><span class="n">num_geometric_triangulations</span><span class="p">())</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">vt</span><span class="o">.</span><span class="n">is_geometric</span><span class="p">()</span> <span class="k">for</span> <span class="n">vt</span> <span class="ow">in</span> <span class="n">A0</span><span class="p">))</span>
 <span class="mi">2</span>
-<span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">A0</span><span class="o">.</span><span class="n">num_cylindrical_triangulations</span><span class="p">())</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">vt</span><span class="o">.</span><span class="n">is_cylindrical</span><span class="p">()</span> <span class="k">for</span> <span class="n">vt</span> <span class="ow">in</span> <span class="n">A0</span><span class="p">))</span>
 <span class="mi">2</span>
 </pre></div>
 </div>
@@ -283,9 +295,9 @@ from <cite>T_i</cite> by a flip.</p>
 </div>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">A1</span><span class="o">.</span><span class="n">num_states</span><span class="p">(),</span> <span class="n">A1</span><span class="o">.</span><span class="n">num_transitions</span><span class="p">())</span>
 <span class="mi">86</span> <span class="mi">300</span>
-<span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">A1</span><span class="o">.</span><span class="n">num_geometric_triangulations</span><span class="p">())</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">vt</span><span class="o">.</span><span class="n">is_geometric</span><span class="p">()</span> <span class="k">for</span> <span class="n">vt</span> <span class="ow">in</span> <span class="n">A1</span><span class="p">))</span>
 <span class="mi">54</span>
-<span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">A1</span><span class="o">.</span><span class="n">num_cylindrical_triangulations</span><span class="p">())</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">vt</span><span class="o">.</span><span class="n">is_cylindrical</span><span class="p">()</span> <span class="k">for</span> <span class="n">vt</span> <span class="ow">in</span> <span class="n">A1</span><span class="p">))</span>
 <span class="mi">24</span>
 </pre></div>
 </div>
@@ -293,9 +305,9 @@ from <cite>T_i</cite> by a flip.</p>
 <span class="n">sage</span><span class="p">:</span> <span class="n">A2</span> <span class="o">=</span> <span class="n">CoreAutomaton</span><span class="p">(</span><span class="n">T2</span><span class="p">)</span>
 <span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">A2</span><span class="o">.</span><span class="n">num_states</span><span class="p">(),</span> <span class="n">A2</span><span class="o">.</span><span class="n">num_transitions</span><span class="p">())</span>
 <span class="mi">1074</span> <span class="mi">3620</span>
-<span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">A2</span><span class="o">.</span><span class="n">num_geometric_triangulations</span><span class="p">())</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">vt</span><span class="o">.</span><span class="n">is_geometric</span><span class="p">()</span> <span class="k">for</span> <span class="n">vt</span> <span class="ow">in</span> <span class="n">A2</span><span class="p">))</span>
 <span class="mi">270</span>
-<span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">A2</span><span class="o">.</span><span class="n">num_cylindrical_triangulations</span><span class="p">())</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">vt</span><span class="o">.</span><span class="n">is_cylindrical</span><span class="p">()</span> <span class="k">for</span> <span class="n">vt</span> <span class="ow">in</span> <span class="n">A2</span><span class="p">))</span>
 <span class="mi">196</span>
 </pre></div>
 </div>
