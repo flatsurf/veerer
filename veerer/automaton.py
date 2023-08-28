@@ -1,35 +1,56 @@
 r"""
 Train-track and triangulations automata.
 """
-from __future__ import print_function, absolute_import
-from six.moves import range, map, filter, zip
+######################################################################
+# This file is part of veering.
+#
+#       Copyright (C) 2018 Mark Bell
+#                     2018-2023 Vincent Delecroix
+#                     2018 Saul Schleimer
+#
+# veerer is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# veerer is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with veerer. If not, see <https://www.gnu.org/licenses/>.
+######################################################################
 
 import os
 import sys
 from time import time
 
+from .triangulation import Triangulation
 from .veering_triangulation import VeeringTriangulation
+from .linear_family import VeeringTriangulationLinearFamily
 from .constants import RED, BLUE, PURPLE, PROPERTIES_COLOURS, colour_to_char, colour_to_string
+from .permutation import perm_invert
 
 from . import env
 from .env import sage, require_package
 
 
-class CoreAutomaton(object):
+class Automaton(object):
     r"""
-    Automaton of core veering triangulations.
+    Automaton of veering triangulations.
 
     EXAMPLES::
 
         sage: from veerer import *
 
         sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
-        sage: A = CoreAutomaton.from_triangulation(T)
+        sage: A = CoreAutomaton(T)
         sage: len(A)
         2
 
         sage: T = VeeringTriangulation('(0,1,2)', 'BBR')
-        sage: A = CoreAutomaton.from_triangulation(T)
+        sage: A = CoreAutomaton(T)
         sage: len(A)
         2
 
@@ -38,10 +59,10 @@ class CoreAutomaton(object):
         sage: fp = '(0,1,2)(~0,~3,~8)(3,5,4)(~4,~1,~5)(6,7,8)(~6,9,~2)'
         sage: cols = 'BRBRBBBRBR'
         sage: T = VeeringTriangulation(fp, cols)
-        sage: CoreAutomaton.from_triangulation(T)
+        sage: CoreAutomaton(T)
         Core veering automaton with 1074 vertices
-        sage: CoreAutomaton.from_triangulation(T, reduced=True)
-        Core veering automaton with 356 vertices
+        sage: ReducedCoreAutomaton(T)
+        Reduced core veering automaton with 356 vertices
 
     Exploring strata::
 
@@ -49,9 +70,9 @@ class CoreAutomaton(object):
         sage: strata = [AbelianStratum(2), QuadraticStratum(2,-1,-1),    # optional - surface_dynamics
         ....:           QuadraticStratum(2,2), AbelianStratum(1,1)]
         sage: for stratum in strata:                                     # optional - surface_dynamics
-        ....:     print(stratum)
-        ....:     print(CoreAutomaton.from_stratum(stratum))
-        ....:     print(CoreAutomaton.from_stratum(stratum, reduced=True))
+        ....:     vt = VeeringTriangulation.from_stratum(stratum)
+        ....:     print(CoreAutomaton(vt))
+        ....:     print(ReducedCoreAutomaton(vt))
         H_2(2)
         Core veering automaton with 86 vertices
         Core veering automaton with 28 vertices
@@ -65,30 +86,76 @@ class CoreAutomaton(object):
         Core veering automaton with 876 vertices
         Core veering automaton with 234 vertices
     """
-    def __init__(self, graph):
-        self._graph = graph
-        self._iso_sigs = sorted(graph)
-        self._index = {sig: index for index, sig in enumerate(self._iso_sigs)}
+    _name = ''
+
+    def __init__(self, seed=None, verbosity=0, **extra_kwds):
+        # verbosity level
+        self._verbosity = 0
+
+        # we encode the graph in a dictionary where the keys are the states
+        # and the outgoing edges from a given state are encoded in the
+        # corresponding value by a list of pairs (end_state, flip_data)
+        self._graph = {}
+
+        # current state (mutable triangulations)
+        self._state = None
+
+        # current branches for running the DFS
+        self._state_branch = []
+        self._flip_branch = []
+
+        # the flips and relabelling performed along the branch
+        self._flips = []
+        self._relabellings = []
+
+        self._setup(**extra_kwds)
+
+        if seed is not None:
+            self.set_seed(seed)
+            self.run()
 
     def __str__(self):
-        return "Core veering automaton with %s vertices" % len(self._graph)
+        status = None
+        if not self._flip_branch:
+            status = 'uninitialized '
+        elif len(self._flip_branch) != 1 or self._flip_branch[-1]:
+            status = 'partial '
+        else:
+            status = ''
+        return ("%s%s automaton with %s %s" % (status, self._name, len(self._graph), 'vertex' if len(self._graph) <= 1 else 'vertices')).capitalize()
 
     def __repr__(self):
         return str(self)
 
     def __len__(self):
-        return len(self._iso_sigs)
+        return len(self._graph)
 
     def one_triangulation(self):
         return next(iter(self))
 
     def __iter__(self):
-        for s in self._iso_sigs:
-            yield VeeringTriangulation.from_string(s)
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
+            sage: A = CoreAutomaton(T)
+            sage: sum(T.is_geometric() for T in A)
+            54
+            sage: sum(T.is_cylindrical() for T in A)
+            24
+        """
+        return iter(self._graph)
 
     def __contains__(self, item):
-        return item in self._iso_sigs
+        if not isinstance(item, Triangulation):
+            return False
+        if item._mutable:
+            item = item.copy(mutable=False)
+        return item in self._graph
 
+    # TODO: provide vertex_map and edge_map functions
     def to_graph(self, directed=True, multiedges=True, loops=True):
         r"""
         Return the underlying graph as a Sage graph or digraph.
@@ -108,7 +175,7 @@ class CoreAutomaton(object):
             sage: fp = "(0,~7,6)(1,~8,~2)(2,~6,~3)(3,5,~4)(4,8,~5)(7,~1,~0)"
             sage: cols = 'RBRBRBBBB'
             sage: T = VeeringTriangulation(fp, cols)
-            sage: A = CoreAutomaton.from_triangulation(T)
+            sage: A = CoreAutomaton(T)
             sage: A
             Core veering automaton with 86 vertices
 
@@ -119,6 +186,7 @@ class CoreAutomaton(object):
             Looped graph on 86 vertices
         """
         require_package('sage', 'to_graph')
+
         if directed:
             from sage.graphs.digraph import DiGraph
             G = DiGraph(loops=loops, multiedges=multiedges)
@@ -127,8 +195,8 @@ class CoreAutomaton(object):
             G = Graph(loops=loops, multiedges=multiedges)
 
         for g, neighb in self._graph.items():
-            for gg, e, old_col, col in neighb:
-                G.add_edge(g, gg, (e, old_col, col))
+            for gg, flip_data in neighb:
+                G.add_edge(g, gg, flip_data)
 
         return G
 
@@ -143,18 +211,20 @@ class CoreAutomaton(object):
             sage: from veerer import *
 
             sage: T = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
-            sage: A = CoreAutomaton.from_triangulation(T)
+            sage: A = CoreAutomaton(T)
             sage: rot = A.rotation_automorphism()
 
             sage: G = A.to_graph()
-            sage: all(G.has_edge(rot[b], rot[a]) for a,b in G.edges(labels=False))
+            sage: all(G.has_edge(rot[b], rot[a]) for a,b in G.edges(sort=False, labels=False))
             True
         """
         aut = {}
-        for a in self._graph:
-            T = VeeringTriangulation.from_string(a)
-            T.rotate()
-            aut[a] = T.iso_sig()
+        for vt in self._graph:
+            vt2 = vt.copy(mutable=True)
+            vt2.rotate()
+            vt2.set_canonical_labels()
+            vt2.set_immutable()
+            aut[vt] = vt2
         return aut
 
     def conjugation_automorphism(self):
@@ -166,11 +236,11 @@ class CoreAutomaton(object):
             sage: from veerer import *
 
             sage: T = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
-            sage: A = CoreAutomaton.from_triangulation(T)
+            sage: A = CoreAutomaton(T)
             sage: conj = A.conjugation_automorphism()
 
             sage: G = A.to_graph()
-            sage: all(G.has_edge(conj[a], conj[b]) for a,b in G.edges(labels=False))
+            sage: all(G.has_edge(conj[a], conj[b]) for a,b in G.edges(sort=False, labels=False))
             True
 
         Conjugation and rotation commutes::
@@ -180,10 +250,12 @@ class CoreAutomaton(object):
             True
         """
         aut = {}
-        for a in self._graph:
-            T = VeeringTriangulation.from_string(a)
-            T.conjugate()
-            aut[a] = T.iso_sig()
+        for vt in self._graph:
+            vt2 = vt.copy(mutable=True)
+            vt2.conjugate()
+            vt2.set_canonical_labels()
+            vt2.set_immutable()
+            aut[vt] = vt2
         return aut
 
     def export_dot(self, filename=None, triangulations=False):
@@ -216,7 +288,7 @@ class CoreAutomaton(object):
 
             sage: filename = tmp_filename() + '.dot'
             sage: T = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
-            sage: A = CoreAutomaton.from_triangulation(T)
+            sage: A = CoreAutomaton(T)
             sage: A.export_dot(filename)
         """
         if filename is not None:
@@ -249,8 +321,8 @@ class CoreAutomaton(object):
 
         f.write('digraph MyGraph {\n')
         f.write(' node [shape=circle style=filled margin=0.1 width=0 height=0]\n')
-        for g in self._iso_sigs:
-            T = VeeringTriangulation.from_string(g)
+        for T in self._graph:
+            g = T.to_string()
             if triangulations:
                 t_filename = os.path.join(path, g + '.svg')
                 t_rel_filename = os.path.join(rel_path, g + '.svg')
@@ -267,8 +339,11 @@ class CoreAutomaton(object):
             else:
                 f.write('    %s [label="%d" color="%s"];\n' % (g, aut_size, colour))
 
-            for gg, e, old_col, new_col in self._graph[g]:
-                f.write('    %s -> %s [color="%s;%f:%s"];\n' % (g, gg, old_col, 0.5, new_col))
+            for TT, flip_data in self._graph[T]:
+                gg = TT.to_string()
+                # TODO: restore coloring options
+                # f.write('    %s -> %s [color="%s;%f:%s"];\n' % (g, gg, old_col, 0.5, new_col))
+                f.write('    %s -> %s;\n' % (g, gg))
         f.write('}\n')
 
         if filename is not None:
@@ -283,9 +358,7 @@ class CoreAutomaton(object):
             sage: from veerer import *
 
             sage: T = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
-            sage: A = CoreAutomaton.from_triangulation(T)
-            sage: A.triangulations()
-            <generator object ...>
+            sage: A = CoreAutomaton(T)
             sage: for t in A.triangulations():
             ....:     assert t.angles() == [6]
         """
@@ -300,7 +373,7 @@ class CoreAutomaton(object):
             sage: from veerer import *
 
             sage: T = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
-            sage: A = CoreAutomaton.from_triangulation(T)
+            sage: A = CoreAutomaton(T)
             sage: A.num_triangulations()
             86
         """
@@ -317,7 +390,7 @@ class CoreAutomaton(object):
             sage: from veerer import *
 
             sage: T = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
-            sage: A = CoreAutomaton.from_triangulation(T)
+            sage: A = CoreAutomaton(T)
             sage: A.num_transitions()
             300
         """
@@ -337,7 +410,7 @@ class CoreAutomaton(object):
             sage: from veerer import *
 
             sage: T = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
-            sage: A = CoreAutomaton.from_triangulation(T)
+            sage: A = CoreAutomaton(T)
             sage: st = A.statistics()
             sage: st
             {0: 24, 1: 4, 2: 4, 16: 28, 17: 5, 18: 5, 24: 10, 29: 3, 30: 3}
@@ -355,7 +428,7 @@ class CoreAutomaton(object):
             sage: from veerer import *
 
             sage: T = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
-            sage: A = CoreAutomaton.from_triangulation(T)
+            sage: A = CoreAutomaton(T)
             sage: A.print_statistics()
                     red square-tiled 3
                    blue square-tiled 3
@@ -376,295 +449,15 @@ class CoreAutomaton(object):
             v = st[k]
             f.write("%24s %d\n" % (properties_to_string(k), v))
 
-    def geometric_triangulations(self, method=None):
-        r"""
-        Return an iterator over the pairs (veering triangulation,
-        geometric polytope) when the triangulation is geometric.
-
-        EXAMPLES::
-
-            sage: from veerer import *
-
-            sage: T = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
-            sage: A = CoreAutomaton.from_triangulation(T)
-            sage: vt, P = next(A.geometric_triangulations())
-            sage: vt.geometric_polytope() == P
-            True
-            sage: P.affine_dimension() == 8
-            True
-
-            sage: sum(1 for _ in A.geometric_triangulations())
-            54
-        """
-        dim = self.one_triangulation().stratum_dimension()
-        for vt in self:
-            p = vt.geometric_polytope()
-            if p.affine_dimension() == 2 * dim:
-                yield vt, p
-
-    def num_geometric_triangulations(self):
-        r"""
-        Return the number of geometric triangulations (among the states).
-
-        EXAMPLES::
-
-            sage: from veerer import *
-
-            sage: T = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
-            sage: A = CoreAutomaton.from_triangulation(T)
-            sage: A.num_geometric_triangulations()
-            54
-        """
-        return sum(vt.is_geometric() for vt in self)
-
-    def cylindrical_triangulations(self):
-        r"""
-        Return an iterator over cylindrical configurations.
-
-        EXAMPLES::
-
-            sage: from veerer import *
-
-            sage: T = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
-            sage: A = CoreAutomaton.from_triangulation(T)
-
-            sage: vt = next(A.cylindrical_triangulations())
-            sage: sum(len(u) for u,_,_,_ in vt.cylinders(BLUE)) == 6 or \
-            ....: sum(len(u) for u,_,_,_ in vt.cylinders(RED)) == 6
-            True
-
-            sage: sum(1 for _ in A.cylindrical_triangulations())
-            24
-        """
-        for vt in self:
-            if vt.is_cylindrical():
-                yield vt
-
-    def num_cylindrical_triangulations(self):
-        r"""
-        Return the number of cylindrical triangulations (among the states).
-
-        EXAMPLES::
-
-            sage: from veerer import *
-
-            sage: T = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
-            sage: A = CoreAutomaton.from_triangulation(T)
-            sage: A.num_cylindrical_triangulations()
-            24
-        """
-        return sum(vt.is_cylindrical() for vt in self)
-
     @classmethod
     def from_triangulation(self, T, reduced=False, max_size=None, verbosity=0):
-        r"""
-        Build the core automaton of ``T``.
-
-        INPUT:
-
-        - ``T`` - a veering triangulation (no GREEN allowed)
-
-        - ``reduced`` - boolean - whether we forgot colours of forward flippable edges
-
-        - ``verbosity`` - integer (default ``0``) - the verbosity level. If nonzero print
-          information during the computation.
-        """
-        # TODO: if we have boundaries we also need to go backward!
-        assert T.is_core()
         if reduced:
-            T.forgot_forward_flippable_colour()
-
-            # TODO: check to be removed
-            if env.CHECK:
-                T._check()
-
-        if verbosity:
-            print('[automaton] stratum: %s' % T.stratum())
-            print('[automaton] stratum dimension: %d' % T.stratum_dimension())
-        if verbosity == 1:
-            print('[automaton] size(graph)   size(path)    time')
-
-        T = T.copy()
-        iso_sig = T.iso_sig()
-        d = T.stratum_dimension()
-
-        graph = {iso_sig: []}
-        iso_sigs = [iso_sig]  # iso_sig sequence
-        flips = []       # backward flip sequence and recolouring
-        branch = []    # forward flips available
-
-        if reduced:
-            ffe = T.purple_edges()
-            assert ffe == T.forward_flippable_edges()
+            A = ReducedCoreAutomaton(verbosity=verbosity)
         else:
-            ffe = T.forward_flippable_edges()
-
-        branch.append([])
-        branch[-1].extend((x, BLUE) for x in ffe)
-        branch[-1].extend((x, RED) for x in ffe)
-        e, col = branch[-1].pop()
-        recol = None
-        old_size = 0
-        t0 = time()
-        while max_size is None or len(graph) < max_size:
-            # TODO: check to be removed
-            if env.CHECK:
-                T._check()
-
-            if verbosity >= 2:
-                print('[automaton] NEW LOOP')
-                print('[automaton] at %s with iso_sig %s' % (T.to_string(), iso_sig))
-                print('[automaton] going along (%s, %s)' % (e, col))
-            elif verbosity:
-                if len(graph) > old_size + 500:
-                    print('\r[automaton] %8d      %8d      %.3f      ' % (len(graph), len(branch), time() - t0), end='')
-                    sys.stdout.flush()
-                    old_size = len(graph)
-
-            # some safety check to be disabled
-            # assert len(flips) + 1 == len(iso_sigs) == len(branch)
-            # assert iso_sig == iso_sigs[-1]
-            # assert T.iso_sig() == iso_sig
-
-            # explore the automaton in DFS
-            old_col = T.colour(e)
-
-            # assertion to be removed
-            assert not reduced or old_col == PURPLE
-            T.flip(e, col, reduced=False)
-
-            if verbosity >= 2:
-                print('[automaton] ... landed at %s' % T.to_string())
-                sys.stdout.flush()
-
-            if T.edge_has_curve(e):  # = T is core
-                if reduced:
-                    recol = []
-                    # only two edges are succeptible to become forward flippable
-                    a, b, c, d = T.square_about_edge(e)
-
-                    # assertions to be removed
-                    assert T._colouring[a] == RED, (a, colour_to_string(T._colouring[a]))
-                    assert T._colouring[b] == BLUE, (b, colour_to_string(T._colouring[b]))
-                    assert T._colouring[c] == RED, (c, colour_to_string(T._colouring[c]))
-                    assert T._colouring[d] == BLUE, (d, colour_to_string(T._colouring[d]))
-                    if col == BLUE:
-                        if T.is_forward_flippable(b):
-                            recol.append((b, BLUE))
-                            T._colouring[b] = PURPLE
-                            T._colouring[T._ep[b]] = PURPLE
-                        if b != d and T.is_forward_flippable(d):
-                            recol.append((d, BLUE))
-                            T._colouring[d] = PURPLE
-                            T._colouring[T._ep[d]] = PURPLE
-
-                        # assertions to be removed
-                        assert not T.is_forward_flippable(e)
-                        assert not T.is_forward_flippable(a)
-                        assert not T.is_forward_flippable(c)
-
-                    elif col == RED:
-                        if T.is_forward_flippable(a):
-                            recol.append((a, RED))
-                            T._colouring[a] = PURPLE
-                            T._colouring[T._ep[a]] = PURPLE
-                        if a != c and T.is_forward_flippable(c):
-                            recol.append((c, RED))
-                            T._colouring[c] = PURPLE
-                            T._colouring[T._ep[c]] = PURPLE
-
-                        # assertions to be removed
-                        assert not T.is_forward_flippable(e)
-                        assert not T.is_forward_flippable(b)
-                        assert not T.is_forward_flippable(d)
-
-                    if verbosity >= 2:
-                        print('[automaton] recol = %s' % (recol,))
-                        sys.stdout.flush()
-
-                new_iso_sig = T.iso_sig()
-                if verbosity >= 2:
-                    print('[automaton] it is core with iso_sig %s' % new_iso_sig)
-                    sys.stdout.flush()
-
-                if new_iso_sig not in graph:
-                    if verbosity >= 2:
-                        print('[automaton] new vertex')
-                        sys.stdout.flush()
-
-                    # new core
-                    flips.append((e, old_col, recol))
-                    graph[new_iso_sig] = []
-                    graph[iso_sig].append((new_iso_sig, e, old_col, col))
-
-                    # assertion to be removed
-                    assert not reduced or old_col == PURPLE
-
-                    iso_sig = new_iso_sig
-                    iso_sigs.append(iso_sig)
-                    branch.append([])
-
-                    # Computing the new forward flippable edges should not be that complicated
-                    # The edge we flip is not available anymore and we have at most two newly
-                    # flippable edges in the neighborhood
-                    if reduced:
-                        ffe = T.purple_edges()
-                        assert ffe == T.forward_flippable_edges()
-                    else:
-                        ffe = T.forward_flippable_edges()
-                    branch[-1].extend((x, BLUE) for x in ffe)
-                    branch[-1].extend((x, RED) for x in ffe)
-                    e, col = branch[-1].pop()
-                    continue
-                else:
-                    # (e,col) leads to an already visited vertex
-                    if verbosity >= 2:
-                        print('[automaton] known vertex')
-                        sys.stdout.flush()
-                    # assertion to be removed
-                    assert not reduced or old_col == PURPLE
-                    graph[iso_sig].append((new_iso_sig, e, old_col, col))
-
-            else:  # = T is not core
-                if reduced:
-                    recol = []
-                if verbosity >= 2:
-                    print('[automaton] not core')
-                    sys.stdout.flush()
-
-            # not core or already visited
-            if reduced:
-                for ee, ccol in recol:
-                    T._colouring[ee] = ccol
-                    T._colouring[T._ep[ee]] = ccol
-            T.flip_back(e, old_col)
-            # TODO: check to be removed
-            if env.CHECK:
-                T._check()
-            assert T.iso_sig() == iso_sigs[-1], (T.iso_sig(), iso_sigs[-1])
-
-            while flips and not branch[-1]:
-                e, old_col, recol = flips.pop()
-                if reduced:
-                    for ee, ccol in recol:
-                        if verbosity >= 2:
-                            print('[automaton] recolour %d as %s' % (ee, colour_to_char(ccol)))
-                            sys.stdout.flush()
-                        T._colouring[ee] = ccol
-                        T._colouring[T._ep[ee]] = ccol
-                T.flip_back(e, old_col)
-                branch.pop()
-                iso_sigs.pop()
-                assert T.iso_sig() == iso_sigs[-1]
-            if not branch[-1]:
-                break
-            iso_sig = iso_sigs[-1]
-            e, col = branch[-1].pop()
-
-        if verbosity == 1:
-            print('\r[automaton] %8d      %8d      %.3f      ' % (len(graph), len(branch), time() - t0))
-            sys.stdout.flush()
-        return CoreAutomaton(graph)
+            A = CoreAutomaton(verbosity=verbosity)
+        A.set_seed(T)
+        A.run(max_size, verbosity)
+        return A
 
     @classmethod
     def from_stratum(self, stratum, reduced=False, **kwds):
@@ -683,3 +476,509 @@ class CoreAutomaton(object):
 
         """
         return self.from_triangulation(VeeringTriangulation.from_stratum(stratum), reduced=reduced, **kwds)
+
+    ######################
+    # DFS implementation #
+    ######################
+
+    def _setup(self):
+        pass
+
+    def _seed_setup(self, state):
+        raise NotImplementedError
+
+    def _forward_flips(self, state):
+        r"""
+        Return the list of forward flip_data from ``state``.
+
+        To be implemented in subclasses.
+        """
+        raise NotImplementedError
+
+    def _flip(self, flip_data):
+        r"""
+        Perform the flips given in ``flip_data``.
+
+        To be implemented in subclasses
+        """
+        raise NotImplementedError
+
+    def _flip_back(self, flip_back_data):
+        r"""
+        Perform back the flips given in ``flip_back_data``
+
+        To be implemented in subclasses
+        """
+        raise NotImplementedError
+
+    def set_seed(self, state):
+        if self._state is not None:
+            raise ValueError('seed already set')
+
+        state = self._seed_setup(state)
+
+        # TODO: check to be removed
+        if env.CHECK:
+            state._check()
+
+        if self._verbosity:
+            print('[automaton] stratum: %s' % state.stratum())
+            print('[automaton] stratum dimension: %d' % state.stratum_dimension())
+        if self._verbosity == 1:
+            print('[automaton] size(graph)   size(path)    time')
+
+        self._state = state
+        immutable_state = state.copy(mutable=False)
+
+        self._graph[immutable_state] = []
+
+        self._state_branch.append(immutable_state)
+        self._flip_branch.append(self._forward_flips(self._state))
+
+    def run(self, max_size=None):
+        r"""
+        Discover the automaton via depth first search.
+
+        INPUT:
+
+        - ``max_size`` -- an optional bound on the number of new states to compute
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+        The torus::
+
+            sage: T = VeeringTriangulation("(0,2,~1)(1,~0,~2)", "RBB")
+            sage: A = CoreAutomaton()
+            sage: A.set_seed(T)
+            sage: A.run()
+            sage: A
+            Core veering automaton with 2 vertices
+
+            sage: A = ReducedCoreAutomaton()
+            sage: A.set_seed(T)
+            sage: A.run()
+            sage: A
+            Reduced core veering automaton with 1 vertex
+
+        A more complicated surface in Q_1(1^2, -1^2)::
+
+            sage: fp = '(0,1,2)(~0,~3,~8)(3,5,4)(~4,~1,~5)(6,7,8)(~6,9,~2)'
+            sage: cols = 'BRBRBBBRBR'
+            sage: T = VeeringTriangulation(fp, cols)
+
+            sage: C = CoreAutomaton()
+            sage: C.set_seed(T)
+            sage: C.run(10)
+            sage: C
+            Partial core veering automaton with 11 vertices
+            sage: C.run()
+            sage: C
+            Core veering automaton with 1074 vertices
+
+            sage: C = ReducedCoreAutomaton()
+            sage: C.set_seed(T)
+            sage: C.run(10)
+            sage: C
+            Partial reduced core veering automaton with 11 vertices
+            sage: C.run()
+            sage: C
+            Reduced core veering automaton with 356 vertices
+        """
+        if not self._flip_branch:
+            return
+
+        T = self._state
+        state_branch = self._state_branch
+        flip_branch = self._flip_branch
+        flips = self._flips
+        relabellings = self._relabellings
+        graph = self._graph
+        recol = None
+
+        count = 0
+        old_size = len(graph)
+        while max_size is None or count < max_size:
+            assert T == state_branch[-1]
+            immutable_state = state_branch[-1]
+            new_flip = flip_branch[-1].pop()
+
+            # TODO: check to be removed
+            if env.CHECK:
+                T._check()
+
+            if self._verbosity >= 2:
+                print('[automaton] NEW LOOP')
+                print('[automaton] at %s' % T)
+                print('[automaton] going along %s' % new_edge)
+            elif self._verbosity:
+                if len(graph) > old_size + 500:
+                    print('\r[automaton] %8d      %8d      %.3f      ' % (len(graph), len(branch), time() - t0), end='')
+                    sys.stdout.flush()
+                    old_size = len(graph)
+
+            # perform a flip
+            is_target_valid, flip_back_data = self._flip(new_flip)
+
+            if self._verbosity >= 2:
+                print('[automaton] ... landed at %s' % T)
+                sys.stdout.flush()
+
+            if is_target_valid: # = T is a valid vertex
+                r, _ = T.best_relabelling()
+                rinv = perm_invert(r)
+                T.relabel(r, check=False)
+                new_state = T.copy(mutable=False)
+                new_state.set_immutable()
+                graph[state_branch[-1]].append((new_state, new_flip))
+
+                if self._verbosity >= 2:
+                    print('[automaton] valid new state')
+                    sys.stdout.flush()
+
+                if new_state not in graph:
+                    # new target vertex
+                    if self._verbosity >= 2:
+                        print('[automaton] new vertex')
+                        sys.stdout.flush()
+
+                    # new core
+                    flips.append(flip_back_data)
+                    relabellings.append(rinv)
+                    graph[new_state] = []
+                    state_branch.append(new_state)
+
+                    # TODO: one can optimize the computation of forward flippable edges knowing
+                    # how the current state was built
+                    flip_branch.append(self._forward_flips(T))
+                    count += 1
+                    continue
+
+                else:
+                    # existing target vertex
+                    if self._verbosity >= 2:
+                        print('[automaton] known vertex')
+                        sys.stdout.flush()
+                    T.relabel(rinv, check=False)
+
+            else:  # = T is not a valid vertex
+                if self._verbosity >= 2:
+                    print('[automaton] invalid vertex')
+                    sys.stdout.flush()
+
+            # not core or already visited
+            self._flip_back(flip_back_data)
+
+            # TODO: check to be removed
+            if env.CHECK:
+                T._check()
+            assert T == state_branch[-1], (T, state_branch[-1])
+
+            while flips and not flip_branch[-1]:
+                rinv = relabellings.pop()
+                T.relabel(rinv, check=False)
+                flip_back_data = flips.pop()
+                self._flip_back(flip_back_data)
+                state_branch.pop()
+                flip_branch.pop()
+                assert T == state_branch[-1]
+            if not flip_branch[-1]:
+                break
+
+        if self._verbosity == 1:
+            print('\r[automaton] %8d      %8d      %.3f      ' % (len(graph), len(flip_branch), time() - t0))
+            sys.stdout.flush()
+
+        assert self._state is T
+
+
+class FlipGraph(Automaton):
+    r"""
+    The flip graph
+
+    EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T = Triangulation([(0,1,2),(-1,-2,-3)])
+            sage: FlipGraph(T)
+            Triangulation automaton with 1 vertex
+
+            sage: fp = '(0,1,2)(~0,~3,~8)(3,5,4)(~4,~1,~5)(6,7,8)(~6,9,~2)'
+            sage: T = Triangulation(fp)
+            sage: FlipGraph(T)
+            Triangulation automaton with 236 vertices
+    """
+    _name = 'triangulation'
+
+    def _seed_setup(self, state):
+        if not isinstance(state, Triangulation):
+            raise ValueError('invalid seed')
+        state = state.copy(mutable=True)
+        state.set_canonical_labels()
+        return state
+
+    def _forward_flips(self, state):
+        r"""
+        Return the list of forward flippable edges from ``state``
+        """
+        return state.flippable_edges()
+
+    def _flip(self, flip_data):
+        e = flip_data
+        self._state.flip(e, check=env.CHECK)
+        return True, e
+
+    def _flip_back(self, flip_back_data):
+        e = flip_back_data
+        self._state.flip_back(e, check=env.CHECK)
+
+
+class CoreAutomaton(Automaton):
+    r"""
+    Automaton of core veering triangulations.
+    """
+    _name = 'core veering'
+
+    def _seed_setup(self, state):
+        if not isinstance(state, VeeringTriangulation) or not state.is_core():
+            raise ValueError('invalid seed')
+        state = state.copy(mutable=True)
+        state.set_canonical_labels()
+        return state
+
+    def _forward_flips(self, state):
+        r"""
+        Return the list of forward flippable edges from ``state``
+        """
+        ffe = state.forward_flippable_edges()
+        return [(x, col) for x in ffe for col in (BLUE, RED)]
+
+    def _flip(self, flip_data):
+        e, col = flip_data
+        old_col = self._state.colour(e)
+        self._state.flip(e, col, check=env.CHECK)
+        flip_back_data = (e, old_col)
+        return self._state.edge_has_curve(e), flip_back_data
+
+    def _flip_back(self, flip_back_data):
+        e, old_col = flip_back_data
+        self._state.flip_back(e, old_col, check=env.CHECK)
+
+
+class ReducedCoreAutomaton(Automaton):
+    _name = 'reduced core veering'
+
+    def _seed_setup(self, state):
+        if not isinstance(state, VeeringTriangulation) or not state.is_core():
+            raise ValueError('invalid seed')
+
+        state = state.copy(mutable=True)
+        state.forgot_forward_flippable_colour()
+        state.set_canonical_labels()
+        return state
+
+    def _forward_flips(self, state):
+        r"""
+        Return the list of forward flippable edges from ``state``
+        """
+        ffe = state.purple_edges()
+        # TODO: check to be removed
+        if env.CHECK:
+            assert ffe == state.forward_flippable_edges()
+        return [(x, col) for x in ffe for col in (BLUE, RED)]
+
+    def _flip(self, flip_data):
+        T = self._state
+        e, col = flip_data
+
+        # TODO: check to be removed
+        if env.CHECK:
+            assert T.is_forward_flippable(e)
+        old_col = self._state.colour(e)
+        self._state.flip(e, col, reduced=False, check=env.CHECK)
+
+        if not self._state.edge_has_curve(e):
+            return False, (e, old_col, ())
+
+        recolorings = []
+        # only two edges are succeptible to become forward flippable
+        a, b, c, d = T.square_about_edge(e)
+
+        # assertions to be removed
+        assert T._colouring[a] == RED, (a, colour_to_string(T._colouring[a]))
+        assert T._colouring[b] == BLUE, (b, colour_to_string(T._colouring[b]))
+        assert T._colouring[c] == RED, (c, colour_to_string(T._colouring[c]))
+        assert T._colouring[d] == BLUE, (d, colour_to_string(T._colouring[d]))
+        if col == BLUE:
+            if T.is_forward_flippable(b):
+                recolorings.append((b, BLUE))
+                T._colouring[b] = PURPLE
+                T._colouring[T._ep[b]] = PURPLE
+            if b != d and T.is_forward_flippable(d):
+                recolorings.append((d, BLUE))
+                T._colouring[d] = PURPLE
+                T._colouring[T._ep[d]] = PURPLE
+
+            # assertions to be removed
+            if env.CHECK:
+                assert not T.is_forward_flippable(e)
+                assert not T.is_forward_flippable(a)
+                assert not T.is_forward_flippable(c)
+
+        elif col == RED:
+            if T.is_forward_flippable(a):
+                recolorings.append((a, RED))
+                T._colouring[a] = PURPLE
+                T._colouring[T._ep[a]] = PURPLE
+            if a != c and T.is_forward_flippable(c):
+                recolorings.append((c, RED))
+                T._colouring[c] = PURPLE
+                T._colouring[T._ep[c]] = PURPLE
+
+            # assertions to be removed
+            if env.CHECK:
+                assert not T.is_forward_flippable(e)
+                assert not T.is_forward_flippable(b)
+                assert not T.is_forward_flippable(d)
+
+        return True, (e, old_col, recolorings)
+
+    def _flip_back(self, flip_back_data):
+        e, old_col, recolorings = flip_back_data
+        for ee, ccol in recolorings:
+            self._state._colouring[ee] = ccol
+            self._state._colouring[self._state._ep[ee]] = ccol
+        self._state.flip_back(e, old_col, check=env.CHECK)
+
+
+class GeometricAutomaton(Automaton):
+    r"""
+    Automaton of geometric veering triangulations.
+
+    A veering triangulation is called geometric, if the set of
+    associated L^oo-vector data is full dimensional in the
+    ambient stratum.
+
+    EXAMPLES::
+
+        sage: from veerer import *
+        sage: fp = "(0,~7,6)(1,~8,~2)(2,~6,~3)(3,5,~4)(4,8,~5)(7,~1,~0)"
+        sage: cols = "RBRBRBBBB"
+        sage: vt = VeeringTriangulation(fp, cols)
+        sage: GeometricAutomaton(vt)
+        Geometric veering automaton with 54 vertices
+
+    One can check that the cardinality is indeed correct::
+
+        sage: sum(x.is_geometric() for x in CoreAutomaton(vt))
+        54
+    """
+    _name = 'geometric veering'
+
+    def _setup(self, backend=None):
+        self._backend = backend
+
+    def _seed_setup(self, state):
+        if not isinstance(state, VeeringTriangulation) or not state.is_geometric(backend=self._backend):
+            raise ValueError('invalid seed')
+        if self._backend is None:
+            from .polyhedron.cone import default_backend
+            self._backend = default_backend(state.base_ring())
+        state = state.copy(mutable=True)
+        state.set_canonical_labels()
+        return state
+
+    def _forward_flips(self, state):
+        r"""
+        Return the list of forward flippable edges from ``state``
+        """
+        return state.geometric_flips(backend=self._backend)
+
+    def _flip(self, flip_data):
+        edges, col = flip_data
+        assert all(self._state.colour(e) == self._state.colour(edges[0]) for e in edges)
+        flip_back_data = (edges, self._state.colour(edges[0]))
+        for e in edges:
+            self._state.flip(e, col, check=env.CHECK)
+        if env.CHECK and not self._state.is_geometric(backend=self._backend):
+            raise RuntimeError('that was indeed possible!')
+        return True, flip_back_data
+
+    def _flip_back(self, flip_back_data):
+        edges, old_col = flip_back_data
+        for e in edges:
+            self._state.flip_back(e, old_col, check=env.CHECK)
+
+
+class GeometricAutomatonSubspace(Automaton):
+    r"""
+    Automaton of geometric veering triangulations with a linear subspace constraint.
+
+    A veering triangulation is called geometric, if the set of
+    associated L^oo-vector data is full dimensional in the
+    ambient stratum.
+
+    EXAMPLES::
+
+        sage: from veerer import *
+
+        sage: vt, s, t = VeeringTriangulations.L_shaped_surface(1, 1, 1, 1)
+        sage: f = VeeringTriangulationLinearFamily(vt, [s, t])
+        sage: GeometricAutomatonSubspace(f)
+        Geometric veering linear constraint automaton with 6 vertices
+
+    One can check that the cardinality is indeed correct::
+
+        sage: sum(x.is_geometric() for x in CoreAutomaton(vt))
+        54
+
+    Some L-shape surfaces::
+
+        sage: for n in range(3, 7):
+        ....:     vt, s, t = VeeringTriangulations.L_shaped_surface(1, n-2, 1, 1)
+        ....:     f = VeeringTriangulationLinearFamily(vt, [s, t])
+        ....:     print('n={}: {}'.format(n, GeometricAutomatonSubspace(f)))
+        n=3: Geometric veering linear constraint automaton with 6 vertices
+        n=4: Geometric veering linear constraint automaton with 86 vertices
+        n=5: Geometric veering linear constraint automaton with 276 vertices
+        n=6: Geometric veering linear constraint automaton with 800 vertices
+    """
+    _name = 'geometric veering linear constraint'
+    
+    def _setup(self, backend=None):
+        self._backend = backend
+
+    def _seed_setup(self, state):
+        if not isinstance(state, VeeringTriangulationLinearFamily) or not state.is_geometric(backend=self._backend):
+            raise ValueError('invalid seed')
+        if self._backend is None:
+            from .polyhedron.cone import default_backend
+            self._backend = default_backend(state.base_ring())
+        state = state.copy(mutable=True)
+        state.set_canonical_labels()
+        return state
+
+    def _forward_flips(self, state):
+        r"""
+        Return the list of forward flippable edges from ``state``
+        """
+        return state.geometric_flips(backend=self._backend)
+
+    def _flip(self, flip_data):
+        edges, col = flip_data
+        assert all(self._state.colour(e) == self._state.colour(edges[0]) for e in edges)
+        flip_back_data = (edges, self._state.colour(edges[0]))
+        for e in edges:
+            self._state.flip(e, col, check=env.CHECK)
+        if env.CHECK:
+            self._state._check(RuntimeError)
+            if not self._state.is_geometric(backend=self._backend):
+                raise RuntimeError
+        return True, flip_back_data
+
+    def _flip_back(self, flip_back_data):
+        edges, old_col = flip_back_data
+        for e in edges:
+            self._state.flip_back(e, old_col, check=env.CHECK)

@@ -36,11 +36,11 @@ from veerer import VeeringTriangulation, RED, BLUE, PURPLE, VERTICAL
  ("(0,3,4)(1,~3,5)(2,6,~4)", "BRBBRRB", 100)
  ])
 def test_flip_reduced(fp, cols, repeat):
-    V = VeeringTriangulation(fp, cols)
-    assert V.is_core()
+    V0 = VeeringTriangulation(fp, cols)
+    assert V0.is_core()
 
     for _ in range(repeat):
-        V0 = V.copy()
+        V = V0.copy(mutable=True)
         e = random.choice(V.forward_flippable_edges())
         col = random.choice([RED, BLUE])
 

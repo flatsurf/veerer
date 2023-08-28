@@ -2,9 +2,6 @@ r"""
 Covering of triangulations
 """
 
-from __future__ import absolute_import, print_function
-from six.moves import range, map, zip
-
 from array import array
 
 from .permutation import *
@@ -54,11 +51,11 @@ class TriangulationCover(object):
     """
     __slots__ = ['_t', '_d', '_c']
 
-    def __init__(self, triangulation, cover, check=True):
+    def __init__(self, triangulation, cover, mutable=False, check=True):
         if not isinstance(triangulation, Triangulation):
-            self._t = Triangulation(triangulation)
+            self._t = Triangulation(triangulation, mutable=mutable, check=False)
         else:
-            self._t = triangulation.copy()
+            self._t = triangulation.copy(mutable=mutable)
 
         if not isinstance(cover, (tuple, list)) or \
            (len(cover) != self._t.num_half_edges() and len(cover) != self._t.num_edges()):
@@ -124,9 +121,9 @@ class TriangulationCover(object):
             raise TypeError
         return self._t != other._t or self._c != other._c
 
-    def copy(self):
+    def copy(self, mutable=None):
         T = TriangulationCover.__new__(TriangulationCover)
-        T._t = self._t.copy()
+        T._t = self._t.copy(mutable=mutable)
         T._d = self._d
         T._c = tuple(p[:] for p in self._c)
         return T
@@ -210,7 +207,7 @@ class TriangulationCover(object):
     def faces(self):
         return perm_cycles(self.face_permutation())
 
-    def as_triangulation(self):
+    def as_triangulation(self, mutable=None):
         r"""
         Return this cover as a triangulation.
 
@@ -223,10 +220,13 @@ class TriangulationCover(object):
             sage: C.as_triangulation()
             Triangulation("(0,1,7)(2,3,~0)(4,~4,6)...(~6,~3,~18)(~23,~22,~20)")
         """
+        if mutable is None:
+            mutable = self._t._mutable
         return Triangulation.from_face_edge_perms(
                 fp=self.face_permutation(),
                 ep=self.edge_permutation(),
-                vp=self.vertex_permutation())
+                vp=self.vertex_permutation(),
+                mutable=mutable)
 
     def num_folded_edges(self):
         n = self._t.num_half_edges()
@@ -270,7 +270,7 @@ class TriangulationCover(object):
             sage: from veerer import Triangulation
 
             sage: T = Triangulation("(0,1,2)")
-            sage: C = T.cover([[1,0], [1,0], [1,0]])
+            sage: C = T.cover([[1,0], [1,0], [1,0]], mutable=True)
             sage: C.flip(0)
             sage: C
             TriangulationCover("(0,2,1)",
@@ -279,7 +279,7 @@ class TriangulationCover(object):
               [1,0]])
 
             sage: T = Triangulation("(0,1,2)")
-            sage: C = T.cover([[1,0,2], [2,1,0], [0,1,2]])
+            sage: C = T.cover([[1,0,2], [2,1,0], [0,1,2]], mutable=True)
             sage: C.flip(0); C._check()
             sage: C.flip(1); C._check()
             sage: C.flip(2); C._check()
@@ -291,7 +291,7 @@ class TriangulationCover(object):
             sage: d = 5
             sage: for e in range(n):
             ....:     if T.is_flippable(e):
-            ....:         C = T.cover([[2,4,1,3,0],[4,1,3,2,0],[3,0,1,2,4]])
+            ....:         C = T.cover([[2,4,1,3,0],[4,1,3,2,0],[3,0,1,2,4]], mutable=True)
             ....:         TT = C.as_triangulation()
             ....:         C.flip(e)
             ....:         C._check()
@@ -313,6 +313,8 @@ class TriangulationCover(object):
         # | /         |     |         \ |
         # v/    c     |     v     c    \|
         # w---------->x     w---------->x
+        if not self._t._mutable:
+            raise ValueError("immutable veering triangulation cover; use a mutable copy instead")
 
         e = int(e)
         ep = self._t.edge_permutation(copy=False)

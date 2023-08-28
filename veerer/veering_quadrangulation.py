@@ -14,8 +14,9 @@ Veering quadrangulations generalize Penner construction.
 
 .. TODO:
 
-    The general case of quadratic differential can be encoded with a pair of
-    involution without fixed points on symmetric group on 2n symbols.
+    The general case of quadratic differential can be encoded with a triple
+    of involutions without fixed points on symmetric group on n symbols
+    (tau_R, tau_B, tau_P).
 """
 ######################################################################
 # This file is part of veering.

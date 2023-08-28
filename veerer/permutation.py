@@ -10,8 +10,26 @@ TODO:
   such array should not be allocated each time the function
   is called.
 """
-from __future__ import absolute_import, print_function
-from six.moves import range, map, filter, zip
+######################################################################
+# This file is part of veering.
+#
+#       Copyright (C) 2018 Mark Bell
+#                     2018-2023 Vincent Delecroix
+#                     2018 Saul Schleimer
+#
+# veerer is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# veerer is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with veerer. If not, see <https://www.gnu.org/licenses/>.
+######################################################################
 
 from array import array
 from math import log
@@ -627,6 +645,48 @@ def perm_cycles(p, singletons=True, n=None):
         res.append(cycle)
 
     return res
+
+def perm_cycles_lengths(p, n=None):
+    r"""
+    Return the array of orbit sizes.
+
+    INPUT:
+
+    - ``p`` -- the permutation
+
+    - ``n`` -- (optional) only use the first ``n`` elements of the permutation ``p``
+
+    EXAMPLES::
+
+        sage: from veerer.permutation import perm_cycles_lengths
+
+        sage: perm_cycles_lengths([0,2,1])
+        [1, 2, 2]
+        sage: perm_cycles_lengths([2,-1,0])
+        [2, -1, 2]
+        sage: perm_cycles_lengths([2,0,1,None,None], n=3)
+        [3, 3, 3]
+    """
+    if n is None:
+        n = len(p)
+    elif n < 0 or n > len(p):
+        raise ValueError
+
+    lengths = [-1] * n
+    for i in range(n):
+        if lengths[i] != -1 or p[i] == -1:
+            continue
+        j = i
+        m = 0
+        while lengths[j] == -1:
+            lengths[j] = 0
+            j = p[j]
+            m += 1
+        while lengths[j] == 0:
+            lengths[j] = m
+            j = p[j]
+
+    return lengths
 
 def perm_num_cycles(p, n=None):
     r"""

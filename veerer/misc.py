@@ -2,9 +2,6 @@ r"""
 Utility functions.
 """
 
-from __future__ import print_function, absolute_import
-from six.moves import range, map, filter, zip
-
 from .env import ppl
 
 def det2(u, v):
