@@ -9,15 +9,15 @@ EXAMPLES::
 NONE = 0
 
 # edge colors
-RED    = 1<<0   # positive slope
-BLUE   = 1<<1   # negative slope
+RED = 1<<0   # positive slope
+BLUE = 1<<1   # negative slope
 PURPLE = 1<<2   # horizontal
-GREEN  = 1<<3   # vertical
+GREEN = 1<<3   # vertical
 
-cRED    = 'R'
-cBLUE   = 'B'
+cRED = 'R'
+cBLUE = 'B'
 cPURPLE = 'P'
-cGREEN  = 'G'
+cGREEN = 'G'
 
 sRED = 'red'
 sBLUE = 'blue'
@@ -27,30 +27,31 @@ sGREEN = 'green'
 COLOURS = [RED, BLUE, PURPLE, GREEN]
 
 # additional veering triangulation properties
-SQUARETILED    = 1 << 2
+SQUARETILED = 1 << 2
 QUADRANGULABLE = 1 << 3
-CYLINDRICAL    = RED | BLUE
-GEOMETRIC      = 1 << 4
+CYLINDRICAL = RED | BLUE
+GEOMETRIC = 1 << 4
 
 ST = SQUARETILED | GEOMETRIC
 
 PROPERTIES_COLOURS = {
-    NONE : '#FFFFFF',  # white
-    RED  : '#8B0000',               # dark red
-    RED | ST : '#FF0000', # red
-    BLUE : '#00008B',              # dark blue
-    BLUE | ST : '#0000FF',# blue
-    GEOMETRIC       : '#00AA00',   # green
-    GEOMETRIC | RED : '#FAAA00',
-    GEOMETRIC | BLUE: '#00AAFF'
-    }
+    NONE: '#FFFFFF',  # white
+    RED: '#8B0000',               # dark red
+    RED | ST: '#FF0000',  # red
+    BLUE: '#00008B',              # dark blue
+    BLUE | ST: '#0000FF',  # blue
+    GEOMETRIC: '#00AA00',   # green
+    GEOMETRIC | RED: '#FAAA00',
+    GEOMETRIC | BLUE: '#00AAFF'}
+
 
 def key_property(p):
-    return -((1<<4) * bool(p & SQUARETILED) | \
-           (1<<3) * bool(p & GEOMETRIC) | \
-           (1<<2) * bool(p & QUADRANGULABLE) | \
-           (1<<1) * bool(p & RED) | \
-           (1<<0) * bool(p & BLUE))
+    return -((1<<4) * bool(p & SQUARETILED) |
+             (1<<3) * bool(p & GEOMETRIC) |
+             (1<<2) * bool(p & QUADRANGULABLE) |
+             (1<<1) * bool(p & RED) |
+             (1<<0) * bool(p & BLUE))
+
 
 def properties_to_string(p):
     r"""
@@ -99,15 +100,17 @@ def properties_to_string(p):
     else:
         return 'none'
 
+
 # slopes and directions
 HORIZONTAL = 1
-VERTICAL   = 2
+VERTICAL = 2
 RIGHT = HORIZONTAL | 4
 LEFT = HORIZONTAL | 8
 UP = VERTICAL | 4
 DOWN = VERTICAL | 8
 
 SLOPES = [HORIZONTAL, VERTICAL]
+
 
 def colour_from_char(c):
     r"""
@@ -136,6 +139,7 @@ def colour_from_char(c):
     else:
         raise ValueError("unknown color '%s'" % c)
 
+
 def colour_to_char(col):
     r"""
     EXAMPLES::
@@ -147,11 +151,17 @@ def colour_to_char(col):
         sage: assert colour_to_char(GREEN) == 'G'
         sage: assert colour_to_char(PURPLE) == 'P'
     """
-    if col == RED: return cRED
-    elif col == BLUE: return cBLUE
-    elif col == PURPLE: return cPURPLE
-    elif col == GREEN: return cGREEN
-    else: raise ValueError("unknown color %s" % col)
+    if col == RED:
+        return cRED
+    elif col == BLUE:
+        return cBLUE
+    elif col == PURPLE:
+        return cPURPLE
+    elif col == GREEN:
+        return cGREEN
+    else:
+        raise ValueError("unknown color %s" % col)
+
 
 def colour_to_string(col):
     r"""
@@ -164,10 +174,13 @@ def colour_to_string(col):
         sage: assert colour_to_string(GREEN) == 'green'
         sage: assert colour_to_string(PURPLE) == 'purple'
     """
-    if col == RED: return sRED
-    elif col == BLUE: return sBLUE
-    elif col == PURPLE: return sPURPLE
-    elif col == GREEN: return sGREEN
-    else: raise ValueError("unknown color %s" % col)
-
-
+    if col == RED:
+        return sRED
+    elif col == BLUE:
+        return sBLUE
+    elif col == PURPLE:
+        return sPURPLE
+    elif col == GREEN:
+        return sGREEN
+    else:
+        raise ValueError("unknown color %s" % col)

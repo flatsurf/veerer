@@ -25,7 +25,11 @@ Triangulation of surfaces.
 import numbers
 from array import array
 
-from .permutation import *
+from .permutation import (perm_init, perm_check, perm_cycles,
+                          perm_invert, perm_conjugate, perm_cycle_string, perm_cycles_lengths,
+                          perm_num_cycles, str_to_cycles, perm_compose, perm_from_base64_str,
+                          uint_base64_str, uint_from_base64_str, perm_base64_str,
+                          perms_are_transitive)
 from .env import require_package, flipper, curver, sage, rich_to_bool, op_LE, op_LT, op_EQ, op_NE, op_GT, op_GE
 
 
@@ -83,8 +87,8 @@ def face_edge_perms_init(data):
     n = len(pos) + len(neg)
 
     # build the edge permutation ep
-    ep = [-1] * n # edge permutation
-    m = n - 1 # label available at the back
+    ep = [-1] * n  # edge permutation
+    m = n - 1   # label available at the back
     for e in neg:
         E = ~e
         e = m
@@ -97,12 +101,12 @@ def face_edge_perms_init(data):
         if ep[i] == -1:
             ep[i] = i
 
-    fp = [-1] * n # face permutation
+    fp = [-1] * n  # face permutation
     for c in l:
         k = len(c)
         for i in range(k):
             e0 = c[i]
-            e1 = c[(i+1) % k]
+            e1 = c[(i + 1) % k]
             if e0 < 0:
                 e0 = ep[~e0]
             if e1 < 0:
@@ -134,6 +138,7 @@ def face_edge_perms_init(data):
 # with a quite different encoding, see
 #
 #    https://github.com/flatsurf/sage-flatsurf
+
 
 class Triangulation(object):
     r"""
@@ -359,7 +364,7 @@ class Triangulation(object):
             sage: Triangulation.from_string(T.to_string()) == T
             True
         """
-        n,fp,ep = s.split('_')
+        n, fp, ep = s.split('_')
         n = uint_from_base64_str(n)
         fp = perm_from_base64_str(fp, n)
         ep = perm_from_base64_str(ep, n)
@@ -619,7 +624,7 @@ class Triangulation(object):
     def folded_edges(self):
         n = self._n
         ep = self._ep
-        return [i for i in range(n) if ep[i]==i]
+        return [i for i in range(n) if ep[i] == i]
 
     def num_folded_edges(self):
         n = self._n
@@ -631,8 +636,10 @@ class Triangulation(object):
 
     def _edge_rep(self, e):
         f = self._ep[e]
-        if f < e: return '~%d' % f
-        else: return str(e)
+        if f < e:
+            return '~%d' % f
+        else:
+            return str(e)
 
     def _norm(self, e):
         f = self._ep[e]
@@ -814,7 +821,7 @@ class Triangulation(object):
         m = matrix(ZZ, nf + nfe, ne)
 
         # face equations
-        for i,f in enumerate(self.faces()):
+        for i, f in enumerate(self.faces()):
             for e in f:
                 if ep[e] == e:
                     continue
@@ -909,7 +916,7 @@ class Triangulation(object):
         elif ep[e] < e:
             e = ep[e]
 
-        a,b,c,d = self.square_about_edge(e)
+        a, b, c, d = self.square_about_edge(e)
         # v_e use to be v_c + v_d and becomes v_d + v_a
         # v<----------u     v<----------u
         # |     a    ^^     |^    a     ^
@@ -936,9 +943,9 @@ class Triangulation(object):
         else:
             if a == A and d == D:
                 try:
-                    m[e] = V = m.row_ambient_module().zero()
+                    m[e] = m.row_ambient_module().zero()
                 except AttributeError:
-                    m[e] = V = m._row_ambient_module().zero()
+                    m[e] = m._row_ambient_module().zero()
             elif a == A:
                 m[e] = m[d] if d < D else -m[D]
             elif d == D:
@@ -1002,9 +1009,9 @@ class Triangulation(object):
 
             e = q[e0]
             E = ep[e]
-            if E < e:
+            if E < e:    
                 is_e0_neg = True
-                e,E = E,e
+                e, E = E, e
             else:
                 is_e0_neg = False
             while not seen[e]:
@@ -1109,7 +1116,7 @@ class Triangulation(object):
         c = self._fp[E]
         d = self._fp[c]
 
-        return a,b,c,d
+        return a, b, c, d
 
     def swap(self, e):
         r"""
@@ -1552,11 +1559,11 @@ class Triangulation(object):
         ep = self._ep
         vp = self._vp
 
-        k = 0     # current available label at the front.
-        m = n - 1 # current available label at the back.
+        k = 0      # current available label at the front.
+        m = n - 1  # current available label at the back.
         relabelling = array('l', [-1] * n)
         relabelling[start_edge] = 0
-        k = k + 1
+        k += 1
 
         if ep[start_edge] != start_edge:
             relabelling[ep[start_edge]] = m
@@ -1645,7 +1652,6 @@ class Triangulation(object):
             ....:     S.relabel(a)
             ....:     assert S == V
         """
-        n = self._n
         fp = self._fp
         ep = self._ep
 
@@ -1669,6 +1675,7 @@ class Triangulation(object):
 
         p0 = perm_invert(best_relabellings[0])
         return [perm_compose(p, p0) for p in best_relabellings]
+
 
     def best_relabelling(self, all=False):
         n = self._n
