@@ -46,19 +46,19 @@ def test_flip(fp, cols, repeat):
         oldcol = V.edge_colour(e)
         col = random.choice([RED, BLUE])
 
-        W = V.copy()
+        W = V.copy(mutable=True)
         W.flip(e, col)
         assert W.is_backward_flippable(e)
         test1 = W.edge_has_curve(e)
         test2 = W.is_core()
         assert test1 == test2, (V, W, e, col)
 
-        X = W.copy()
+        X = W.copy(mutable=True)
         X.forgot_forward_flippable_colour()
         test3 = X.train_track_polytope(VERTICAL).affine_dimension() == X.stratum_dimension()
         assert test1 == test3, (W, X)
 
-        Y = V.copy()
+        Y = V.copy(mutable=True)
         Y.forgot_forward_flippable_colour()
         Y.flip(e, col, reduced=False)
         assert Y.is_backward_flippable(e)
@@ -81,12 +81,13 @@ def test_flip(fp, cols, repeat):
  ("(0,3,4)(1,~3,5)(2,6,~4)", "BRBBRRB", 50)
  ])
 def test_flip_reduced(fp, cols, repeat):
-    V = VeeringTriangulation(fp, cols)
-    assert V.is_core()
-    V.forgot_forward_flippable_colour()
+    V0 = VeeringTriangulation(fp, cols, mutable=True)
+    assert V0.is_core()
+    V0.forgot_forward_flippable_colour()
+    V0.set_immutable()
 
     for _ in range(repeat):
-        V0 = V.copy()
+        V = V0.copy(mutable=True)
         e = random.choice(V.forward_flippable_edges())
         assert V.edge_colour(e) == PURPLE
         col = random.choice([RED, BLUE])

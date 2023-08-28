@@ -96,17 +96,17 @@ class FlatVeeringTriangulationLayout(object):
         sage: holonomies = [(1, 2), (-2, -1), (1, -1), (1, -1), (-2, -1), (1, 2)]
         sage: fvt = FlatVeeringTriangulation(triangles, holonomies)
         sage: layout = FlatVeeringTriangulationLayout(fvt)
-        sage: layout
+        sage: layout  # random
         FlatTriangulationLayout(FlatVeeringTriangulation(Triangulation("(0,1,2)(~2,~0,~1)"), [(1, 2), (-2, -1), (1, -1), (-1, 1), (2, 1), (-1, -2)]))
         sage: layout.set_pos()
-        sage: layout
-        FlatTriangulationLayout(FlatVeeringTriangulation(Triangulation("(0,1,2)(~2,~0,~1)"), [(1, 2), (-2, -1), (1, -1), (-1, 1), (2, 1), (-1, -2)]), [(2, 1), (3, 3), (1, 2), (2, 1), (0, 0), (1, 2)])
+        sage: layout  # random
+        FlatTriangulationLayout(FlatVeeringTriangulation(Triangulation("(0,1,2)(~2,~0,~1)"), [(1, 2), (-2, -1), (1, -1), (-1, 1), (2, 1), (-1, -2)]), [(1, 0), (2, 2), (0, 1), (3, 1), (1, 0), (2, 2)])
 
     Or from a preexisting flat surface::
 
         sage: T = VeeringTriangulation("(0,1,2)(~0,~1,3)", "BRBB")
         sage: F = FlatVeeringTriangulation.from_coloured_triangulation(T)
-        sage: F.layout()
+        sage: F.layout()  # random
         FlatTriangulationLayout(FlatVeeringTriangulation(Triangulation("(0,1,2)(3,~0,~1)"), [(1, -2), (1, 1), (-2, 1), (2, -1), (-1, -1), (-1, 2)]))
     """
     def __init__(self, flat_triangulation, pos=None):
@@ -115,7 +115,7 @@ class FlatVeeringTriangulationLayout(object):
 
         - flat_triangulation - a flat triangulation
         """
-        self._triangulation = FlatVeeringTriangulation(flat_triangulation)
+        self._triangulation = FlatVeeringTriangulation(flat_triangulation, mutable=True)
         n = self._triangulation.num_half_edges()
         m = self._triangulation.num_edges()
 

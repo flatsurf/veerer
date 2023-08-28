@@ -27,7 +27,7 @@ The smallest dilatation is the golden rotation::
     sage: fp
     VeeringFlipSequence(VeeringTriangulation("(0,1,2)", "PBR"), "0R 2B", "(0,2,1)")
     sage: a, S = fp.self_similar_surface()
-    sage: SS = S.copy()
+    sage: SS = S.copy(mutable=True)
     sage: SS.flip(0)
     sage: SS.flip(2)
     sage: SS.relabel("(0,2,1)")
@@ -52,7 +52,7 @@ center, left and right.
     sage: Vr = VeeringTriangulation("(0,6,5)(1,2,~6)(3,4,~5)", "BPBBRPR")
     sage: Vl = VeeringTriangulation("(0,~5,4)(1,6,5)(2,3,~6)", "PRBRRBP")
 
-    sage: V = Vc.copy()
+    sage: V = Vc.copy(mutable=True)
 
     sage: V.flip(1, BLUE)
     sage: V.relabel("(1,2)")

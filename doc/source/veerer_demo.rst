@@ -14,20 +14,31 @@ Veering triangulation demo
 -  20 Sept. 2018 Temple
 -  25 Sept. 2018 Villetaneuse and CUNY
 
-``veerer`` is a Python library for exploration of veering
+``veerer`` is a Python and SageMath library for exploration of veering
 triangulations. It is written by
 `Mark Bell <https://markcbell.github.io>`_,
 `Vincent Delecroix <http://www.labri.fr/perso/vdelecro/>`_ and
 `Saul Schleimer <http://homepages.warwick.ac.uk/~masgar/>`_. It is
 part of a project that also involve
 `Vaibhav Gadre <http://www.maths.gla.ac.uk/~vgadre/>`_ and
-`Rodolfo Gutiérrez-Romo <http://rodol.fo>`_.
+`Rodolfo Gutiérrez-Romo <http://rodol.fo>`_, see
+`arXiv:1909.00890 [math.DS] <https://arxiv.org/abs/1909.00890>`_.
 
-``veerer`` works in conjunction with ``pplpy`` (for rational polytope
-computations and optimiation) and ``surface_dynamics`` (for analyzing
-stratum components). The plotting part is only available in SageMath.
+``veerer`` works in conjunction with
 
-::
+- the Python library `pplpy <https://pypi.org/project/pplpy/>`_ (rational
+  polytope computations and linear optimiation). Note that it is shipped
+  with SageMath (see below).
+- The Python library `PyNormaliz <https://pypi.org/project/PyNormaliz/>`_
+  (polytope, in particular over number fields).
+- The software `SageMath <https://www.sagemath.org/>`_ (plotting, linear algebra
+  and many other things)
+- The SageMath library `surface_dynamics
+  <https://pypi.org/project/surface-dynamics/>`_ (for analyzing stratum
+  components)
+
+To import all features from veerer one usually starts with the following
+lines::
 
    sage: from veerer import *
    sage: from surface_dynamics import *   # optional - surface_dynamics
@@ -165,7 +176,7 @@ Core vs not core
 ::
 
     sage: # start from our surface in H(2) and let us flip some edges
-    sage: S = T1.copy()
+    sage: S = T1.copy(mutable=True)
     sage: print(S.is_core())
     True
     sage: print(S.flippable_edges())
@@ -211,17 +222,17 @@ Core vs not core
 ::
 
     sage: print(S.train_track_polytope(HORIZONTAL))
-    A 4-dimensional polyhedron in QQ^9 defined as the convex hull of 1 point, 5 rays
+    Cone of dimension 4 in ambient dimension 9 made of 5 facets (backend=ppl)
     sage: print(S.train_track_polytope(VERTICAL))
-    A 3-dimensional polyhedron in QQ^9 defined as the convex hull of 1 point, 3 rays
+    Cone of dimension 3 in ambient dimension 9 made of 3 facets (backend=ppl)
 
 ::
 
     sage: # check that we indeed started with a core veering triangulation
     sage: print(T1.train_track_polytope(HORIZONTAL))
-    A 4-dimensional polyhedron in QQ^9 defined as the convex hull of 1 point, 4 rays
+    Cone of dimension 4 in ambient dimension 9 made of 4 facets (backend=ppl)
     sage: print(T1.train_track_polytope(VERTICAL))
-    A 4-dimensional polyhedron in QQ^9 defined as the convex hull of 1 point, 5 rays
+    Cone of dimension 4 in ambient dimension 9 made of 5 facets (backend=ppl)
 
 
 Geometric polytope
@@ -245,7 +256,7 @@ of the product of the two train-track polytopes.
     sage: print(T1.is_geometric())
     True
     sage: print(T1.geometric_polytope())
-    A 8-dimensional polyhedron in QQ^18 defined as the convex hull of 1 point, 61 rays
+    Cone of dimension 8 in ambient dimension 18 made of 13 facets (backend=ppl)
 
 Core automaton
 --------------
@@ -267,9 +278,9 @@ from `T_i` by a flip.
 
     sage: print(A0.num_states(), A0.num_transitions())
     2 4
-    sage: print(A0.num_geometric_triangulations())
+    sage: print(sum(vt.is_geometric() for vt in A0))
     2
-    sage: print(A0.num_cylindrical_triangulations())
+    sage: print(sum(vt.is_cylindrical() for vt in A0))
     2
 
 ::
@@ -281,9 +292,9 @@ from `T_i` by a flip.
 
     sage: print(A1.num_states(), A1.num_transitions())
     86 300
-    sage: print(A1.num_geometric_triangulations())
+    sage: print(sum(vt.is_geometric() for vt in A1))
     54
-    sage: print(A1.num_cylindrical_triangulations())
+    sage: print(sum(vt.is_cylindrical() for vt in A1))
     24
 
 ::
@@ -292,9 +303,9 @@ from `T_i` by a flip.
     sage: A2 = CoreAutomaton(T2)
     sage: print(A2.num_states(), A2.num_transitions())
     1074 3620
-    sage: print(A2.num_geometric_triangulations())
+    sage: print(sum(vt.is_geometric() for vt in A2))
     270
-    sage: print(A2.num_cylindrical_triangulations())
+    sage: print(sum(vt.is_cylindrical() for vt in A2))
     196
 
 Some data (orientable case)

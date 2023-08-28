@@ -36,6 +36,15 @@ def test_triangulation_comparison():
     assert T1 != T4
     assert T3 != T4
 
+    for U in [T1, T2, T3, T4]:
+        for V in [T1, T2, T3, T4]:
+            assert (U < V) == (V > U)
+            assert (U <= V) == (V >= U)
+            assert (U < V) == (not (U >= V))
+            assert (U > V) == (not (U <= V))
+            assert (U <= V) == ((U < V) or (U == V))
+            assert (U >= V) == ((U > V) or (U == V))
+
 def test_veering_triangulation_comparison():
     V1 = VeeringTriangulation("(0,1,2)", "RRB")
     V2 = VeeringTriangulation("(0,1,2)", "RRB")
@@ -50,6 +59,16 @@ def test_veering_triangulation_comparison():
     assert V1 != V3
     assert V1 != V4
     assert V3 != V4
+
+    for U in [V1, V2, V3, V4]:
+        for V in [V1, V2, V3, V4]:
+            assert (U < V) == (V > U)
+            assert (U <= V) == (V >= U)
+            assert (U < V) == (not (U >= V))
+            assert (U > V) == (not (U <= V))
+            assert (U <= V) == ((U < V) or (U == V))
+            assert (U >= V) == ((U > V) or (U == V))
+
 
 if __name__ == '__main__':
     import sys

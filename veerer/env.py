@@ -6,7 +6,7 @@ TESTS::
     sage: from veerer.env import sage, flipper, surface_dynamics, ppl
 """
 
-CHECK = True
+CHECK = False
 
 try:
     import sage.all
@@ -14,13 +14,37 @@ try:
 except ImportError:
     sage = None
     import random
+    op_LT = 0
+    op_LE = 1
+    op_EQ = 2
+    op_NE = 3
+    op_GT = 4
+    op_GE = 5
+    def rich_to_bool(op, c):
+        if op == op_EQ:
+            return c == 0
+        elif op == op_NE:
+            return c != 0
+        elif op == op_LT:
+            return c < 0
+        elif op == op_LE:
+            return c <= 0
+        elif op == op_GE:
+            return c >= 0
+        elif op == op_GT:
+            return c > 0
+        else:
+            raise RuntimeError
 else:
     import sage.misc.prandom as random
+    from sage.structure.richcmp import op_LT, op_LE, op_EQ, op_NE, op_GT, op_GE, rich_to_bool
+
 
 try:
     import surface_dynamics
 except ImportError:
     surface_dynamics = None
+
 
 try:
     import flipper
@@ -37,6 +61,12 @@ try:
 except ImportError:
     ppl = None
 
+
+try:
+    import PyNormaliz
+except ImportError:
+    PyNormaliz = None
+
 error_msg = {
     'curver': 'the function {} can only be called when the package curver is installed.',
 
@@ -46,7 +76,9 @@ error_msg = {
 
     'flipper': 'the function {} only works when the package flipper is installed. See https://pypi.org/project/flipper/ for instructions',
 
-    'ppl': 'the function {} only works when the package pplpy is installed. See https://pypi.org/project/pplpy/ for instructions.'
+    'ppl': 'the function {} only works when the package pplpy is installed. See https://pypi.org/project/pplpy/ for instructions.',
+
+    'PyNormaliz': 'the function {} only works when the package PyNormaliz is installed.'
     }
 
 missing_mods = {
@@ -54,7 +86,8 @@ missing_mods = {
     'sage': sage is None,
     'flipper': flipper is None,
     'ppl': ppl is None,
-    'surface_dynamics': surface_dynamics is None
+    'surface_dynamics': surface_dynamics is None,
+    'PyNormaliz': PyNormaliz is None
     }
 
 # TODO: use the traceback to find out who called this function!

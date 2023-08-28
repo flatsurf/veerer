@@ -20,7 +20,7 @@ The golden mean pseudo-Anosov realized on the sphere::
     sage: fp.is_pseudo_anosov()
     True
 
-    sage: a, fs = fp.self_similar_surface()
+    sage: a, fs = fp.self_similar_surface(mutable=True)
     sage: fs
     FlatVeeringTriangulation(Triangulation("(0,1,2)"), [(1, -1), (a - 3, a), (-a + 2, -a + 1)])
     sage: fs.flip(0)
@@ -99,10 +99,10 @@ class VeeringFlipSequence(object):
         elif reduced is False and any(c == PURPLE for c in start._colouring):
             raise ValueError("wrong usage of 'reduced'")
 
-        self._start = start.copy()
+        self._start = start.copy(mutable=True)
         if reduced:
             self._start.forgot_forward_flippable_colour()
-        self._end = self._start.copy()
+        self._end = self._start.copy(mutable=True)
         self._relabelling = perm_id(self._start._n)
         self._flips = []   # list of triples (e, col_after, col_before)
 
@@ -438,28 +438,33 @@ class VeeringFlipSequence(object):
             return False
         return not self.unflipped_edges()
 
-    def train_track_polytope(self, slope=VERTICAL):
+    def train_track_polytope(self, slope=VERTICAL, backend='ppl'):
         r"""
         EXAMPLES::
 
             sage: from veerer import VeeringTriangulation, VeeringFlipSequence
             sage: F = VeeringFlipSequence(VeeringTriangulation("(0,3,4)(1,~3,5)(2,6,~4)", "BRBBRRB"), "0B 1B")
             sage: F.train_track_polytope()
-            A 4-dimensional polyhedron in QQ^7 defined as the convex hull of 1 point, 5 rays
+            Cone of dimension 4 in ambient dimension 7 made of 5 facets (backend=ppl)
         """
+        # TODO: make this function support various polytope backends
         if slope == HORIZONTAL:
             return self._start.train_track_polytope(HORIZONTAL)
         else:
             from sage.modules.free_module_element import vector
             from sage.rings.integer_ring import ZZ
             from .misc import rays_to_ppl_cone
+            from .polyhedron.cone import Cone_ppl
+
+            if backend != 'ppl':
+                raise NotImplementedError
 
             wm = self.inverse().matrix() # matrix: widths_end -> widths_start
-            P = self._end.train_track_polytope(VERTICAL)
+            P = self._end.train_track_polytope(VERTICAL, backend='ppl')._cone
             rays = [wm * vector(ZZ, r.coefficients()) for r in P.generators() if r.is_ray()]
-            return rays_to_ppl_cone(rays)
+            return Cone_ppl(ZZ, rays_to_ppl_cone(rays))
 
-    def flat_structure_middle(self):
+    def flat_structure_middle(self, mutable=False, check=True):
         r"""
         Return a flat structure that admits this sequence of flips as forward flips.
 
@@ -471,7 +476,7 @@ class VeeringFlipSequence(object):
             FlatVeeringTriangulation(Triangulation("(0,3,4)(1,~3,5)(2,6,~4)"), [(6, 2), (6, -2), (3, 3), (-4, 4), (-2, -6), (-2, -2), (-1, 3), (-2, -6), (-4, 4)])
 
             sage: fs = VeeringFlipSequence(V, "0B 1R 2B 5R 6B", "(3,4)(1,5,6)")
-            sage: fl = fs.flat_structure_middle()
+            sage: fl = fs.flat_structure_middle(mutable=True)
             sage: fl.forward_flippable_edges()
             [0, 1, 2]
             sage: fl.flip(0); fl.flip(1); fl.flip(2)
@@ -484,10 +489,11 @@ class VeeringFlipSequence(object):
             sage: assert fl.edge_colour(5) == RED
             sage: assert fl.edge_colour(6) == BLUE
         """
+        # TODO: make this function support various polytope backends
         n = self._start.num_edges()
 
-        PH = self.train_track_polytope(HORIZONTAL)
-        PV = self.train_track_polytope(VERTICAL)
+        PH = self.train_track_polytope(HORIZONTAL, backend='ppl')._cone
+        PV = self.train_track_polytope(VERTICAL, backend='ppl')._cone
 
         # pick sum of rays
         VH = [g.coefficients() for g in PH.generators() if g.is_ray()]
@@ -495,9 +501,9 @@ class VeeringFlipSequence(object):
         VV = [g.coefficients() for g in PV.generators() if g.is_ray()]
         VV = [sum(v[i] for v in VV) for i in range(n)]
 
-        return self._start._flat_structure_from_train_track_lengths(VH, VV)
+        return self._start._flat_structure_from_train_track_lengths(VH, VV, mutable=mutable, check=check)
 
-    def self_similar_surface(self):
+    def self_similar_surface(self, mutable=False, check=True):
         r"""
         EXAMPLES::
 
@@ -563,7 +569,7 @@ class VeeringFlipSequence(object):
         assert all(x > 0 for x in w), (w, h)
         assert all(y > 0 for y in h), (w, h)
 
-        return r, self.coloured_start()._flat_structure_from_train_track_lengths(h, w, base_ring=K)
+        return r, self.coloured_start()._flat_structure_from_train_track_lengths(h, w, base_ring=K, mutable=mutable, check=True)
 
     # change
     def append_flip(self, e, col):
