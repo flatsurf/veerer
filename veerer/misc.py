@@ -23,7 +23,7 @@ def flipper_edge(T, e):
 
 def flipper_edge_perm(n):
     from array import array
-    return array('l', range(n-1,-1,-1))
+    return array('i', range(n-1,-1,-1))
 
 def flipper_face_edge_perms(T):
     r"""
@@ -42,7 +42,7 @@ def flipper_isometry_to_perm(isom, ep, inv=False):
     """
     from array import array
     n = isom.zeta
-    p = array('l', [-1]*(2*n))
+    p = array('i', [-1]*(2*n))
     if inv:
         dic = isom.inverse_label_map
     else:

@@ -33,6 +33,7 @@ def test_zero():
 def test_init_invert_compose(n):
         q = perm_id(n)
         for p in itertools.permutations(range(n)):
+            p = perm_init(p, n)
             assert perm_compose(perm_invert(p), p) == q
 
 def test_random(repeat=10):

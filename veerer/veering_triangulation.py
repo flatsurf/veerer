@@ -30,6 +30,7 @@ import collections
 import itertools
 import numbers
 from random import choice, shuffle
+from array import array
 
 from .constants import *
 from .permutation import *
@@ -102,7 +103,7 @@ class VeeringTriangulation(Triangulation):
         else:
             raise ValueError("'colouring' argument of invalid length")
 
-        self._colouring = array('l', colouring)
+        self._colouring = array('i', colouring)
 
         if check:
             self._check(ValueError)
@@ -387,9 +388,9 @@ class VeeringTriangulation(Triangulation):
         colouring[1::3] = [col]*n
         colouring.extend(colouring[::-1])
 
-        return cls.from_face_edge_perms(array('l', colouring),
-                                        array('l', fp),
-                                        array('l', ep), mutable=mutable, check=check)
+        return cls.from_face_edge_perms(array('i', colouring),
+                                        array('i', fp),
+                                        array('i', ep), mutable=mutable, check=check)
 
     @classmethod
     def from_stratum(cls, c, folded_edges=False, mutable=False, check=True):
@@ -514,7 +515,7 @@ class VeeringTriangulation(Triangulation):
             n = T._n
             fp = T._fp
             ep = T._ep
-            vp = array('l', [-1] * n)
+            vp = array('i', [-1] * n)
             for i in range(n):
                 vp[fp[ep[i]]] = i
         T._vp = vp
@@ -554,7 +555,7 @@ class VeeringTriangulation(Triangulation):
         assert perm_base64_str(fp) == fps
         ep = perm_from_base64_str(eps, n)
         assert perm_base64_str(ep) == eps
-        cols = array('l', [colour_from_char(c) for c in cols])
+        cols = array('i', [colour_from_char(c) for c in cols])
         return VeeringTriangulation.from_face_edge_perms(cols, fp, ep, mutable=mutable, check=check)
 
     def forgot_forward_flippable_colour(self, folded=True):
@@ -1002,7 +1003,7 @@ class VeeringTriangulation(Triangulation):
 
         colouring_cov = self._colouring * 2
         # TODO: remove the check argument
-        vt = self.from_face_edge_perms(colouring_cov, array('l', fp_cov), array('l', ep_cov), mutable=True, check=True)
+        vt = self.from_face_edge_perms(colouring_cov, array('i', fp_cov), array('i', ep_cov), mutable=True, check=True)
         vt.relabel(vt._relabelling_from(0), check=False)
         if not mutable:
             vt.set_immutable()
@@ -1685,7 +1686,7 @@ class VeeringTriangulation(Triangulation):
 
         Triangulation.conjugate(self)
         transp = {RED: BLUE, BLUE: RED, GREEN: GREEN, PURPLE: PURPLE}
-        self._colouring = array('l', [transp[col] for col in self._colouring])
+        self._colouring = array('i', [transp[col] for col in self._colouring])
 
     # TODO: finish this!!
     def automorphism_quotient(self, aut):

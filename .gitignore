@@ -17,4 +17,5 @@ veerer.egg-info/*
 *.ipynb
 .ipynb_checkpoints/
 MANIFEST
-
+veerer/permutation.c
+veerer/permutation.*.so

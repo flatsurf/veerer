@@ -220,9 +220,9 @@ class VeeringFlipSequence(object):
             sage: assert L32.end() == L32.start()
 
             sage: L32.end_colouring()
-            array('l', [4, 1, 2, 1, 1, 2, 1])
+            array('i', [4, 1, 2, 1, 1, 2, 1])
             sage: (L32 * CR5 * CL5).end_colouring()
-            array('l', [1, 2, 2, 1, 1, 2, 1])
+            array('i', [1, 2, 2, 1, 1, 2, 1])
         """
         ne = self._end.num_edges()
         ep = self._end._ep
@@ -616,7 +616,7 @@ class VeeringFlipSequence(object):
             True
             sage: fp.append_flip(2, BLUE)
             sage: fp.find_closure()
-            array('l', [2, 0, 1])
+            array('i', [2, 0, 1])
         """
         ans, r = self._end.is_isomorphic_to(self._start, certificate=True)
         return r if ans else None

@@ -158,7 +158,7 @@ class TriangulationCover(object):
         d = self._d
         vp = self._t.vertex_permutation(copy=False)
         ep = self._t.edge_permutation(copy=False)
-        cvp = array('l', [-1] * (d * n))
+        cvp = array('i', [-1] * (d * n))
 
         for a in range(n):
             b = vp[a]
@@ -178,7 +178,7 @@ class TriangulationCover(object):
         d = self._d
         ep = self._t.edge_permutation(copy=False)
         c = self._c
-        cep = array('l', [-1] * (d * n))
+        cep = array('i', [-1] * (d * n))
 
         for a in range(n):
             b = ep[a]
@@ -195,7 +195,7 @@ class TriangulationCover(object):
         n = self._t.num_half_edges()
         d = self._d
         fp = self._t.face_permutation(copy=False)
-        cfp = array('l', [-1] * (d * n))
+        cfp = array('i', [-1] * (d * n))
 
         for a in range(n):
             b = fp[a]
