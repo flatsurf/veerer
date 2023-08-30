@@ -1,9 +1,7 @@
 r"""
-Partial permutation on `\{0, 1, ..., n-1\}`.
+Partial permutations on `\{0, 1, ..., n-1\}`.
 
 TODO:
-
-- We want much faster datastructure (ie C array)
 
 - In many situations, we need a bitarray of the size of
   the permutation (conjugation, composition, etc). But
@@ -54,11 +52,11 @@ def argmin(l):
         sage: argmin([-1, 3, 5, -2, 50])
         3
     """
-    if not(l):
+    if not l:
         raise ValueError('empty list')
     imin = 0
     jmin = l[0]
-    for i,j in enumerate(l):
+    for i, j in enumerate(l):
         if j < jmin:
             jmin = j
             imin = i
@@ -200,16 +198,6 @@ def perm_id(int n):
         array('i', [0, 1, 2, 3])
     """
     return array.array('i', range(n))
-
-
-def perm_is_one(array.array p, int n=-1):
-    if n == -1:
-        n = len(p)
-    cdef int i
-    for i in range(n):
-        if p.data.as_ints[i] != i:
-            return False
-    return True
 
 
 def perm_init(data, int n=-1, involution=None):
@@ -571,6 +559,22 @@ def perm_from_base64_str(s, n):
     return array.array('i', (uint_from_base64_str(s[i:i+l]) for i in range(0,len(s),l)))
 
 #####################################################################
+# Boolean properties
+#####################################################################
+
+def perm_is_one(array.array p, int n=-1):
+    r"""
+    Return whether ``p`` is the identity permutation.
+    """
+    if n == -1:
+        n = len(p)
+    cdef int i
+    for i in range(n):
+        if p.data.as_ints[i] != i:
+            return False
+    return True
+
+#####################################################################
 # Cycles and action
 #####################################################################
 
@@ -930,49 +934,6 @@ def perm_on_list(array.array p, a, int n=-1, swap=None):
             seen.data.as_ints[j] = 1
             j = p.data.as_ints[j]
 
-
-# WARNING: this is NOT inplace
-def perm_on_cyclic_list(array.array p, t):
-    r"""
-    Action of the permutation ``p`` on the list ``t`` up to cyclic order.
-
-    EXAMPLES::
-
-        sage: from array import array
-        sage: from veerer.permutation import perm_on_cyclic_list
-
-        sage: perm_on_cyclic_list(array('i', [0,1,2]), [2,1,2])
-        [1, 2, 2]
-        sage: perm_on_cyclic_list(array('i', [0,1]), [0,1,0,0,1,0,0,0,1,1])
-        [0, 0, 0, 1, 1, 0, 1, 0, 0, 1]
-
-        sage: a = array('i', [1, 0, 3, 2, 5, 4])
-        sage: perm_on_cyclic_list(a, [0, 5, 3])
-        [1, 4, 2]
-        sage: perm_on_cyclic_list(a, [1, 4, 2])
-        [0, 5, 3]
-
-        sage: a1 = array('i', [0, 1, 4, 2, 3, 5])
-        sage: a2 = array('i', [1, 5, 3, 4, 2, 0])
-        sage: a3 = array('i', [2, 3, 1, 5, 0, 4])
-        sage: a4 = array('i', [5, 0, 2, 3, 4, 1])
-        sage: t1 = [0, 5, 1]
-        sage: t2 = [2, 4, 3]
-        sage: perm_on_cyclic_list(a1, t1) == perm_on_cyclic_list(a2, t1) == perm_on_cyclic_list(a4, t1) == t1
-        True
-        sage: perm_on_cyclic_list(a3, t1) == t2
-        True
-        sage: perm_on_cyclic_list(a3, t2) == t1
-        True
-    """
-    res = r = [p[i] for i in t]
-    # the thing below is very stupid!
-    for i in range(1, len(r)):
-        rr = r[i:] + r[:i]
-        if rr < res:
-            res = rr
-    return res
-
 #####################################################################
 # Group operations
 #####################################################################
@@ -1026,10 +987,12 @@ def perm_compose(array.array p1, array.array p2, int n=-1):
     """
     if n == -1:
         n = len(p1)
-    cdef array.array r = array.array('i', [-1] * n)
+    cdef array.array r = array.clone(p1, n, False)
     cdef int i
     for i in range(n):
-        if p1.data.as_ints[i] != -1:
+        if p1.data.as_ints[i] == -1:
+            r.data.as_ints[i] = -1
+        else:
             r.data.as_ints[i] = p2.data.as_ints[p1.data.as_ints[i]]
     return r
 
@@ -1038,14 +1001,32 @@ perm_compose_00 = perm_compose
 
 
 # TODO: do something less stupid
-# (do it for each cycle independently, detecting if needed period)
+# (do it for each cycle independently, detecting if needed the period)
 def perm_pow(array.array p, int k, int n=-1):
+    r"""
+    Return the power of the permutation ``p``.
+
+    EXAMPLES::
+
+        sage: from array import array
+        sage: from veerer.permutation import perm_pow
+
+        sage: perm_pow(array('i', [3, 0, 1, 2]), 2)
+        array('i', [2, 3, 0, 1])
+        sage: perm_pow(array('i', [3, 0, 1, 2]), -1)
+        array('i', [1, 2, 3, 0])
+    """
     if n == -1:
         n = len(p)
     if k == 0:
         return perm_id(n)
 
-    cdef array.array q = array.copy(p)
+    cdef array.array q
+    if k < 0:
+        p = perm_invert(p, n)
+        k = -k
+
+    q = array.copy(p)
     k -= 1
     while k:
         q = perm_compose(q, p)
@@ -1394,6 +1375,18 @@ def perms_canonical_labels(p, e=None):
 #####################################################################
 
 def triangulation_relabelling_from(array.array vp, array.array ep, int start_edge):
+    r"""
+    Return a canonical relabelling where ``start_edge`` is mapped to ``0``.
+
+    EXAMPLES::
+
+        sage: from array import array
+        sage: from veerer.permutation import triangulation_relabelling_from
+        sage: vp = array('i', [9, 13, 12, 11, 10, 14, 5, 6, 7, 8, 29, 25, 26, 27, 28, 1, 15, 16, 17, 18, 19, 0, 4, 3, 2, 21, 22, 23, 24, 20])
+        sage: ep = array('i', [29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0])
+        sage: triangulation_relabelling_from(vp, ep, 0)
+        array('i', [0, 7, 21, 10, 18, 14, 20, 13, 17, 28, 27, 26, 25, 24, 23, 6, 5, 4, 3, 2, 1, 12, 16, 9, 15, 11, 19, 8, 22, 29])
+    """
     # NOTE: the algorithm is as follows
     # 0) we set k=0 and m=n-1 (labelling counter), any time we choose a new
     #    label it is k and k is incremented. If it is not a folded edge, its
