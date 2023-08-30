@@ -1578,8 +1578,17 @@ class Triangulation(object):
             else:
                 d[s] = [i]
 
-        m = min(len(x) for x in d.values())
-        winner = min(s for s, v in d.items() if len(v) == m)
+        winner = None
+        values = None
+        for s, v in d.items():
+            if winner is None:
+                winner = s
+                values = v
+            elif len(v) < len(values):
+                winner = s
+                values = v
+            elif len(v) == len(values) and s < winner:
+                winner = s
 
         return d[winner]
 
