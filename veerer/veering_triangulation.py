@@ -161,6 +161,50 @@ class VeeringTriangulation(Triangulation):
             if i == len(v):
                 raise error('monochromatic vertex {} of colour {}'.format(v, colour_to_string(cols[v[0]])))
 
+    def __getstate__(self):
+        r"""
+        TESTS::
+
+            sage: from veerer import VeeringTriangulation
+            sage: t = VeeringTriangulation("(0,1,2)", "BBR")
+            sage: dumps(t)  # indirect doctest
+            b'x\x9ck`J.KM-J-\xd2\x03Q\x99y\xe9\xf1%E\x99\x89y\xe9\xa59\x89%\x99\xf9y\\a\x10\xd1\x10\x14\xc1B\x06\xcd\xc6B\xc6\xd8B&\roFo&o\x06 \x04\xd1 \xc8\xd8\x99\x9a\xa4\x07\x005\xe2\x1bc'
+        """
+        a = list(self._fp)
+        a.extend(self._ep)
+        a.extend(self._colouring)
+        a.append(self._mutable)
+        return a
+
+    def __setstate__(self, arg):
+        r"""
+        TESTS::
+
+            sage: from veerer import VeeringTriangulation
+            sage: t0 = VeeringTriangulation("(0,1,2)", "BBR", mutable=False)
+            sage: t1 = VeeringTriangulation("(0,1,2)", "BBR", mutable=True)
+            sage: s0 = loads(dumps(t0))  # indirect doctest
+            sage: assert s0 == t0
+            sage: s0._mutable
+            False
+            sage: s0._check()
+
+            sage: s1 = loads(dumps(t1))  # indirect doctest
+            sage: assert s1 == t1
+            sage: s1._mutable
+            True
+            sage: s1._check()
+        """
+        n = (len(arg) - 1) // 3
+        self._n = n
+        self._fp = array('i', arg[:n])
+        self._ep = array('i', arg[n:2*n])
+        self._colouring = array('i', arg[2*n:3*n])
+        self._mutable = arg[-1]
+        self._vp = array('i', [-1] * n)
+        for i in range(n):
+            self._vp[self._fp[self._ep[i]]] = i
+
     def base_ring(self):
         from sage.rings.integer_ring import ZZ
         return ZZ

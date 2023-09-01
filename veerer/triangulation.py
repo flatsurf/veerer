@@ -250,6 +250,46 @@ class Triangulation(object):
         if check:
             self._check(ValueError)
 
+    def __getstate__(self):
+        r"""
+        TESTS::
+
+            sage: from veerer import Triangulation
+            sage: t = Triangulation("(0,1,2)")
+            sage: dumps(t)  # indirect doctest
+            b'x\x9ck`J.KM-J-\xd2+)\xcaL\xccK/\xcdI,\xc9\xcc\xcf\xe3\nA\xe1\x152h6\x162\xc6\x162ix3z3y3\x00!\x90\xeeLM\xd2\x03\x00\xe7\x1e\x14^'
+        """
+        a = list(self._fp)
+        a.extend(self._ep)
+        a.append(self._mutable)
+        return a
+
+    def __setstate__(self, arg):
+        r"""
+            sage: from veerer import Triangulation
+            sage: t0 = Triangulation("(0,1,2)", mutable=False)
+            sage: t1 = Triangulation("(0,1,2)", mutable=True)
+            sage: s0 = loads(dumps(t0))  # indirect doctest
+            sage: assert s0 == t0
+            sage: s0._mutable
+            False
+            sage: s0._check()
+
+            sage: s1 = loads(dumps(t1))  # indirect doctest
+            sage: assert s1 == t1
+            sage: s1._mutable
+            True
+            sage: s1._check()
+        """
+        n = (len(arg) - 1) // 2
+        self._n = n
+        self._fp = array('i', arg[:n])
+        self._ep = array('i', arg[n:2*n])
+        self._mutable = arg[-1]
+        self._vp = array('i', [-1] * n)
+        for i in range(n):
+            self._vp[self._fp[self._ep[i]]] = i
+
     def set_immutable(self):
         self._mutable = False
 
