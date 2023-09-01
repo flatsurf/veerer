@@ -238,7 +238,7 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
             entries = []
             for x in self._subspace.list():
                 v = x.vector()
-                d = v.vector().denominator()
+                d = v.denominator()
                 entries.extend(int(x) for x in (v * d))
                 entries.append(int(d))
         else:
@@ -247,11 +247,21 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
 
     def __setstate__(self, arg):
         r"""
-        TESTS::
+        TESTS:
+
+        An example over ZZ::
 
             sage: from veerer import VeeringTriangulation
             sage: vt = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
             sage: lf = vt.as_linear_family()
+            sage: lf2 = loads(dumps(lf))  # indirect doctest
+            sage: assert lf == lf2
+            sage: lf2._check()
+
+        An example over number fields::
+
+            sage: from veerer.linear_family import VeeringTriangulationLinearFamilies
+            sage: lf = VeeringTriangulationLinearFamilies.triangle_3_4_13_unfolding_orbit_closure()
             sage: lf2 = loads(dumps(lf))  # indirect doctest
             sage: assert lf == lf2
             sage: lf2._check()
