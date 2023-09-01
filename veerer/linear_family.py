@@ -289,6 +289,8 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
             for i in range(0, len(raw_entries), d + 1):
                 v = tuple(x / raw_entries[i + d] for x in raw_entries[i:i + d])
                 entries.append(R(v))
+        else:
+            entries = raw_entries
         self._subspace = matrix(R, len(entries) // self.num_edges(), self.num_edges(), entries)
         if not self._mutable:
             self._subspace.set_immutable()
