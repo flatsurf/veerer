@@ -36,17 +36,24 @@ from .veering_triangulation import VeeringTriangulation
 
 if sage is not None:
     from sage.structure.element import get_coercion_model
+    from sage.rings.integer_ring import ZZ
+    from sage.rings.rational_field import QQ
     from sage.matrix.constructor import matrix
     from sage.geometry.polyhedron.constructor import Polyhedron
     from sage.arith.misc import gcd
+    from sage.categories.number_fields import NumberFields
 
     cm = get_coercion_model()
+    _NumberFields = NumberFields()
 else:
     matrix = None
     Polyhedron = None
     gcd = None
+    ZZ = None
+    QQ = None
 
     cm = None
+    _NumberFields = None
 
 
 def subspace_are_equal(subspace1, subspace2, check=True):
@@ -212,6 +219,81 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
 
         if check:
             self._check(ValueError)
+
+    def __getstate__(self):
+        R = self.base_ring()
+        a = list(self._fp[:])
+        a.extend(self._ep)
+        a.extend(self._colouring)
+        a.append(self._mutable)
+        # NOTE: here we know that all entries have the same parent
+        if R is ZZ:
+            entries = list(map(int, self._subspace.list()))
+        elif R is QQ:
+            entries = []
+            for x in self._subspace.list():
+                entries.append(int(x.numerator()))
+                entries.append(int(x.denominator()))
+        elif _NumberFields is not None and R in _NumberFields:
+            entries = []
+            for x in self._subspace.list():
+                v = x.vector()
+                d = v.denominator()
+                entries.extend(int(x) for x in (v * d))
+                entries.append(int(d))
+        else:
+            entries = self._subspace.list()
+        return a, R, entries
+
+    def __setstate__(self, arg):
+        r"""
+        TESTS:
+
+        An example over ZZ::
+
+            sage: from veerer import VeeringTriangulation
+            sage: vt = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
+            sage: lf = vt.as_linear_family()
+            sage: lf2 = loads(dumps(lf))  # indirect doctest
+            sage: assert lf == lf2
+            sage: lf2._check()
+
+        An example over number fields::
+
+            sage: from veerer.linear_family import VeeringTriangulationLinearFamilies
+            sage: lf = VeeringTriangulationLinearFamilies.triangle_3_4_13_unfolding_orbit_closure()
+            sage: lf2 = loads(dumps(lf))  # indirect doctest
+            sage: assert lf == lf2
+            sage: lf2._check()
+        """
+        a, R, raw_entries = arg
+        n = (len(a) - 1) // 3
+        self._n = n
+        self._fp = array('i', a[:n])
+        self._ep = array('i', a[n:2*n])
+        self._colouring = array('i', a[2*n:3*n])
+        self._mutable = a[-1]
+        self._vp = array('i', [-1] * n)
+        for i in range(n):
+            self._vp[self._fp[self._ep[i]]] = i
+
+        if R is ZZ:
+            entries = [ZZ(x) for x in raw_entries]
+        elif R is QQ:
+            entries = []
+            for i in range(0, len(raw_entries), 2):
+                entries.append(QQ((raw_entries[i], raw_entries[i + 1])))
+        elif _NumberFields is not None and R in _NumberFields:
+            entries = []
+            d = R.degree()
+            for i in range(0, len(raw_entries), d + 1):
+                v = tuple(x / raw_entries[i + d] for x in raw_entries[i:i + d])
+                entries.append(R(v))
+        else:
+            entries = raw_entries
+        self._subspace = matrix(R, len(entries) // self.num_edges(), self.num_edges(), entries)
+        if not self._mutable:
+            self._subspace.set_immutable()
 
     def veering_triangulation(self, mutable=False):
         r"""
