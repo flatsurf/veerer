@@ -21,7 +21,7 @@ triangulations. It is written by
 `Saul Schleimer <https://homepages.warwick.ac.uk/~masgar/>`_. It is
 part of a project that also involve
 `Vaibhav Gadre <https://www.maths.gla.ac.uk/~vgadre/>`_ and
-`Rodolfo Gutiérrez-Romo <https://rodol.fo>`_, see
+`Rodolfo Gutiérrez-Romo <http://www.dim.uchile.cl/~rgutierrez/>`_, see
 `arXiv:1909.00890 [math.DS] <https://arxiv.org/abs/1909.00890>`_.
 
 ``veerer`` works in conjunction with
