@@ -9,12 +9,24 @@ concurrency:
 
 jobs:
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         include:
-          - optionals: "sage"
+          - optionals: "sage,sage_flatsurf,pyeantic,pyintervalxt,surface_dynamics,flipper"
             sagelib: "9.3"
+          - optionals: "sage,sage_flatsurf,pyeantic,pyintervalxt,surface_dynamics,flipper"
+            sagelib: "9.4"
+          - optionals: "sage,sage_flatsurf,pyeantic,pyintervalxt,surface_dynamics,flipper"
+            sagelib: "9.5"
+          - optionals: "sage,sage_flatsurf,pyeantic,pyintervalxt,surface_dynamics,flipper"
+            sagelib: "9.6"
+          - optionals: "sage,sage_flatsurf,pyeantic,pyintervalxt,surface_dynamics,flipper"
+            sagelib: "9.7"
+          - optionals: "sage,sage_flatsurf,pyeantic,pyintervalxt,surface_dynamics,flipper"
+            sagelib: "9.8"
+          - optionals: "sage,sage_flatsurf,pyeantic,pyintervalxt,surface_dynamics,flipper"
+            sagelib: "10.0"
     steps:
       - uses: actions/checkout@v2
         with: { submodules: recursive }
@@ -48,8 +60,7 @@ jobs:
         shell: bash -l {0}
         working-directory: tests
         run: pytest -n auto
-      - name: Show logs
-        run: grep "" /dev/null `find -name '*.log'` || true
+      - uses: flatsurf/actions/show-logs@main
         if: ${{ always() }}
 
 env:
