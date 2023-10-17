@@ -7,7 +7,7 @@ Additional features are available if used inside
 `SageMath <https://www.sagemath.org/>`_.
 
 Computations involving polytopes are only available if the Python module
-`pplpy <httpss://github.com/sagemath/pplpy>`_ is available.
+`pplpy <https://github.com/sagemath/pplpy>`_ is available.
 
 The installation of Veerer is done via pip. You first need to clone the
 repository (either use git or download the project as a tarball).
