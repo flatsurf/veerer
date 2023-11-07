@@ -1,10 +1,4 @@
-# -*- coding: utf-8 -*-
-#
-# Configuration file for the Sphinx documentation builder.
-#
-# This file does only contain a selection of the most common options. For a
-# full list see the documentation:
-# http://www.sphinx-doc.org/en/master/config
+from veerer.version import version
 
 # -- Path setup --------------------------------------------------------------
 
@@ -21,20 +15,17 @@ try:
 except ImportError:
     raise RuntimeError("to build the documentation you need to be inside a Sage shell (run first the command 'sage -sh' in a shell")
 
-from sage.env import SAGE_DOC_SRC, SAGE_DOC, SAGE_SRC
+from sage.env import SAGE_DOC_SRC, SAGE_SRC
 
 sys.path.append(os.path.join(SAGE_SRC, "sage_setup", "docbuild", "ext"))
 
 # -- Project information -----------------------------------------------------
 
-project = u'veerer'
-copyright = u'2018, Mark Bell, Vincent Delecroix, Saul Schleimer'
-author = u'Mark Bell, Vincent Delecroix, Saul Schleimer'
+project = 'veerer'
+copyright = '2018-2023, Mark Bell, Vincent Delecroix, Saul Schleimer'
+author = 'Mark Bell, Vincent Delecroix, Saul Schleimer'
 
-# The short X.Y version
-version = u''
-# The full version, including alpha/beta/rc tags
-release = u''
+release = version
 
 
 # -- General configuration ---------------------------------------------------
@@ -74,6 +65,8 @@ language = 'en'
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
 exclude_patterns = []
+
+html_extra_path = ["robots.txt"]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
