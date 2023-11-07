@@ -3193,13 +3193,13 @@ class VeeringTriangulation(Triangulation):
             sage: vt = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RBB")
             sage: x = [1, 2, 1]
             sage: y = [1, 1, 2]
-            sage: vt.zippered_rectangles(x, y)
+            sage: vt.zippered_rectangles(x, y)  # optional: sage_flatsurf
             Translation Surface built from a square and a rectangle
 
             sage: vt = VeeringTriangulation("(0,1,2)(~0,~1,4)(~2,5,3)(~3,~4,~5)", "RBBRBR")
             sage: x = [1,2,1,2,1,1]
             sage: y = [1,1,2,1,2,3]
-            sage: vt.zippered_rectangles(x, y)
+            sage: vt.zippered_rectangles(x, y)  # optional: sage_flatsurf
             Translation Surface built from 3 squares and a rectangle
 
             sage: vt = VeeringTriangulation("(0,~2,1)(2,~8,~3)(3,~7,~4)(4,6,~5)(5,8,~6)(7,~1,~0)", "PRBPRBPBR")
@@ -3207,7 +3207,7 @@ class VeeringTriangulation(Triangulation):
             sage: B0, B1 = vt.dehn_twists(BLUE)
             sage: f = B0 **2 * R0 **3 * B1 * R1 ** 5
             sage: a, x, y = f.self_similar_widths_and_heights()
-            sage: vt.zippered_rectangles(x, y)
+            sage: vt.zippered_rectangles(x, y)  # optional: sage_flatsurf
             Translation Surface built from 6 rectangles
         """
         ans, edge_orientations = self.is_abelian(certificate=True)
