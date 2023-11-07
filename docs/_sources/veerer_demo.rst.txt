@@ -17,11 +17,11 @@ Veering triangulation demo
 ``veerer`` is a Python and SageMath library for exploration of veering
 triangulations. It is written by
 `Mark Bell <https://markcbell.github.io>`_,
-`Vincent Delecroix <http://www.labri.fr/perso/vdelecro/>`_ and
-`Saul Schleimer <http://homepages.warwick.ac.uk/~masgar/>`_. It is
+`Vincent Delecroix <https://www.labri.fr/perso/vdelecro/>`_ and
+`Saul Schleimer <https://homepages.warwick.ac.uk/~masgar/>`_. It is
 part of a project that also involve
-`Vaibhav Gadre <http://www.maths.gla.ac.uk/~vgadre/>`_ and
-`Rodolfo Gutiérrez-Romo <http://rodol.fo>`_, see
+`Vaibhav Gadre <https://www.maths.gla.ac.uk/~vgadre/>`_ and
+`Rodolfo Gutiérrez-Romo <http://www.dim.uchile.cl/~rgutierrez/>`_, see
 `arXiv:1909.00890 [math.DS] <https://arxiv.org/abs/1909.00890>`_.
 
 ``veerer`` works in conjunction with
