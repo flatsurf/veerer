@@ -25,7 +25,7 @@ Triangulation of surfaces.
 import numbers
 from array import array
 
-from .permutation import (perm_init, perm_check, perm_cycles,
+from .permutation import (perm_init, perm_check, perm_cycles, perm_dense_cycles,
                           perm_invert, perm_conjugate, perm_cycle_string, perm_cycles_lengths,
                           perm_num_cycles, str_to_cycles, perm_compose, perm_from_base64_str,
                           uint_base64_str, uint_from_base64_str, perm_base64_str,
@@ -658,6 +658,76 @@ class Triangulation(object):
         else:
             return self._vp
 
+    def next_at_vertex(self, i, check=True):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import Triangulation
+
+            sage: T = Triangulation("(~11,4,~3)(~10,~0,11)(~9,0,10)(~8,9,1)(~7,8,~1)(~6,7,2)(~5,6,~2)(~4,5,3)")
+            sage: T.next_at_vertex(0)
+            9
+            sage: T.next_at_vertex(9)
+            8
+            sage: T.next_at_vertex(5)
+            4
+        """
+        if check:
+            i = self._check_half_edge(i)
+        return self._vp[i]
+
+    def next_in_face(self, i, check=True):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import Triangulation
+
+            sage: T = Triangulation("(~11,4,~3)(~10,~0,11)(~9,0,10)(~8,9,1)(~7,8,~1)(~6,7,2)(~5,6,~2)(~4,5,3)")
+            sage: T.next_in_face(0)
+            10
+            sage: T.next_in_face(9)
+            1
+            sage: T.next_in_face(5)
+            3
+        """
+        if check:
+            i = self._check_half_edge(i)
+        return self._fp[i]
+
+    def previous_at_vertex(self, i, check=True):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import Triangulation
+
+            sage: T = Triangulation("(~11,4,~3)(~10,~0,11)(~9,0,10)(~8,9,1)(~7,8,~1)(~6,7,2)(~5,6,~2)(~4,5,3)")
+            sage: T.previous_at_vertex(9)
+            0
+            sage: T.previous_at_vertex(8)
+            9
+            sage: T.previous_at_vertex(4)
+            5
+        """
+        if check:
+            i = self._check_half_edge(i)
+        return self._fp[self._ep[i]]
+
+    def previous_in_face(self, i):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import Triangulation
+
+            sage: T = Triangulation("(~11,4,~3)(~10,~0,11)(~9,0,10)(~8,9,1)(~7,8,~1)(~6,7,2)(~5,6,~2)(~4,5,3)")
+            sage: T.previous_in_face(10)
+            0
+            sage: T.previous_in_face(1)
+            9
+            sage: T.previous_in_face(3)
+            5
+        """
+        return self._ep[self._vp[i]]
+
     def num_half_edges(self):
         return self._n
 
@@ -700,7 +770,7 @@ class Triangulation(object):
             sage: T.faces()
             [[0, 1, 2], [3, 4, 5], [6, 8, 7]]
         """
-        return perm_cycles(self._fp)
+        return perm_cycles(self._fp, True, self._n)
 
     def edges(self):
         r"""
@@ -714,7 +784,7 @@ class Triangulation(object):
             sage: T.edges()
             [[0, 8], [1], [2], [3, 7], [4], [5], [6]]
         """
-        return perm_cycles(self._ep)
+        return perm_cycles(self._ep, True, self._n)
 
     def vertices(self):
         r"""
@@ -728,7 +798,7 @@ class Triangulation(object):
             sage: T.vertices()
             [[0, 2, 1, 8, 6, 3, 5, 4, 7]]
         """
-        return perm_cycles(self._vp)
+        return perm_cycles(self._vp, True, self._n)
 
     def num_vertices(self):
         return perm_num_cycles(self._vp)
@@ -1049,7 +1119,7 @@ class Triangulation(object):
 
             e = q[e0]
             E = ep[e]
-            if E < e:    
+            if E < e:
                 is_e0_neg = True
                 e, E = E, e
             else:
@@ -1889,3 +1959,102 @@ class Triangulation(object):
     def cover(self, c, mutable=False, check=True):
         from .cover import TriangulationCover
         return TriangulationCover(self, c, mutable=mutable, check=check)
+
+    def _check_xy(self, x, y):
+        if len(x) == self.num_edges():
+            x = [x[self._norm(i)] for i in range(self._n)]
+        elif len(x) != self._n or any(a < 0 for a in x):
+            raise ValueError('invalid argument x')
+        if len(y) == self.num_edges():
+            y = [y[self._norm(i)] for i in range(self._n)]
+        elif len(y) != self._n or any(a < 0 for a in y):
+            raise ValueError('invalid argument y')
+        return (x, y)
+
+    def colouring_from_xy(self, x, y, check=True):
+        r"""
+        Return the veering colouring associated with the holonomy data ``x`` and ``y``.
+
+        EXAMPLES::
+
+            sage: from veerer import Triangulation
+            sage: t = "(0,1,2)(~0,~1,~2)"
+            sage: t = Triangulation(t)
+            sage: x = [1, 2, 1]
+            sage: y = [1, 1, 2]
+            sage: t.colouring_from_xy(x, y)
+            array('i', [1, 2, 2, 2, 2, 1])
+            sage: t = "(0,1,2)(~0,~1,4)(~2,5,3)(~3,~4,~5)"
+            sage: t = Triangulation(t)
+            sage: x = [1, 2, 1, 2, 1, 1]
+            sage: y = [1, 1, 2, 1, 2, 3]
+            sage: t.colouring_from_xy(x, y)
+            array('i', [1, 2, 2, 1, 2, 1, 1, 2, 1, 2, 2, 1])
+        """
+        from .constants import BLUE, RED, PURPLE, GREEN
+
+        if check:
+            x, y = self._check_xy(x, y)
+
+        def check_set_colouring(colouring, e, ep, col):
+            if colouring[e] is None:
+                colouring[e] = colouring[ep[e]] = col
+            elif colouring[e] != col:
+                raise ValueError('inconsistent colouring between x and y for edge e={}'.format(e))
+
+        colouring = [None] * self._n
+        faces = perm_cycles(self._fp, True, self._n)
+        ep = self._ep
+        for face in faces:
+            a, b, c = face
+            x_degenerate = (x[a] == 0) + (x[b] == 0) + (x[c] == 0)
+            if x_degenerate == 0:
+                if x[a] == x[b] + x[c]:
+                    xlarge = 0
+                elif x[b] == x[c] + x[a]:
+                    xlarge = 1
+                elif x[c] == x[a] + x[b]:
+                    xlarge = 2
+                else:
+                    raise ValueError('inconsistent x data for triangle {}'.format(face))
+                check_set_colouring(colouring, face[(xlarge + 1) % 3], ep, BLUE)
+                check_set_colouring(colouring, face[(xlarge + 2) % 3], ep, RED)
+            elif x_degenerate == 1:
+                if x[a] == 0:
+                    xvert = 0
+                elif x[b] == 0:
+                    xvert = 1
+                elif x[c] == 0:
+                    xvert = 2
+                check_set_colouring(colouring, face[xvert], ep, GREEN)
+                check_set_colouring(colouring, face[(xvert + 1) % 3], ep, RED)
+                check_set_colouring(colouring, face[(xvert + 2) % 3], ep, BLUE)
+            else:
+                raise ValueError('inconsistent x data for triangle {}'.format(face))
+
+            y_degenerate = (y[a] == 0) + (y[b] == 0) + (y[c] == 0)
+            if y_degenerate == 0:
+                if y[a] == y[b] + y[c]:
+                    ylarge = 0
+                elif y[b] == y[c] + y[a]:
+                    ylarge = 1
+                elif y[c] == y[a] + y[b]:
+                    ylarge = 2
+                else:
+                    raise ValueError('inconsistent y data for triangle {}'.format(face))
+                check_set_colouring(colouring, face[(ylarge + 1) % 3], ep, RED)
+                check_set_colouring(colouring, face[(ylarge + 2) % 3], ep, BLUE)
+            elif y_degenerate == 1:
+                if y[a] == 0:
+                    yhor = 0
+                elif y[b] == 0:
+                    yhor = 1
+                elif y[c] == 0:
+                    yhor = 2
+                check_set_colouring(colouring, face[yhor], ep, PURPLE)
+                check_set_colouring(colouring, face[(yhor + 1) % 3], ep, BLUE)
+                check_set_colouring(colouring, face[(yhor + 2) % 3], ep, RED)
+            else:
+                raise ValueError('inconsistent y data for triangle {}'.format(face))
+
+        return array('i', colouring)
