@@ -15,7 +15,7 @@
         }
     ],    
 
-    "license": "GPL-3.0-or-later",
+    "license": "GPL-2.0-or-later",
     "title": "veerer",
     "description": "<p>Veerer is a Python package to deal with veering triangulations of surfaces and their associated flat structures.</p>"
 }
