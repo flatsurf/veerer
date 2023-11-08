@@ -1,7 +1,7 @@
 Veerer
 ======
 
-Veerer is a Python module to deal with veering triangulations of surfaces and
+Veerer is a Python package to deal with veering triangulations of surfaces and
 their associated flat structures. It can in particular be used to provide
 representatives of pseudo-Anosov mapping classes of surfaces. The theoretical
 background is based on ideas of I. Agol and F. Guéritaud, and is developed in:
@@ -10,12 +10,11 @@ M. Bell, V. Delecroix, V. Gadre, R. Gutiérrez-Romo, S. Schleimer,
 "Coding Teichmüller flow using veering triangulations",
 `arXiv:1909.00890 <https://arxiv.org/abs/1909.00890>`_.
 
-To install the module you need Python 3.
+To install this package you only need Python but additional features are
+available if this package is used inside `SageMath
+<https://www.sagemath.org/>`_.
 
-Additional features are available if this module is used inside
-`SageMath <https://www.sagemath.org/>`_.
-
-Computations involving polytopes are only available if the Python module
+Computations involving polytopes are only available if the Python package
 `pplpy <https://github.com/sagemath/pplpy>`_ is available. It is installed
 by default with SageMath, version 8.7 or above.
 
@@ -49,9 +48,9 @@ If you use Veerer inside SageMath, the flat structure can be displayed with::
 Testing
 -------
 
-To run the SageMath doctests, install the module with pip, typically::
+To run the SageMath doctests, install the package with pip, typically::
 
-    $ sage -pip install . --user --force-reinstall
+    $ sage -pip install -e .
 
 and then run::
 
@@ -64,7 +63,7 @@ Or::
 Building the documentation
 --------------------------
 
-Go to the ``docs`` repository and then do::
+Go to the ``docs`` directory and then do::
 
     $ sage -sh
     $ make html
@@ -78,8 +77,8 @@ to have available on your computer
 - rst2latex python-docutils
 - pdflatex 
 - pandoc
-- the Python module rst2ipynb
-- the Python module nbconvert
+- the Python package rst2ipynb
+- the Python package nbconvert
 
 Then do::
 
