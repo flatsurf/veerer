@@ -42,7 +42,7 @@ $RELEASE_YEAR = $RELEASE_DATE.year
 $VERSION_BUMP_PATTERNS = [
     ('veerer/version.py', r"version =", "version = \"$VERSION\""),
     ('setup.py', r"    version=", "    version=\"$VERSION\","),
-    ('doc/conf.py', r'copyright = ', "copyright = \"2016-$RELEASE_YEAR, Mark Bell, Vincent Delecroix, Saul Schleimer\""),
+    ('doc/source/conf.py', r'copyright = ', "copyright = \"2016-$RELEASE_YEAR, Mark Bell, Vincent Delecroix, Saul Schleimer\""),
 ]
 
 $PUSH_TAG_REMOTE = 'git@github.com:flatsurf/veerer.git'
