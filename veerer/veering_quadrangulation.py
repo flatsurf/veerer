@@ -18,24 +18,23 @@ Veering quadrangulations generalize Penner construction.
     of involutions without fixed points on symmetric group on n symbols
     (tau_R, tau_B, tau_P).
 """
-######################################################################
-# This file is part of veering.
+# ****************************************************************************
+#  This file is part of veerer
 #
 #       Copyright (C) 2020-2021 Vincent Delecroix
 #
-# veerer is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+#  veerer is free software: you can redistribute it and/or modify it under the
+#  terms of the GNU General Public License version 3 as published by the Free
+#  Software Foundation.
 #
-# veerer is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#  veerer is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License
-# along with veerer. If not, see <https://www.gnu.org/licenses/>.
-######################################################################
+#  You should have received a copy of the GNU General Public License
+#  along with veerer. If not, see <https://www.gnu.org/licenses/>.
+# ****************************************************************************
 
 import functools
 import numbers

@@ -1,24 +1,23 @@
 r"""
 Linear family of coordinates on a veering triangulation
 """
-######################################################################
-# This file is part of veering.
+# ****************************************************************************
+#  This file is part of veerer
 #
 #       Copyright (C) 2023 Vincent Delecroix
 #
-# veerer is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+#  veerer is free software: you can redistribute it and/or modify it under the
+#  terms of the GNU General Public License version 3 as published by the Free
+#  Software Foundation.
 #
-# veerer is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#  veerer is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License
-# along with veerer. If not, see <https://www.gnu.org/licenses/>.
-######################################################################
+#  You should have received a copy of the GNU General Public License
+#  along with veerer. If not, see <https://www.gnu.org/licenses/>.
+# ****************************************************************************
 
 from array import array
 from copy import copy
