@@ -36,24 +36,23 @@ The same flip sequence defined in one line::
     sage: fp == fp2
     True
 """
-######################################################################
-# This file is part of veering.
+# ****************************************************************************
+#  This file is part of veerer
 #
 #       Copyright (C) 2020 Vincent Delecroix
 #
-# veerer is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+#  veerer is free software: you can redistribute it and/or modify it under the
+#  terms of the GNU General Public License version 3 as published by the Free
+#  Software Foundation.
 #
-# veerer is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#  veerer is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License
-# along with veerer. If not, see <https://www.gnu.org/licenses/>.
-######################################################################
+#  You should have received a copy of the GNU General Public License
+#  along with veerer. If not, see <https://www.gnu.org/licenses/>.
+# ****************************************************************************
 
 from .constants import colour_from_char, colour_to_char, RED, BLUE, PURPLE, GREEN, HORIZONTAL, VERTICAL
 from .permutation import perm_init, perm_check, perm_id, perm_is_one, perm_preimage, perm_invert, perm_cycle_string, perm_compose, perm_pow, perm_conjugate
@@ -503,42 +502,25 @@ class VeeringFlipSequence(object):
 
         return self._start._flat_structure_from_train_track_lengths(VH, VV, mutable=mutable, check=check)
 
-    def self_similar_surface(self, mutable=False, check=True):
+    def self_similar_widths_and_heights(self):
         r"""
+        Return the triple ``(renormalization_factor, x_coordinates,
+        y_coordinates)`` for a pseudo-Anosov flip sequence.
+
         EXAMPLES::
 
             sage: from veerer import VeeringTriangulation, BLUE, RED
             sage: V = VeeringTriangulation("(0,~2,1)(2,~8,~3)(3,~7,~4)(4,6,~5)(5,8,~6)(7,~1,~0)", "PRBPRBPBR")
             sage: R0, R1 = V.dehn_twists(RED)
             sage: B0, B1 = V.dehn_twists(BLUE)
-            sage: f = B0*R0*B1*R1
-            sage: f.self_similar_surface()
-            (a,
-             FlatVeeringTriangulation(Triangulation("(0,~2,1)(2,~8,~3)(3,~7,~4)(4,6,~5)(5,8,~6)(7,~1,~0)"), [(1, 1), (a^3 - 7*a^2 + 13*a - 7, -a), ..., (-a^3 + 7*a^2 - 13*a + 7, a), (-1, -1)]))
-
-            sage: f = B1*B0*R0*B1*R1*R1*R1*R0*B1*R0*B1
-            sage: f.self_similar_surface()
-            (a,
-             FlatVeeringTriangulation(Triangulation("(0,~2,1)(2,~8,~3)(3,~7,~4)(4,6,~5)(5,8,~6)(7,~1,~0)"), [(1, 1), ..., (-1/183*a^3 + 8/61*a^2 - 42/61*a + 274/183, 4/183*a^3 - 30/61*a^2 + 119/61*a + 8/183), (-1, -1)]))
+            sage: f = B0 **2 * R0 * B1 **3 * R1
+            sage: a, x, y = f.self_similar_widths_and_heights()
+            sage: f.start().colouring_from_xy(x, y)[:9] == f.end_colouring()
+            True
         """
-        if not self.is_pseudo_anosov():
-            raise ValueError("flip sequence is not pseudo-Anosov")
-
         require_package('sage', 'self_similar_surface')
         from sage.rings.qqbar import AA
-        hm = self.matrix() # matrix: heights_start -> heights_end
-        hp = hm.charpoly()
-        himax = hrmax = None
-        for (fac,mult) in hp.factor():
-            for (x,m) in fac.roots(AA):
-                if hrmax is None or (x > 0 and x > hrmax):
-                    hrmax = x
-                    hmmax = mult * m
-                    hfacmax = fac
-        assert hrmax is not None, hroots
-        r = hrmax
 
-        # TODO: it is a bit stupid to do twice the same computation
         wm = self.inverse().matrix() # matrix: widths_end -> widths_start
         wp = wm.charpoly()
         wroots = wp.roots(AA, multiplicities=True)
@@ -550,6 +532,18 @@ class VeeringFlipSequence(object):
                     wmmax = mult * m
                     wfacmax = fac
         assert wrmax is not None, wroots
+
+        hm = self.matrix() # matrix: heights_start -> heights_end
+        hp = hm.charpoly()
+        himax = hrmax = None
+        for (fac,mult) in hp.factor():
+            for (x,m) in fac.roots(AA):
+                if hrmax is None or (x > 0 and x > hrmax):
+                    hrmax = x
+                    hmmax = mult * m
+                    hfacmax = fac
+        assert hrmax is not None, hroots
+        r = hrmax
 
         assert wrmax == r, (hroots, wroots)
 
@@ -568,8 +562,28 @@ class VeeringFlipSequence(object):
             w = -w
         assert all(x > 0 for x in w), (w, h)
         assert all(y > 0 for y in h), (w, h)
+        return r, w, h
 
-        return r, self.coloured_start()._flat_structure_from_train_track_lengths(h, w, base_ring=K, mutable=mutable, check=True)
+    def self_similar_surface(self, mutable=False, check=True):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation, BLUE, RED
+            sage: V = VeeringTriangulation("(0,~2,1)(2,~8,~3)(3,~7,~4)(4,6,~5)(5,8,~6)(7,~1,~0)", "PRBPRBPBR")
+            sage: R0, R1 = V.dehn_twists(RED)
+            sage: B0, B1 = V.dehn_twists(BLUE)
+            sage: f = B0*R0*B1*R1
+            sage: f.self_similar_surface()
+            (a,
+             FlatVeeringTriangulation(Triangulation("(0,~2,1)(2,~8,~3)(3,~7,~4)(4,6,~5)(5,8,~6)(7,~1,~0)"), [(1, 1), (a^3 - 7*a^2 + 13*a - 7, -a), ..., (-a^3 + 7*a^2 - 13*a + 7, a), (-1, -1)]))
+
+            sage: f = B1*B0*R0*B1*R1*R1*R1*R0*B1*R0*B1
+            sage: f.self_similar_surface()
+            (a,
+             FlatVeeringTriangulation(Triangulation("(0,~2,1)(2,~8,~3)(3,~7,~4)(4,6,~5)(5,8,~6)(7,~1,~0)"), [(1, 1), ..., (-1/183*a^3 + 8/61*a^2 - 42/61*a + 274/183, 4/183*a^3 - 30/61*a^2 + 119/61*a + 8/183), (-1, -1)]))
+        """
+        r, w, h = self.self_similar_widths_and_heights()
+        return r, self.coloured_start()._flat_structure_from_train_track_lengths(h, w, base_ring=r.parent(), mutable=mutable, check=True)
 
     # change
     def append_flip(self, e, col):

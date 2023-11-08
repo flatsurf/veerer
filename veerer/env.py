@@ -5,6 +5,23 @@ TESTS::
 
     sage: from veerer.env import sage, flipper, surface_dynamics, ppl
 """
+# ****************************************************************************
+#  This file is part of veerer
+#
+#       Copyright (C) 2023 Vincent Delecroix
+#
+#  veerer is free software: you can redistribute it and/or modify it under the
+#  terms of the GNU General Public License version 3 as published by the Free
+#  Software Foundation.
+#
+#  veerer is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with veerer. If not, see <https://www.gnu.org/licenses/>.
+# ****************************************************************************
 
 CHECK = False
 
@@ -70,7 +87,7 @@ except ImportError:
 error_msg = {
     'curver': 'the function {} can only be called when the package curver is installed.',
 
-    'sage': 'the function {} can only be called when running inside of Sage. See http://www.sagemath.org/',
+    'sage': 'the function {} can only be called when running inside of Sage. See https://www.sagemath.org/',
 
     'surface_dynamics': 'the function {} only works when the package surface_dynamics is installed. See https://pypi.org/project/surface_dynamics/ for instructions.',
 

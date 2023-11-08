@@ -5,26 +5,25 @@ An edge permutation is an involution (possibly with fixed points corresponding
 to folded edges). It is said to be in canonical form if it starts with cycle
 representatives.
 """
-######################################################################
-# This file is part of veering.
+# ****************************************************************************
+#  This file is part of veerer
 #
 #       Copyright (C) 2018 Mark Bell
 #                     2018-2023 Vincent Delecroix
 #                     2018 Saul Schleimer
 #
-# veerer is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+#  veerer is free software: you can redistribute it and/or modify it under the
+#  terms of the GNU General Public License version 3 as published by the Free
+#  Software Foundation.
 #
-# veerer is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#  veerer is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License
-# along with veerer. If not, see <https://www.gnu.org/licenses/>.
-######################################################################
+#  You should have received a copy of the GNU General Public License
+#  along with veerer. If not, see <https://www.gnu.org/licenses/>.
+# ****************************************************************************
 
 import collections
 import itertools
@@ -3175,9 +3174,199 @@ class VeeringTriangulation(Triangulation):
 
         return self._flat_structure_from_train_track_lengths(VH, VV)
 
-    def geometric_flat_structure(self):
-        raise NotImplementedError
-        return self.geometric_polytope().vrep()[1:, 1:].sum(axis=0).tolist()
+    def zippered_rectangles(self, x, y, base_ring=None, check=True):
+        r"""
+        Return the zippered rectangle surface associated to the holonomy data ``x`` and ``y``.
+
+        This construction only works for Abelian differentials.
+
+        For each wedge with an upward separatrix we consider a horizontal
+        segment based at the bottom of the wedge as wide as the triangle. Then
+        we consider downward vertical separatrices and extend them until they
+        touch the union of these horizontal segments.
+
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation, BLUE, RED
+
+            sage: vt = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RBB")
+            sage: x = [1, 2, 1]
+            sage: y = [1, 1, 2]
+            sage: vt.zippered_rectangles(x, y)  # optional: sage_flatsurf
+            Translation Surface built from a square and a rectangle
+
+            sage: vt = VeeringTriangulation("(0,1,2)(~0,~1,4)(~2,5,3)(~3,~4,~5)", "RBBRBR")
+            sage: x = [1,2,1,2,1,1]
+            sage: y = [1,1,2,1,2,3]
+            sage: vt.zippered_rectangles(x, y)  # optional: sage_flatsurf
+            Translation Surface built from 3 squares and a rectangle
+
+            sage: vt = VeeringTriangulation("(0,~2,1)(2,~8,~3)(3,~7,~4)(4,6,~5)(5,8,~6)(7,~1,~0)", "PRBPRBPBR")
+            sage: R0, R1 = vt.dehn_twists(RED)
+            sage: B0, B1 = vt.dehn_twists(BLUE)
+            sage: f = B0 **2 * R0 **3 * B1 * R1 ** 5
+            sage: a, x, y = f.self_similar_widths_and_heights()
+            sage: vt.zippered_rectangles(x, y)  # optional: sage_flatsurf
+            Translation Surface built from 6 rectangles
+        """
+        ans, edge_orientations = self.is_abelian(certificate=True)
+        if not ans:
+            raise ValueError('the construction is only valid for Abelian differentials')
+
+        if check:
+            x, y = self._check_xy(x, y)
+            if base_ring is None:
+                from sage.structure.sequence import Sequence
+                base_ring = Sequence(list(x) + list(y)).universe()
+        elif base_ring is None:
+            base_ring = self.base_ring()
+
+        colouring = self.colouring_from_xy(x, y, check=False)
+        for col0, col1 in zip(colouring, self._colouring):
+            if col1 == GREEN or col1 == PURPLE:
+                continue
+            if col0 != col1:
+                raise ValueError('invalid monodromy data')
+
+        ep = self._ep
+
+        # Each separatrix is in between two consecutive edges of
+        # distinct colours around a vertex
+        # We label separatrices as follows
+        #
+        #            4i+2
+        #             ^
+        #             |
+        #             |
+        #           c2|c1
+        # 4i+3  <-----x----> 4i+1
+        #             |c0
+        #             |
+        #             |
+        #             v
+        #             4i
+
+        # compute for each half-edge the label of the next separatrix
+        left_wedges = []
+        right_wedges = []
+        next_separatrix = [-1] * self._n
+        previous_separatrix = [-1] * self._n
+        i = 0
+        for vertex in self.vertices():
+            # find a blue half-edge after a down separatrix, that is
+            # consecutive a, b at a vertex such that
+            # edge_orientations[a] == False and edge_orientations[b] == True
+            a = vertex[0]
+            b = vertex[1]
+            while not edge_orientations[a] or edge_orientations[b]:
+                a = b
+                b = self.next_at_vertex(a)
+            assert colouring[a] == RED and colouring[b] == BLUE, (a, colouring[a], colouring[b])
+            while previous_separatrix[b] == -1:
+                if i % 2 == 0:
+                    assert colouring[a] == RED and colouring[b] == BLUE, (i, a, colouring[a], b, colouring[b])
+                else:
+                    assert colouring[a] == BLUE and colouring[b] == RED, (i, a, colouring[a], b, colouring[b])
+
+                right_wedges.append(a)
+                left_wedges.append(b)
+                a = b
+                b = self.next_at_vertex(a)
+                previous_separatrix[a] = i
+                next_separatrix[a] = i + 1
+                while colouring[a] == colouring[b]:
+                    previous_separatrix[b] = i
+                    next_separatrix[b] = i + 1
+                    a = b
+                    b = self.next_at_vertex(a)
+                # colour change
+                i += 1
+
+            # correct the last quadrant
+            assert colouring[a] == RED and colouring[b] == BLUE
+            j = previous_separatrix[b]
+            while colouring[a] == RED:
+                next_separatrix[a] = j
+                a = self.previous_at_vertex(a)
+
+            # check that we did a multiple of 2pi
+            assert i % 4 == 0
+
+        assert all(x != -1 for x in next_separatrix)
+        assert all(x != -1 for x in previous_separatrix)
+        assert len(right_wedges) == len(left_wedges) == 2 * self.num_faces()
+        assert all(colouring[right_wedges[i]] == RED for i in range(0, 2 * self.num_faces(), 2))
+        assert all(colouring[right_wedges[i]] == BLUE for i in range(1, 2 * self.num_faces(), 2))
+        assert all(colouring[left_wedges[i]] == BLUE for i in range(0, 2 * self.num_faces(), 2))
+        assert all(colouring[left_wedges[i]] == RED for i in range(1, 2 * self.num_faces(), 2))
+
+        # There are as many rectangles in the Markov partitions as triangles in
+        # the veering triangulation
+        # Each left/right/bottom separatrix has a certain number of cut points
+        # (on both sides)
+        rectangles = []
+        for i in range(1, 2 * self.num_faces(), 2):
+            l = left_wedges[i]
+            L = ep[l]
+            r = right_wedges[i]
+            R = ep[r]
+            e = self.next_in_face(r)
+            E = ep[e]
+            assert self.next_in_face(e) == L
+
+            # The rectangles are always built starting from the bottom left corner
+            # as in the following picture
+            #
+            #   o----------------o
+            #   |  p5         p4 |
+            #   |p6            p3|
+            #   |                |
+            #   |p7            p2|
+            #   | p0          p1 |
+            #   o----------------o
+            if i % 4 == 1:
+                # right rectangle
+                # bottom side
+                p0 = (next_separatrix[R], RIGHT, x[r])
+                if x[l] < x[r]:
+                    # small case: x[l] = x[r] - x[e]
+                    p1 = (next_separatrix[R], RIGHT, x[e])
+                else:
+                    # big case: x[l] = x[r] + x[e]
+                    p1 = (previous_separatrix[e], LEFT, x[e])
+                # right side
+                p2 = (next_separatrix[L], RIGHT, y[e])
+                p3 = (next_separatrix[L], RIGHT, y[l])
+                # top side
+                p4 = (next_separatrix[r], RIGHT, x[l])
+                p5 = (next_separatrix[r], RIGHT, 0)
+                # left side
+                p6 = (previous_separatrix[r], LEFT, 0)
+                p7 = (previous_separatrix[r], LEFT, y[r])
+
+            else:
+                # bottom side
+                if x[r] < x[l]:
+                    # small case: x[r] = x[l] - x[e]
+                    p0 = (previous_separatrix[L], LEFT, x[e])
+                else:
+                    # big case: x[r] = x[l] + x[e]
+                    p0 = (next_separatrix[E], RIGHT, x[e])
+                p1 = (previous_separatrix[L], LEFT, x[l])
+                # right side
+                p2 = (next_separatrix[l], RIGHT, y[l])
+                p3 = (next_separatrix[l], RIGHT, 0)
+                # top side
+                p4 = (next_separatrix[r], LEFT, 0)
+                p5 = (next_separatrix[r], LEFT, x[r])
+                # left side
+                p6 = (previous_separatrix[R], LEFT, y[r])
+                p7 = (previous_separatrix[R], LEFT, y[e])
+
+            rectangles.append((p0, p1, p2, p3, p4, p5, p6, p7))
+
+        from .tatami_decomposition import tatami_decomposition
+        return tatami_decomposition(rectangles, base_ring)
 
     def is_core(self, backend=None):
         r"""
