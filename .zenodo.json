@@ -1,0 +1,21 @@
+{
+    "creators": [
+        {   
+            "name": "Bell, Mark C"
+        },
+        {   
+            "orcid": "0000-0002-9608-782X",
+            "name": "Delecroix, Vincent",
+            "affiliation": "CNRS - Université de Bordeaux"
+        },
+        {   
+            "name": "Schleimer, Saul",
+            "orcid": "0000-0003-3362-7822",
+            "affiliation": "University of Warwick"
+        }
+    ],    
+
+    "license": "GPL-3.0-or-later",
+    "title": "veerer",
+    "description": "<p>Veerer is a Python package to deal with veering triangulations of surfaces and their associated flat structures.</p>"
+}
