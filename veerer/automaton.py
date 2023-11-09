@@ -71,21 +71,22 @@ class Automaton(object):
         sage: strata = [AbelianStratum(2), QuadraticStratum(2,-1,-1),    # optional - surface_dynamics
         ....:           QuadraticStratum(2,2), AbelianStratum(1,1)]
         sage: for stratum in strata:                                     # optional - surface_dynamics
+        ....:     print(stratum)
         ....:     vt = VeeringTriangulation.from_stratum(stratum)
         ....:     print(CoreAutomaton(vt))
         ....:     print(ReducedCoreAutomaton(vt))
         H_2(2)
         Core veering automaton with 86 vertices
-        Core veering automaton with 28 vertices
+        Reduced core veering automaton with 28 vertices
         Q_1(2, -1^2)
         Core veering automaton with 160 vertices
-        Core veering automaton with 68 vertices
+        Reduced core veering automaton with 68 vertices
         Q_2(2^2)
         Core veering automaton with 846 vertices
-        Core veering automaton with 305 vertices
+        Reduced core veering automaton with 305 vertices
         H_2(1^2)
         Core veering automaton with 876 vertices
-        Core veering automaton with 234 vertices
+        Reduced core veering automaton with 234 vertices
     """
     _name = ''
 
@@ -457,7 +458,7 @@ class Automaton(object):
         else:
             A = CoreAutomaton(verbosity=verbosity)
         A.set_seed(T)
-        A.run(max_size, verbosity)
+        A.run(max_size)
         return A
 
     @classmethod
@@ -473,8 +474,7 @@ class Automaton(object):
             sage: Q = QuadraticStratum(8)                         # optional - surface_dynamics
             sage: A = CoreAutomaton.from_stratum(Q, max_size=100) # optional - surface_dynamics
             sage: A                                               # optional - surface_dynamics
-            Core veering automaton with 100 vertices
-
+            Partial core veering automaton with 101 vertices
         """
         return self.from_triangulation(VeeringTriangulation.from_stratum(stratum), reduced=reduced, **kwds)
 
