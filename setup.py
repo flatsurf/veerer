@@ -30,7 +30,7 @@ extensions = [Extension("veerer.permutation", sources=["veerer/permutation.pyx"]
 
 setup(
     name="veerer",
-    version="0.1.1",
+    version="0.1.2",
     description="A Python module to manipulate Veering triangulations and their associated flat structures",
     long_description=long_description,
     author="Mark Bell, Vincent Delecroix, and Saul Schleimer",
