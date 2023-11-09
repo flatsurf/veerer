@@ -85,7 +85,7 @@ components)</p></li>
 </ul>
 <p>To import all features from veerer one usually starts with the following
 lines:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span> <span class="nn">veerer</span> <span class="kn">import</span> <span class="o">*</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="kn">from</span> <span class="nn">veerer</span> <span class="kn">import</span> <span class="o">*</span>  <span class="c1"># random output due to deprecation warnings from realalg</span>
 <span class="n">sage</span><span class="p">:</span> <span class="kn">from</span> <span class="nn">surface_dynamics</span> <span class="kn">import</span> <span class="o">*</span>   <span class="c1"># optional - surface_dynamics</span>
 </pre></div>
 </div>
@@ -173,12 +173,14 @@ train-tracks.</p>
 <span class="n">sage</span><span class="p">:</span> <span class="n">Qirr</span> <span class="o">=</span> <span class="n">Q</span><span class="o">.</span><span class="n">irregular_component</span><span class="p">()</span>    <span class="c1"># optional - surface_dynamics</span>
 </pre></div>
 </div>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">VeeringTriangulation</span><span class="o">.</span><span class="n">from_stratum</span><span class="p">(</span><span class="n">Qreg</span><span class="p">)</span>    <span class="c1"># optional - surface_dynamics</span>
-<span class="n">VeeringTriangulation</span><span class="p">(</span><span class="s2">&quot;(0,19,~18)(1,20,~19)(2,21,~20)(3,22,~21)(4,23,~22)(5,25,~24)(6,27,~26)(7,28,~27)(8,29,~28)(9,~16,17)(10,~5,~29)(11,~6,~10)(12,~1,~11)(13,~9,~12)(14,~7,~13)(15,~2,~14)(16,~0,~15)(18,~8,~17)(24,~23,~3)(26,~25,~4)&quot;</span><span class="p">,</span> <span class="s2">&quot;RRRRRRRRRRBBBBBBBBBBBBBBBBBBBB&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">vt</span> <span class="o">=</span> <span class="n">VeeringTriangulation</span><span class="o">.</span><span class="n">from_stratum</span><span class="p">(</span><span class="n">Qreg</span><span class="p">)</span>  <span class="c1"># optional - surface_dynamics</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">vt</span><span class="o">.</span><span class="n">stratum</span><span class="p">()</span>                                  <span class="c1"># optional - surface_dynamics</span>
+<span class="n">Q_4</span><span class="p">(</span><span class="mi">3</span><span class="o">^</span><span class="mi">4</span><span class="p">)</span>
 </pre></div>
 </div>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">VeeringTriangulation</span><span class="o">.</span><span class="n">from_stratum</span><span class="p">(</span><span class="n">Qirr</span><span class="p">)</span>   <span class="c1"># optional - surface_dynamics</span>
-<span class="n">VeeringTriangulation</span><span class="p">(</span><span class="s2">&quot;(0,21,~20)(1,22,~21)(2,23,~22)(3,24,~23)(4,25,~24)(5,26,~25)(6,28,~27)(7,29,~28)(8,~16,17)(9,~14,15)(10,~2,~29)(11,~1,~10)(12,~6,~11)(13,~9,~12)(14,~8,~13)(16,~4,~15)(18,~5,~17)(19,~3,~18)(20,~7,~19)(27,~26,~0)&quot;</span><span class="p">,</span> <span class="s2">&quot;RRRRRRRRRRBBBBBBBBBBBBBBBBBBBB&quot;</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="n">vt</span> <span class="o">=</span> <span class="n">VeeringTriangulation</span><span class="o">.</span><span class="n">from_stratum</span><span class="p">(</span><span class="n">Qirr</span><span class="p">)</span>  <span class="c1"># optional - surface_dynamics</span>
+<span class="n">sage</span><span class="p">:</span> <span class="n">vt</span><span class="o">.</span><span class="n">stratum</span><span class="p">()</span>                                  <span class="c1"># optional - surface_dynamics</span>
+<span class="n">Q_4</span><span class="p">(</span><span class="mi">3</span><span class="o">^</span><span class="mi">4</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sage</span><span class="p">:</span> <span class="c1"># constructing a veering triangulation from a pseudo-Anosov homeomorphism</span>
@@ -386,9 +388,9 @@ filtering cylindrical (single test is cheap) ~2 sec for H(4)^hyp</p>
 <span class="n">sage</span><span class="p">:</span> <span class="n">AV</span> <span class="o">=</span> <span class="n">CoreAutomaton</span><span class="p">(</span><span class="n">V</span><span class="p">)</span>                          <span class="c1"># long time - ~21 secs # optional - surface_dynamics</span>
 <span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">AV</span><span class="o">.</span><span class="n">num_states</span><span class="p">())</span>                         <span class="c1"># long time - ~150 µs # optional - surface_dynamics</span>
 <span class="mi">9116</span>
-<span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">AV</span><span class="o">.</span><span class="n">num_geometric_triangulations</span><span class="p">())</span>       <span class="c1"># long time - ~21 secs # optional - surface_dynamics</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">is_geometric</span><span class="p">()</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">AV</span><span class="p">)</span>              <span class="c1"># long time - ~21 secs # optional - surface_dynamics</span>
 <span class="mi">2916</span>
-<span class="n">sage</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">AV</span><span class="o">.</span><span class="n">num_cylindrical_triangulations</span><span class="p">())</span>     <span class="c1"># long time - ~1.5 secs # optional - surface_dynamics</span>
+<span class="n">sage</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">is_cylindrical</span><span class="p">()</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">AV</span><span class="p">)</span>            <span class="c1"># long time - ~1.5 secs # optional - surface_dynamics</span>
 <span class="mi">636</span>
 </pre></div>
 </div>
