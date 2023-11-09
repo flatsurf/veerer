@@ -37,6 +37,7 @@ setup(
     author_email="contact@flatsurf.org",
     url="https://github.com/flatsurf/veerer",
     packages=["veerer", "veerer.polyhedron"],
+    package_data={"veerer": ["permutation.pyx"]},
     license = 'GPL 2.0+',
     ext_modules=cythonize(extensions),
     install_requires=[],
