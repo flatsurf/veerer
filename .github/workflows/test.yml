@@ -62,11 +62,14 @@ jobs:
       - name: Run SageMath doctests
         shell: bash -l {0}
         run: |
+          mamba remove -y pytest  # sage -t breaks in some old versions of SageMath if pytest is installed
           sage -tp --force-lib --long --optional=${{ matrix.optionals }} veerer doc
       - name: Run pytest
         shell: bash -l {0}
         working-directory: tests
-        run: pytest -n auto
+        run: |
+          mamba install -y pytest pytest-xdist
+          pytest -n auto
       - uses: flatsurf/actions/show-logs@main
         if: ${{ always() }}
 
