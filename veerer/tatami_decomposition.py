@@ -35,18 +35,33 @@ def tatami_decomposition(rectangles, base_ring=None):
         sage: from veerer.constants import LEFT, RIGHT
         sage: r0 = ((1, RIGHT, 1), (1, RIGHT, 0), (0, LEFT, 0), (0, LEFT, 1), (3, RIGHT, 2), (3, RIGHT, 1), (0, RIGHT, 2), (0, RIGHT, 1))
         sage: r1 = ((3, LEFT, 0), (3, LEFT, 2), (0, LEFT, 1), (0, LEFT, 2), (3, RIGHT, 1), (1, LEFT, 1), (0, RIGHT, 1), (0, RIGHT, 0))
+        sage: tatami_decomposition([r0, r1])  # optional: sage_flatsurf
+        Translation Surface built from a square and a rectangle
+
+    TESTS::
+
         sage: tatami_decomposition([r0, r1], ZZ)  # optional: sage_flatsurf
+        Translation Surface built from a square and a rectangle
+        sage: tatami_decomposition([r0, r1], QQ)  # optional: sage_flatsurf
+        Translation Surface built from a square and a rectangle
+        sage: tatami_decomposition([r0, r1], AA)  # optional: sage_flatsurf
+        Translation Surface built from a square and a rectangle
+
+        sage: r0 = ((1, RIGHT, AA(1)), (1, RIGHT, 0), (0, LEFT, 0), (0, LEFT, 1), (3, RIGHT, 2), (3, RIGHT, 1), (0, RIGHT, 2), (0, RIGHT, 1))
+        sage: r1 = ((3, LEFT, 0), (3, LEFT, 2), (0, LEFT, 1), (0, LEFT, 2), (3, RIGHT, 1), (1, LEFT, 1), (0, RIGHT, 1), (0, RIGHT, 0))
+        sage: tatami_decomposition([r0, r1])  # optional: sage_flatsurf
         Translation Surface built from a square and a rectangle
     """
     if base_ring is None:
         coefficients = []
         for rectangle in rectangles:
-            for side in rectangle:
-                coefficients.append(side[0][2])
-                coefficients.append(side[1][2])
+            for sep, side, x in rectangle:
+                coefficients.append(x)
+        from sage.structure.sequence import Sequence
         base_ring = Sequence(coefficients).universe()
 
     # for each separatrix we build an iet
+    zero = base_ring(0)
     intervals = defaultdict(lambda: defaultdict(list))
     for i, rectangle in enumerate(rectangles):
         if len(rectangle) != 8:
@@ -71,8 +86,8 @@ def tatami_decomposition(rectangles, base_ring=None):
             else:
                 if side0 == side1:
                     raise ValueError('invalid data')
-                intervals[sep0][side0].append((0, x0))
-                intervals[sep1][side1].append((0, x1))
+                intervals[sep0][side0].append((zero, x0))
+                intervals[sep1][side1].append((zero, x1))
                 lengths.append(x0 + x1)
 
         if lengths[0] == 0 or lengths[1] == 0 or lengths[0] != lengths[2] or lengths[1] != lengths[3]:
@@ -89,8 +104,8 @@ def tatami_decomposition(rectangles, base_ring=None):
         right.sort()
         if (left[0][0] != 0 or right[0][0] != 0 or
             left[-1][1] != right[-1][1] or
-             any(left[i][1] != left[i+1][0] for i in range(len(left) - 1)) or
-             any(right[i][1] != right[i+1][0] for i in range(len(right) - 1))):
+             any(left[i][1] != left[i + 1][0] for i in range(len(left) - 1)) or
+             any(right[i][1] != right[i + 1][0] for i in range(len(right) - 1))):
             raise ValueError('invalid data: for separatrix {} we got left={} right={}'.format(sep, left, right))
 
         ir = 0
@@ -164,13 +179,13 @@ def tatami_decomposition(rectangles, base_ring=None):
                         m += 1
                     lengths.reverse()
             else:
-                cuts = refinement[sep0, 0, x0]
+                cuts = refinement[sep0, zero, x0]
                 for k in range(len(cuts) - 2, -1, -1):
                     interval_id[sep0, side0, cuts[k], cuts[k + 1]] = (i, m)
                     m += 1
                 lengths0 = [cuts[k + 1] - cuts[k] for k in range(len(cuts) - 1)]
 
-                cuts = refinement[sep1, 0, x1]
+                cuts = refinement[sep1, zero, x1]
                 for k in range(len(cuts) - 1):
                     interval_id[sep1, side1, cuts[k], cuts[k + 1]] = (i, m)
                     m += 1
