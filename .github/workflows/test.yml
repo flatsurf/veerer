@@ -34,6 +34,15 @@ jobs:
           - optionals: "sage,sage_flatsurf,pyeantic,pyintervalxt,surface_dynamics,flipper"
             sagelib: "10.0"
             python: "3.10.5"
+          - optionals: "flipper"
+            python: "3.10.5"
+          # Test with the latest versions of Python but without SageMath
+          - optionals: "flipper"
+            python: "3.10.13"
+          - optionals: "flipper"
+            python: "3.11.6"
+          - optionals: "flipper"
+            python: "3.12.0"
     steps:
       - uses: actions/checkout@v2
         with: { submodules: recursive }
@@ -42,8 +51,10 @@ jobs:
       - name: Install dependencies
         shell: bash -l {0}
         run: |
-          mamba install -n test sagelib=${{ matrix.sagelib }}
-          echo "sagelib ==${{ matrix.sagelib }}" >> $CONDA_PREFIX/conda-meta/pinned
+          if (echo "${{ matrix.optionals }}" | grep sage); then
+            mamba install -n test sagelib=${{ matrix.sagelib }}
+            echo "sagelib ==${{ matrix.sagelib }}" >> $CONDA_PREFIX/conda-meta/pinned
+          fi
 
           while read; do
             optional=$(echo "$REPLY" | grep -o '# optional: [^ ]*' | awk '{ print $3; }') || true
