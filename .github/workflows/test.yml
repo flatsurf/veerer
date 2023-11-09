@@ -24,7 +24,7 @@ jobs:
             python: "3.9.9"
           - optionals: "sage,sage_flatsurf,pyeantic,pyintervalxt,surface_dynamics,flipper"
             sagelib: "9.6"
-            python: "3.10.3"
+            python: "3.10.5"
           - optionals: "sage,sage_flatsurf,pyeantic,pyintervalxt,surface_dynamics,flipper"
             sagelib: "9.7"
             python: "3.10.5"
