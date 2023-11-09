@@ -22,7 +22,7 @@ sys.path.append(os.path.join(SAGE_SRC, "sage_setup", "docbuild", "ext"))
 # -- Project information -----------------------------------------------------
 
 project = 'veerer'
-copyright = '2018-2023, Mark Bell, Vincent Delecroix, Saul Schleimer'
+copyright = "2016-2023, Mark Bell, Vincent Delecroix, Saul Schleimer"
 author = 'Mark Bell, Vincent Delecroix, Saul Schleimer'
 
 release = version
