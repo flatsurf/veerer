@@ -30,7 +30,7 @@ def flipper_edge(T, e):
     r"""
     EXAMPLES::
 
-        sage: from veerer.layout import flipper_edge
+        sage: from veerer.layout import flipper_edge  # random output due to deprecation warnings from realalg
         sage: import flipper                                                # optional - flipper
         sage: T = flipper.create_triangulation([(0r,1r,2r),(-1r,-2r,-3r)])  # optional - flipper
         sage: sorted([flipper_edge(T, e) for e in T.edges])                 # optional - flipper

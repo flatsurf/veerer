@@ -15,7 +15,7 @@ Torus case or `\mathcal{Q}(-1^4)`
 
 There are only two possible moves::
 
-    sage: from veerer import VeeringTriangulation, VeeringFlipSequence
+    sage: from veerer import VeeringTriangulation, VeeringFlipSequence # random output due to deprecation warnings from realalg
     sage: V = VeeringTriangulation("(0,1,2)", "PBR")
     sage: R = VeeringFlipSequence(V, "0R", [2,1,0])
     sage: L = VeeringFlipSequence(V, "0B", [1,0,2])

@@ -43,7 +43,7 @@ class Automaton(object):
 
     EXAMPLES::
 
-        sage: from veerer import *
+        sage: from veerer import *  # random output due to deprecation warnings from realalg
 
         sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
         sage: A = CoreAutomaton(T)

@@ -42,7 +42,7 @@ def vec_slope(v):
 
     EXAMPLES::
 
-        sage: from veerer.constants import RED, BLUE, PURPLE, GREEN
+        sage: from veerer.constants import RED, BLUE, PURPLE, GREEN  # random output due to deprecation warnings from realalg
         sage: from veerer.flat_structure import vec_slope
 
         sage: vec_slope((1,0)) == PURPLE

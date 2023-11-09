@@ -107,7 +107,7 @@ class VeeringQuadrangulation:
         r"""
         TESTS::
 
-            sage: from veerer.veering_quadrangulation import VeeringQuadrangulation
+            sage: from veerer.veering_quadrangulation import VeeringQuadrangulation  # random output due to deprecation warnings from realalg
             sage: VeeringQuadrangulation("(0,1)(2)", "(0,2)(1)") == VeeringQuadrangulation("(0,1)(2)", "(0,2)(1)")
             True
             sage: VeeringQuadrangulation("(0,1)(2)", "(0,2)(1)") == VeeringQuadrangulation("(0,1)(2)", "(0,2,1)")

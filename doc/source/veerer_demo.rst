@@ -40,7 +40,7 @@ part of a project that also involve
 To import all features from veerer one usually starts with the following
 lines::
 
-   sage: from veerer import *
+   sage: from veerer import *  # random output due to deprecation warnings from realalg
    sage: from surface_dynamics import *   # optional - surface_dynamics
 
 To input a triangulation in the program one needs to specify a list of

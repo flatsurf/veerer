@@ -53,7 +53,7 @@ class VeeringTriangulation(Triangulation):
 
     EXAMPLES::
 
-        sage: from veerer import *
+        sage: from veerer import *  # random output due to deprecation warnings from realalg
 
     Built from an explicit triangulation (in cycle or list form) and a list of colours::
 

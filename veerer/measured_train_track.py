@@ -91,7 +91,7 @@ class MeasuredTrainTrack(object):
 
         EXAMPLES::
 
-            sage: from veerer import *
+            sage: from veerer import *  # random output due to deprecation warnings from realalg
             sage: v0 = vector((1, 0, 1, 1))
             sage: v1 = vector((0, 1, 1, 1))
             sage: t = Triangulation("(0,1,2)(~0,~1,3)")

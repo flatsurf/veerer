@@ -3,7 +3,8 @@ Various environment modules.
 
 TESTS::
 
-    sage: from veerer.env import sage, flipper, surface_dynamics, ppl
+    sage: from veerer.env import sage, flipper, surface_dynamics, ppl  # random output due to deprecation warnings from realalg
+
 """
 # ****************************************************************************
 #  This file is part of veerer

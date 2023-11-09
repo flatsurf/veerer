@@ -11,7 +11,7 @@ EXAMPLES:
 
 The golden mean pseudo-Anosov realized on the sphere::
 
-    sage: from veerer import VeeringTriangulation, VeeringFlipSequence, BLUE, RED
+    sage: from veerer import VeeringTriangulation, VeeringFlipSequence, BLUE, RED  # random output due to deprecation warnings from realalg
     sage: T = VeeringTriangulation("(0,1,2)", "BBR")
     sage: fp = VeeringFlipSequence(T)
     sage: fp.append_flip(0, RED)

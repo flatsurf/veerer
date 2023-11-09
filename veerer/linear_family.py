@@ -71,7 +71,7 @@ def subspace_are_equal(subspace1, subspace2, check=True):
 
     EXAMPLES::
 
-        sage: from veerer.linear_family import subspace_are_equal
+        sage: from veerer.linear_family import subspace_are_equal  # random output due to deprecation warnings from realalg
 
         sage: m1 = random_matrix(ZZ, 3, 5)
         sage: m2 = copy(m1)

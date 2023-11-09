@@ -3,7 +3,8 @@ Various constants defined for veering triangulations.
 
 EXAMPLES::
 
-    sage: from veerer.constants import RED, BLUE, PURPLE, GREEN
+    sage: from veerer.constants import RED, BLUE, PURPLE, GREEN  # random output due to deprecation warnings from realalg
+
 """
 # ****************************************************************************
 #  This file is part of veerer
