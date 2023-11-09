@@ -6,7 +6,7 @@ A cone in R^d is a domain delimited by finitely linear homogeneous inequalities
 
 EXAMPLES::
 
-    sage: from veerer.polyhedron.linear_expression import LinearExpressions, ConstraintSystem
+    sage: from veerer.polyhedron.linear_expression import LinearExpressions, ConstraintSystem  # random output due to deprecation warnings in realalg
 
     sage: L = LinearExpressions(QQ)
     sage: cs = ConstraintSystem()

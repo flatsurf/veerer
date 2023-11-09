@@ -47,7 +47,7 @@ def argmin(l):
 
     EXAMPLES::
 
-        sage: from veerer.permutation import argmin
+        sage: from veerer.permutation import argmin  # random output due to deprecation warnings in realalg
         sage: argmin([3, 0, 1, 2])
         1
         sage: argmin([-1, 3, 5, -2, 50])
