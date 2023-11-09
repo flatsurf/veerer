@@ -30,13 +30,14 @@ extensions = [Extension("veerer.permutation", sources=["veerer/permutation.pyx"]
 
 setup(
     name="veerer",
-    version="0.1.1",
+    version="0.1.2",
     description="A Python module to manipulate Veering triangulations and their associated flat structures",
     long_description=long_description,
     author="Mark Bell, Vincent Delecroix, and Saul Schleimer",
     author_email="contact@flatsurf.org",
     url="https://github.com/flatsurf/veerer",
     packages=["veerer", "veerer.polyhedron"],
+    package_data={"veerer": ["permutation.pyx"]},
     license = 'GPL 2.0+',
     ext_modules=cythonize(extensions),
     install_requires=[],
