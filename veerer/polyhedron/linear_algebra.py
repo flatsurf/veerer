@@ -38,7 +38,7 @@ def linear_form_project(equations, linear_form):
 
     EXAMPLES::
 
-        sage: from veerer.polyhedron.linear_algebra import linear_form_project
+        sage: from veerer.polyhedron.linear_algebra import linear_form_project  # random output due to deprecation warnings in realalg
         sage: equations = matrix(ZZ, [[3, -1, 0], [0, 0, 2]])
         sage: linear_form_project(equations, [1, 1, 1])
         [0, 4/3, 0]

@@ -52,7 +52,7 @@ class TriangulationCover(object):
 
     The torus as a double of a triangle::
 
-        sage: from veerer import Triangulation
+        sage: from veerer import Triangulation  # random output due to deprecation warnings from realalg
         sage: T = Triangulation("(0,1,2)")
         sage: C = T.cover([[1,0], [1,0], [1,0]])
         sage: C.euler_characteristic()

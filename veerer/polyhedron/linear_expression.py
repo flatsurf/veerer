@@ -51,7 +51,7 @@ class LinearExpression(ModuleElement):
     r"""
     EXAMPLES::
 
-        sage: from veerer.polyhedron import LinearExpressions
+        sage: from veerer.polyhedron import LinearExpressions  # random output due to deprecation warnings in realalg
         sage: L = LinearExpressions(QQ)
         sage: L()
         0

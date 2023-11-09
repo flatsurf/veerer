@@ -53,7 +53,7 @@ class VeeringTriangulation(Triangulation):
 
     EXAMPLES::
 
-        sage: from veerer import *
+        sage: from veerer import *  # random output due to deprecation warnings from realalg
 
     Built from an explicit triangulation (in cycle or list form) and a list of colours::
 
@@ -67,8 +67,9 @@ class VeeringTriangulation(Triangulation):
         sage: VeeringTriangulation.from_stratum(AbelianStratum(2))  # optional - surface_dynamics
         VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
 
-        sage: VeeringTriangulation.from_stratum(QuadraticStratum({1:4}))  # optional - surface_dynamics
-        VeeringTriangulation("(0,12,~11)(1,13,~12)...(16,~15,~1)", "RRRRRRBBBBBBBBBBBB")
+        sage: vt = VeeringTriangulation.from_stratum(QuadraticStratum({1:4}))  # optional - surface_dynamics
+        sage: vt.stratum()                                                     # optional - surface_dynamics
+        Q_2(1^4)
 
     From a flipper pseudo-Anosov map::
 
@@ -1075,14 +1076,16 @@ class VeeringTriangulation(Triangulation):
         Some examples with purple edges::
 
             sage: from surface_dynamics import AbelianStratum, QuadraticStratum  # optional - surface_dynamics
-            sage: t = VeeringTriangulation.from_stratum(AbelianStratum(2))       # optional - surface_dynamics
+            sage: C = AbelianStratum(2)                                          # optional - surface_dynamics
+            sage: t = VeeringTriangulation.from_stratum(C, mutable=True)         # optional - surface_dynamics
             sage: t.forgot_forward_flippable_colour()                            # optional - surface_dynamics
             sage: t.stratum()                                                    # optional - surface_dynamics
             H_2(2)
 
-            sage: t = VeeringTriangulation.from_stratum(QuadraticStratum(1,1,1,1)) # optional - surface_dynamics
-            sage: t.forgot_forward_flippable_colour()                              # optional - surface_dynamics
-            sage: t.stratum()                                                      # optional - surface_dynamics
+            sage: C = QuadraticStratum(1,1,1,1)                                  # optional - surface_dynamics
+            sage: t = VeeringTriangulation.from_stratum(C, mutable=True)         # optional - surface_dynamics
+            sage: t.forgot_forward_flippable_colour()                            # optional - surface_dynamics
+            sage: t.stratum()                                                    # optional - surface_dynamics
             Q_2(1^4)
         """
         require_package('surface_dynamics', 'stratum')

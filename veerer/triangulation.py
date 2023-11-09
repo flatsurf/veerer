@@ -38,7 +38,7 @@ def face_edge_perms_init(data):
     r"""
     EXAMPLES::
 
-        sage: from veerer.triangulation import face_edge_perms_init
+        sage: from veerer.triangulation import face_edge_perms_init  # random output due to deprecation warnings from realalg
 
         sage: face_edge_perms_init('(0,1,2)(~0,~1,~2)')
         (array('i', [1, 2, 0, 5, 3, 4]), array('i', [5, 4, 3, 2, 1, 0]))

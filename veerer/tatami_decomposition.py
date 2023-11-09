@@ -31,7 +31,7 @@ def tatami_decomposition(rectangles, base_ring=None):
 
     EXAMPLES::
 
-        sage: from veerer.tatami_decomposition import tatami_decomposition
+        sage: from veerer.tatami_decomposition import tatami_decomposition  # random output due to deprecation warnings from realalg
         sage: from veerer.constants import LEFT, RIGHT
         sage: r0 = ((1, RIGHT, 1), (1, RIGHT, 0), (0, LEFT, 0), (0, LEFT, 1), (3, RIGHT, 2), (3, RIGHT, 1), (0, RIGHT, 2), (0, RIGHT, 1))
         sage: r1 = ((3, LEFT, 0), (3, LEFT, 2), (0, LEFT, 1), (0, LEFT, 2), (3, RIGHT, 1), (1, LEFT, 1), (0, RIGHT, 1), (0, RIGHT, 0))

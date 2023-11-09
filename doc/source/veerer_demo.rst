@@ -40,7 +40,7 @@ part of a project that also involve
 To import all features from veerer one usually starts with the following
 lines::
 
-   sage: from veerer import *
+   sage: from veerer import *  # random output due to deprecation warnings from realalg
    sage: from surface_dynamics import *   # optional - surface_dynamics
 
 To input a triangulation in the program one needs to specify a list of
@@ -148,13 +148,15 @@ train-tracks.
 
 ::
 
-    sage: VeeringTriangulation.from_stratum(Qreg)    # optional - surface_dynamics
-    VeeringTriangulation("(0,19,~18)(1,20,~19)(2,21,~20)(3,22,~21)(4,23,~22)(5,25,~24)(6,27,~26)(7,28,~27)(8,29,~28)(9,~16,17)(10,~5,~29)(11,~6,~10)(12,~1,~11)(13,~9,~12)(14,~7,~13)(15,~2,~14)(16,~0,~15)(18,~8,~17)(24,~23,~3)(26,~25,~4)", "RRRRRRRRRRBBBBBBBBBBBBBBBBBBBB")
+    sage: vt = VeeringTriangulation.from_stratum(Qreg)  # optional - surface_dynamics
+    sage: vt.stratum()                                  # optional - surface_dynamics
+    Q_4(3^4)
 
 ::
 
-    sage: VeeringTriangulation.from_stratum(Qirr)   # optional - surface_dynamics
-    VeeringTriangulation("(0,21,~20)(1,22,~21)(2,23,~22)(3,24,~23)(4,25,~24)(5,26,~25)(6,28,~27)(7,29,~28)(8,~16,17)(9,~14,15)(10,~2,~29)(11,~1,~10)(12,~6,~11)(13,~9,~12)(14,~8,~13)(16,~4,~15)(18,~5,~17)(19,~3,~18)(20,~7,~19)(27,~26,~0)", "RRRRRRRRRRBBBBBBBBBBBBBBBBBBBB")
+    sage: vt = VeeringTriangulation.from_stratum(Qirr)  # optional - surface_dynamics
+    sage: vt.stratum()                                  # optional - surface_dynamics
+    Q_4(3^4)
 
 ::
 
@@ -346,9 +348,9 @@ filtering cylindrical (single test is cheap) ~2 sec for H(4)^hyp
     sage: AV = CoreAutomaton(V)                          # long time - ~21 secs # optional - surface_dynamics
     sage: print(AV.num_states())                         # long time - ~150 µs # optional - surface_dynamics
     9116
-    sage: print(AV.num_geometric_triangulations())       # long time - ~21 secs # optional - surface_dynamics
+    sage: sum(v.is_geometric() for v in AV)              # long time - ~21 secs # optional - surface_dynamics
     2916
-    sage: print(AV.num_cylindrical_triangulations())     # long time - ~1.5 secs # optional - surface_dynamics
+    sage: sum(v.is_cylindrical() for v in AV)            # long time - ~1.5 secs # optional - surface_dynamics
     636
 
 License

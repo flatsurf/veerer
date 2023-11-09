@@ -83,7 +83,7 @@ class FlatVeeringTriangulationLayout(object):
 
     EXAMPLES:
 
-        sage: from veerer import *
+        sage: from veerer import *  # random output due to deprecation warnings from realalg
 
     A can be built from a list of triangles and vectors::
 
