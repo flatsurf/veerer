@@ -26,8 +26,6 @@ cones and polyhedra.
 
 from ..env import require_package, sage, ppl
 
-require_package('sage', 'linear_expression')
-
 from sage.categories.modules import Modules
 
 from sage.structure.unique_representation import UniqueRepresentation
@@ -563,7 +561,6 @@ class ConstraintSystem:
             from .cone import Cone_ppl
             return Cone_ppl(QQ, ppl.C_Polyhedron(self.ppl()))
         elif backend == 'sage':
-            require_package('sage', 'cone')
             from .cone import Cone_sage
             ieqs, eqns = self.ieqs_eqns()
             return Cone_sage._new(ieqs, eqns)

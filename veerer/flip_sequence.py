@@ -196,7 +196,6 @@ class VeeringFlipSequence(object):
         return F
 
     def matrix(self, twist=True):
-        require_package('sage', 'matrix')
         from sage.rings.all import ZZ
         from sage.matrix.special import identity_matrix
         m = identity_matrix(ZZ, self._start.num_edges())
@@ -321,7 +320,6 @@ class VeeringFlipSequence(object):
         return F
 
     def matrix_inverse(self, twist=True):
-        require_package('sage', 'matrix')
         from sage.rings.all import ZZ
         from sage.matrix.special import identity_matrix
         m = identity_matrix(ZZ, self._start.num_edges())
@@ -520,7 +518,6 @@ class VeeringFlipSequence(object):
             sage: f.start().colouring_from_xy(x, y)[:9] == f.end_colouring()
             True
         """
-        require_package('sage', 'self_similar_surface')
         from sage.rings.qqbar import AA
 
         wm = self.inverse().matrix() # matrix: widths_end -> widths_start

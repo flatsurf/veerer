@@ -921,7 +921,6 @@ class Triangulation(object):
             [ 1  0  1  0  1  1  0]
             [ 0  1  0  0 -1  0  0]
         """
-        require_package('sage', 'homology_matrix')
         from sage.matrix.constructor import matrix
         from sage.rings.integer_ring import ZZ
 

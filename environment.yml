@@ -14,8 +14,8 @@ dependencies:
   - matplotlib-base
   - gap-defaults
   - sympy
-  - sagemath-db-conway-polynomials  # optional: sage
-  - sagelib >=9.3  # optional: sage
+  - sagemath-db-conway-polynomials
+  - sagelib >=9.3
   # some of the tests rely on ipywidgets which is not required by sagelib
   - ipywidgets
   # Work around https://github.com/conda-forge/givaro-feedstock/issues/13
