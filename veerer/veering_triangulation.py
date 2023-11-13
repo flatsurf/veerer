@@ -3203,6 +3203,15 @@ class VeeringTriangulation(Triangulation):
             sage: a, x, y = f.self_similar_widths_and_heights()
             sage: vt.zippered_rectangles(x, y)  # optional: sage_flatsurf
             Translation Surface built from 6 rectangles
+
+        TESTS::
+
+            sage: from veerer import VeeringTriangulation, BLUE, RED
+            sage: vt = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RBB")
+            sage: x = [1, 2, 1]
+            sage: y = [1, 1, 2]
+            sage: vt.zippered_rectangles(x, y, base_ring=AA)  # optional: sage_flatsurf
+            Translation Surface built from a square and a rectangle
         """
         ans, edge_orientations = self.is_abelian(certificate=True)
         if not ans:
