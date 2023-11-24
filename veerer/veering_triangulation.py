@@ -259,6 +259,44 @@ class VeeringTriangulation(Triangulation):
 
         return x
 
+    def right_wedges(self, slope=VERTICAL):
+        r"""
+        Return the (vertical or horizontal) right sides of the wedges in this veering triangulation.
+
+        A wedge is a pair of consecutive half edges at a vertex that jumps over a
+        (vertical or horizontal) separatrix.
+
+        INPUT:
+
+        - ``slope`` -- either ``VERTICAL`` (default) or ``HORIZONTAL``
+
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation, VERTICAL, HORIZONTAL
+            sage: vt = VeeringTriangulation("(0,1,2)(3,4,5)(6,7,8)(~8,~0,~7)(~6,~1,~5)(~4,~2,~3)", "RRBRRBRRB")
+            sage: vt.right_wedges()
+            [1, 4, 7, 10, 16, 13]
+            sage: vt.right_wedges(HORIZONTAL)
+            [2, 5, 8, 9, 12, 15]
+        """
+        if slope == VERTICAL:
+            right_colour = RED
+            left_colour = BLUE
+        elif slope == HORIZONTAL:
+            right_colour = BLUE
+            left_colour = RED
+        else:
+            raise ValueError('invalid slope argument')
+        wedges = []
+        for face in self.faces():
+            for i in range(3):
+                if self.edge_colour(face[i]) == right_colour and self.edge_colour(face[(i + 1) % 3]) == left_colour:
+                    break
+            if self.edge_colour(face[i]) != right_colour or self.edge_colour(face[(i + 1) % 3]) != left_colour:
+                raise ValueError('invalid colouring')
+            wedges.append(face[i])
+        return wedges
+
     def as_linear_family(self, mutable=False):
         r"""
         EXAMPLES::
@@ -3227,10 +3265,15 @@ class VeeringTriangulation(Triangulation):
         We now check that labelling of the rectangles in ``S`` coincide with
         the order of faces in the veering triangulation::
 
-            sage: for i, face in enumerate(vt.faces()):  # optional: sage_flatsurf
+            sage: from veerer import HORIZONTAL
+            sage: for i, r in enumerate(vt.right_wedges(HORIZONTAL)):  # optional: sage_flatsurf
             ....:     e0, e1, e2, e3 = S.polygon(i).erase_marked_vertices().edges()
-            ....:     assert any(e0[0] == x[vt._norm(e)] for e in face)
-            ....:     assert any(e1[1] == y[vt._norm(e)] for e in face)
+            ....:     w = e0[0]
+            ....:     h = e1[1]
+            ....:     l = vt.previous_in_face(r)
+            ....:     nr = vt._norm(r)
+            ....:     nl = vt._norm(l)
+            ....:     assert (w == x[nr] and h == y[nl]) or (w == x[nl] and h == y[nr])
 
         TESTS::
 
