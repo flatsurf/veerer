@@ -259,6 +259,44 @@ class VeeringTriangulation(Triangulation):
 
         return x
 
+    def right_wedges(self, slope=VERTICAL):
+        r"""
+        Return the (vertical or horizontal) right sides of the wedges in this veering triangulation.
+
+        A wedge is a pair of consecutive half edges at a vertex that jumps over a
+        (vertical or horizontal) separatrix.
+
+        INPUT:
+
+        - ``slope`` -- either ``VERTICAL`` (default) or ``HORIZONTAL``
+
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation, VERTICAL, HORIZONTAL
+            sage: vt = VeeringTriangulation("(0,1,2)(3,4,5)(6,7,8)(~8,~0,~7)(~6,~1,~5)(~4,~2,~3)", "RRBRRBRRB")
+            sage: vt.right_wedges()
+            [1, 4, 7, 10, 16, 13]
+            sage: vt.right_wedges(HORIZONTAL)
+            [2, 5, 8, 9, 12, 15]
+        """
+        if slope == VERTICAL:
+            right_colour = RED
+            left_colour = BLUE
+        elif slope == HORIZONTAL:
+            right_colour = BLUE
+            left_colour = RED
+        else:
+            raise ValueError('invalid slope argument')
+        wedges = []
+        for face in self.faces():
+            for i in range(3):
+                if self.edge_colour(face[i]) == right_colour and self.edge_colour(face[(i + 1) % 3]) == left_colour:
+                    break
+            if self.edge_colour(face[i]) != right_colour or self.edge_colour(face[(i + 1) % 3]) != left_colour:
+                raise ValueError('invalid colouring')
+            wedges.append(face[i])
+        return wedges
+
     def as_linear_family(self, mutable=False):
         r"""
         EXAMPLES::
@@ -3180,6 +3218,15 @@ class VeeringTriangulation(Triangulation):
         we consider downward vertical separatrices and extend them until they
         touch the union of these horizontal segments.
 
+        INPUT:
+
+        - ``x``, ``y`` -- list of positive numbers (as many as edges in this veering
+          triangulation)
+
+        - ``base_ring`` -- an optional base ring to build the surface
+
+        - ``check`` -- optional boolean (default ``True``)
+
         EXAMPLES::
 
             sage: from veerer import VeeringTriangulation, BLUE, RED
@@ -3201,8 +3248,22 @@ class VeeringTriangulation(Triangulation):
             sage: B0, B1 = vt.dehn_twists(BLUE)
             sage: f = B0 **2 * R0 **3 * B1 * R1 ** 5
             sage: a, x, y = f.self_similar_widths_and_heights()
-            sage: vt.zippered_rectangles(x, y)  # optional: sage_flatsurf
+            sage: S = vt.zippered_rectangles(x, y)  # optional: sage_flatsurf
+            sage: S  # optional: sage_flatsurf
             Translation Surface built from 6 rectangles
+
+        We now check that labelling of the rectangles in ``S`` coincide with
+        the order of faces in the veering triangulation::
+
+            sage: from veerer import HORIZONTAL
+            sage: for i, r in enumerate(vt.right_wedges(HORIZONTAL)):  # optional: sage_flatsurf
+            ....:     e0, e1, e2, e3 = S.polygon(i).erase_marked_vertices().edges()
+            ....:     w = e0[0]
+            ....:     h = e1[1]
+            ....:     l = vt.previous_in_face(r)
+            ....:     nr = vt._norm(r)
+            ....:     nl = vt._norm(l)
+            ....:     assert (w == x[nr] and h == y[nl]) or (w == x[nl] and h == y[nr])
 
         TESTS::
 
@@ -3304,11 +3365,19 @@ class VeeringTriangulation(Triangulation):
         assert all(colouring[left_wedges[i]] == BLUE for i in range(0, 2 * self.num_faces(), 2))
         assert all(colouring[left_wedges[i]] == RED for i in range(1, 2 * self.num_faces(), 2))
 
+        # In order to have a consistent labelling between the triangles as provided by self.faces()
+        # and the rectangles we compute the face index associated to each half-edge and use it
+        # later to order the rectangles
+        half_edge_face_index = [-1] * self._n
+        for i, face in enumerate(self.faces()):
+            for e in face:
+                half_edge_face_index[e] = i
+
         # There are as many rectangles in the Markov partitions as triangles in
         # the veering triangulation
         # Each left/right/bottom separatrix has a certain number of cut points
         # (on both sides)
-        rectangles = []
+        rectangles = [None] * self.num_faces()
         for i in range(1, 2 * self.num_faces(), 2):
             l = left_wedges[i]
             L = ep[l]
@@ -3367,7 +3436,8 @@ class VeeringTriangulation(Triangulation):
                 p6 = (previous_separatrix[R], LEFT, y[r])
                 p7 = (previous_separatrix[R], LEFT, y[e])
 
-            rectangles.append((p0, p1, p2, p3, p4, p5, p6, p7))
+            j = half_edge_face_index[r]
+            rectangles[j] = (p0, p1, p2, p3, p4, p5, p6, p7)
 
         from .tatami_decomposition import tatami_decomposition
         return tatami_decomposition(rectangles, base_ring)
