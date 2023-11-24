@@ -3190,6 +3190,15 @@ class VeeringTriangulation(Triangulation):
         we consider downward vertical separatrices and extend them until they
         touch the union of these horizontal segments.
 
+        INPUT:
+
+        - ``x``, ``y`` -- list of positive numbers (as many as edges in this veering
+          triangulation)
+
+        - ``base_ring`` -- an optional base ring to build the surface
+
+        - ``check`` -- optional boolean (default ``True``)
+
         EXAMPLES::
 
             sage: from veerer import VeeringTriangulation, BLUE, RED
@@ -3211,8 +3220,17 @@ class VeeringTriangulation(Triangulation):
             sage: B0, B1 = vt.dehn_twists(BLUE)
             sage: f = B0 **2 * R0 **3 * B1 * R1 ** 5
             sage: a, x, y = f.self_similar_widths_and_heights()
-            sage: vt.zippered_rectangles(x, y)  # optional: sage_flatsurf
+            sage: S = vt.zippered_rectangles(x, y)  # optional: sage_flatsurf
+            sage: S  # optional: sage_flatsurf
             Translation Surface built from 6 rectangles
+
+        We now check that labelling of the rectangles in ``S`` coincide with
+        the order of faces in the veering triangulation::
+
+            sage: for i, face in enumerate(vt.faces()):  # optional: sage_flatsurf
+            ....:     e0, e1, e2, e3 = S.polygon(i).erase_marked_vertices().edges()
+            ....:     assert any(e0[0] == x[vt._norm(e)] for e in face)
+            ....:     assert any(e1[1] == y[vt._norm(e)] for e in face)
 
         TESTS::
 
@@ -3314,11 +3332,19 @@ class VeeringTriangulation(Triangulation):
         assert all(colouring[left_wedges[i]] == BLUE for i in range(0, 2 * self.num_faces(), 2))
         assert all(colouring[left_wedges[i]] == RED for i in range(1, 2 * self.num_faces(), 2))
 
+        # In order to have a consistent labelling between the triangles as provided by self.faces()
+        # and the rectangles we compute the face index associated to each half-edge and use it
+        # later to order the rectangles
+        half_edge_face_index = [-1] * self._n
+        for i, face in enumerate(self.faces()):
+            for e in face:
+                half_edge_face_index[e] = i
+
         # There are as many rectangles in the Markov partitions as triangles in
         # the veering triangulation
         # Each left/right/bottom separatrix has a certain number of cut points
         # (on both sides)
-        rectangles = []
+        rectangles = [None] * self.num_faces()
         for i in range(1, 2 * self.num_faces(), 2):
             l = left_wedges[i]
             L = ep[l]
@@ -3377,7 +3403,8 @@ class VeeringTriangulation(Triangulation):
                 p6 = (previous_separatrix[R], LEFT, y[r])
                 p7 = (previous_separatrix[R], LEFT, y[e])
 
-            rectangles.append((p0, p1, p2, p3, p4, p5, p6, p7))
+            j = half_edge_face_index[r]
+            rectangles[j] = (p0, p1, p2, p3, p4, p5, p6, p7)
 
         from .tatami_decomposition import tatami_decomposition
         return tatami_decomposition(rectangles, base_ring)
