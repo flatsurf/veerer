@@ -189,7 +189,7 @@ class VeeringQuadrangulation:
             H_2(2)^hyp
             sage: q = VeeringQuadrangulation("(0,1,2,3,4)", "(0)(1,2)(3,4)")
             sage: component = q.stratum_component() # optional - surface_dynamics  # random output due to deprecation warnings from surface dynamics
-            sage: component
+            sage: component  # optional - surface_dynamics
             H_3(4)^odd
         """
         return self.to_origami().stratum_component()

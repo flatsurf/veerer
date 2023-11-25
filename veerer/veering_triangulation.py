@@ -306,8 +306,6 @@ class VeeringTriangulation(Triangulation):
             sage: vt.as_linear_family()
             VeeringTriangulationLinearFamily("(0,1,2)(~2,~0,~1)", "RRB", [(1, 0, -1), (0, 1, 1)])
         """
-        require_package('sage', 'as_linear_family')
-
         from .linear_family import VeeringTriangulationLinearFamily
         P = self.train_track_linear_space()
         return VeeringTriangulationLinearFamily(self, self.train_track_linear_space().lines(), mutable=mutable)
@@ -3012,8 +3010,6 @@ class VeeringTriangulation(Triangulation):
             sage: T._set_switch_conditions(T._tt_check, Gy.row(0), HORIZONTAL)
             sage: T._set_switch_conditions(T._tt_check, Gy.row(1), HORIZONTAL)
         """
-        require_package('sage', '_complexify_generators')
-
         ne = self.num_edges()
         ep = self._ep
         if Gx.ncols() != ne:
@@ -3054,8 +3050,6 @@ class VeeringTriangulation(Triangulation):
             sage: V2 = V.subspace(Gy.right_kernel_matrix())
             sage: assert V1 == V2
         """
-        require_package('sage', '_complexify_equations')
-
         ne = self.num_edges()
         ep = self._ep
         if Lx.ncols() != ne:
@@ -3074,8 +3068,6 @@ class VeeringTriangulation(Triangulation):
         Return a flat structure from two vectors ``VH`` and ``VV``
         satisfying the train track equations.
         """
-        require_package('sage', '_flat_structure_from_train_track_lengths')
-
         from sage.modules.free_module import VectorSpace
 
         if base_ring is None:
@@ -3180,8 +3172,6 @@ class VeeringTriangulation(Triangulation):
             sage: F.to_veering_triangulation()                    # optional - surface_dynamics
             VeeringTriangulation("(0,18,~17)(1,20,~19)...(19,~18,~0)", "RRRRRRRRBBBBBBBBBGBBBBBP")
         """
-        require_package('sage', 'flat_structure_min')
-
         VH = self.train_track_min_solution(HORIZONTAL, allow_degenerations=allow_degenerations)
         VV = self.train_track_min_solution(VERTICAL, allow_degenerations=allow_degenerations)
 

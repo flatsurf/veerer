@@ -6,6 +6,7 @@ name: veerer-build
 channels:
   - conda-forge
 dependencies:
+  - cython
   - pytest
   - pytest-xdist
   - ipywidgets

@@ -1,22 +1,15 @@
 Veerer
 ======
 
-Veerer is a Python package to deal with veering triangulations of surfaces and
-their associated flat structures. It can in particular be used to provide
-representatives of pseudo-Anosov mapping classes of surfaces. The theoretical
-background is based on ideas of I. Agol and F. Guéritaud, and is developed in:
+Veerer is a package for `SageMath <https://www.sagemath.org>`_ to deal with
+veering triangulations of surfaces and their associated flat structures. It can
+in particular be used to provide representatives of pseudo-Anosov mapping
+classes of surfaces. The theoretical background is based on ideas of I. Agol
+and F. Guéritaud, and is developed in:
 
 M. Bell, V. Delecroix, V. Gadre, R. Gutiérrez-Romo, S. Schleimer,
 "Coding Teichmüller flow using veering triangulations",
 `arXiv:1909.00890 <https://arxiv.org/abs/1909.00890>`_.
-
-To install this package you only need Python but additional features are
-available if this package is used inside `SageMath
-<https://www.sagemath.org/>`_.
-
-Computations involving polytopes are only available if the Python package
-`pplpy <https://github.com/sagemath/pplpy>`_ is available. It is installed
-by default with SageMath, version 8.7 or above.
 
 Example
 -------

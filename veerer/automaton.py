@@ -187,8 +187,6 @@ class Automaton(object):
             sage: A.to_graph(directed=False, multiedges=False, loops=True)
             Looped graph on 86 vertices
         """
-        require_package('sage', 'to_graph')
-
         if directed:
             from sage.graphs.digraph import DiGraph
             G = DiGraph(loops=loops, multiedges=multiedges)
