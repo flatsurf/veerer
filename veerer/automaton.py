@@ -33,8 +33,8 @@ from .linear_family import VeeringTriangulationLinearFamily
 from .constants import RED, BLUE, PURPLE, PROPERTIES_COLOURS, colour_to_char, colour_to_string
 from .permutation import perm_invert
 
-from . import env
-from .env import sage, require_package
+# TODO: when set to True a lot of intermediate checks are performed
+CHECK = False
 
 
 class Automaton(object):
@@ -517,7 +517,7 @@ class Automaton(object):
         state = self._seed_setup(state)
 
         # TODO: check to be removed
-        if env.CHECK:
+        if CHECK:
             state._check()
 
         if self._verbosity:
@@ -604,7 +604,7 @@ class Automaton(object):
             new_flip = flip_branch[-1].pop()
 
             # TODO: check to be removed
-            if env.CHECK:
+            if CHECK:
                 T._check()
 
             if self._verbosity >= 2:
@@ -670,7 +670,7 @@ class Automaton(object):
             self._flip_back(flip_back_data)
 
             # TODO: check to be removed
-            if env.CHECK:
+            if CHECK:
                 T._check()
             assert T == state_branch[-1], (T, state_branch[-1])
 
@@ -726,12 +726,12 @@ class FlipGraph(Automaton):
 
     def _flip(self, flip_data):
         e = flip_data
-        self._state.flip(e, check=env.CHECK)
+        self._state.flip(e, check=CHECK)
         return True, e
 
     def _flip_back(self, flip_back_data):
         e = flip_back_data
-        self._state.flip_back(e, check=env.CHECK)
+        self._state.flip_back(e, check=CHECK)
 
 
 class CoreAutomaton(Automaton):
@@ -757,13 +757,13 @@ class CoreAutomaton(Automaton):
     def _flip(self, flip_data):
         e, col = flip_data
         old_col = self._state.colour(e)
-        self._state.flip(e, col, check=env.CHECK)
+        self._state.flip(e, col, check=CHECK)
         flip_back_data = (e, old_col)
         return self._state.edge_has_curve(e), flip_back_data
 
     def _flip_back(self, flip_back_data):
         e, old_col = flip_back_data
-        self._state.flip_back(e, old_col, check=env.CHECK)
+        self._state.flip_back(e, old_col, check=CHECK)
 
 
 class ReducedCoreAutomaton(Automaton):
@@ -784,7 +784,7 @@ class ReducedCoreAutomaton(Automaton):
         """
         ffe = state.purple_edges()
         # TODO: check to be removed
-        if env.CHECK:
+        if CHECK:
             assert ffe == state.forward_flippable_edges()
         return [(x, col) for x in ffe for col in (BLUE, RED)]
 
@@ -793,10 +793,10 @@ class ReducedCoreAutomaton(Automaton):
         e, col = flip_data
 
         # TODO: check to be removed
-        if env.CHECK:
+        if CHECK:
             assert T.is_forward_flippable(e)
         old_col = self._state.colour(e)
-        self._state.flip(e, col, reduced=False, check=env.CHECK)
+        self._state.flip(e, col, reduced=False, check=CHECK)
 
         if not self._state.edge_has_curve(e):
             return False, (e, old_col, ())
@@ -821,7 +821,7 @@ class ReducedCoreAutomaton(Automaton):
                 T._colouring[T._ep[d]] = PURPLE
 
             # assertions to be removed
-            if env.CHECK:
+            if CHECK:
                 assert not T.is_forward_flippable(e)
                 assert not T.is_forward_flippable(a)
                 assert not T.is_forward_flippable(c)
@@ -837,7 +837,7 @@ class ReducedCoreAutomaton(Automaton):
                 T._colouring[T._ep[c]] = PURPLE
 
             # assertions to be removed
-            if env.CHECK:
+            if CHECK:
                 assert not T.is_forward_flippable(e)
                 assert not T.is_forward_flippable(b)
                 assert not T.is_forward_flippable(d)
@@ -849,7 +849,7 @@ class ReducedCoreAutomaton(Automaton):
         for ee, ccol in recolorings:
             self._state._colouring[ee] = ccol
             self._state._colouring[self._state._ep[ee]] = ccol
-        self._state.flip_back(e, old_col, check=env.CHECK)
+        self._state.flip_back(e, old_col, check=CHECK)
 
 
 class GeometricAutomaton(Automaton):
@@ -900,15 +900,15 @@ class GeometricAutomaton(Automaton):
         assert all(self._state.colour(e) == self._state.colour(edges[0]) for e in edges)
         flip_back_data = (edges, self._state.colour(edges[0]))
         for e in edges:
-            self._state.flip(e, col, check=env.CHECK)
-        if env.CHECK and not self._state.is_geometric(backend=self._backend):
+            self._state.flip(e, col, check=CHECK)
+        if CHECK and not self._state.is_geometric(backend=self._backend):
             raise RuntimeError('that was indeed possible!')
         return True, flip_back_data
 
     def _flip_back(self, flip_back_data):
         edges, old_col = flip_back_data
         for e in edges:
-            self._state.flip_back(e, old_col, check=env.CHECK)
+            self._state.flip_back(e, old_col, check=CHECK)
 
 
 class GeometricAutomatonSubspace(Automaton):
@@ -970,8 +970,8 @@ class GeometricAutomatonSubspace(Automaton):
         assert all(self._state.colour(e) == self._state.colour(edges[0]) for e in edges)
         flip_back_data = (edges, self._state.colour(edges[0]))
         for e in edges:
-            self._state.flip(e, col, check=env.CHECK)
-        if env.CHECK:
+            self._state.flip(e, col, check=CHECK)
+        if CHECK:
             self._state._check(RuntimeError)
             if not self._state.is_geometric(backend=self._backend):
                 raise RuntimeError
@@ -980,4 +980,4 @@ class GeometricAutomatonSubspace(Automaton):
     def _flip_back(self, flip_back_data):
         edges, old_col = flip_back_data
         for e in edges:
-            self._state.flip_back(e, old_col, check=env.CHECK)
+            self._state.flip_back(e, old_col, check=CHECK)

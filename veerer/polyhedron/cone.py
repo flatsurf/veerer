@@ -86,38 +86,32 @@ Testing adding constraints::
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 # ****************************************************************************
 
-from ..env import sage, ppl, PyNormaliz
-if sage is not None:
-    from sage.categories.number_fields import NumberFields
+from fractions import Fraction
 
-    from sage.rings.integer_ring import ZZ
-    from sage.rings.rational_field import QQ
-    from sage.rings.real_arb import RealBallField
-    from sage.rings.real_double import RDF
-    from sage.rings.qqbar import AA, number_field_elements_from_algebraics
+from sage.categories.number_fields import NumberFields
+from sage.rings.integer_ring import ZZ
+from sage.rings.rational_field import QQ
+from sage.rings.real_arb import RealBallField
+from sage.rings.real_double import RDF
+from sage.rings.qqbar import AA, number_field_elements_from_algebraics
 
-    RBF = RealBallField(64)
-    _NumberFields = NumberFields()
+from ..features import pynormaliz_feature
 
+
+RBF = RealBallField(64)
+_NumberFields = NumberFields()
 
 _backends = {}
-from fractions import Fraction
-if ppl is not None:
-    _backends[int] = _backends[Fraction] = 'ppl'
-elif PyNormaliz is not None:
-    _backends[int] = _backends[Fraction] = 'normaliz-QQ'
-if sage is not None:
-    from sage.rings.integer_ring import ZZ
-    from sage.rings.rational_field import QQ
-    _backends[ZZ] = _backends[QQ] = 'ppl'
+
+_backends[int] = _backends[Fraction] = 'ppl'
+_backends[ZZ] = _backends[QQ] = 'ppl'
 def default_backend(base_ring):
     try:
         return _backends[base_ring]
     except KeyError:
         pass
-    if sage is not None:
-        if base_ring in _NumberFields:
-            return 'normaliz-NF' if PyNormaliz is not None else 'sage'
+    if base_ring in _NumberFields:
+        return 'normaliz-NF' if pynormaliz_feature.is_present() else 'sage'
     raise ValueError('no suitable polytope backend for base ring {}'.format(base_ring))
 
 

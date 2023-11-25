@@ -24,18 +24,15 @@ cones and polyhedra.
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 # ****************************************************************************
 
-from ..env import require_package, sage, ppl
+import ppl
 
 from sage.categories.modules import Modules
-
 from sage.structure.unique_representation import UniqueRepresentation
 from sage.structure.element import ModuleElement, Vector, parent, get_coercion_model
 from sage.structure.parent import Parent
 from sage.structure.richcmp import op_LE, op_LT, op_EQ, op_NE, op_GT, op_GE
-
 from sage.rings.integer_ring import ZZ
 from sage.rings.rational_field import QQ
-
 from sage.arith.functions import lcm
 from sage.arith.functions import LCM_list
 
@@ -227,7 +224,6 @@ class LinearExpression(ModuleElement):
             sage: (3 * L.variable(2) - 7/2 * L.variable(5) + 1/3).ppl()
             18*x2-21*x5+2
         """
-        require_package('ppl', 'ppl')
         from gmpy2 import mpz
         lin = self.integral()
         # TODO: the line below is too costly : it accounts for 80% of the
@@ -557,7 +553,6 @@ class ConstraintSystem:
             backend = default_backend(self.base_ring())
 
         if backend == 'ppl':
-            require_package('ppl', 'cone')
             from .cone import Cone_ppl
             return Cone_ppl(QQ, ppl.C_Polyhedron(self.ppl()))
         elif backend == 'sage':
@@ -565,12 +560,16 @@ class ConstraintSystem:
             ieqs, eqns = self.ieqs_eqns()
             return Cone_sage._new(ieqs, eqns)
         elif backend == 'normaliz-QQ':
-            require_package('PyNormaliz', 'cone')
+            from .features import pynormaliz_feature
+            pynormaliz_feature.require()
+
             from .cone import Cone_normalizQQ
             ieqs, eqns = self.ieqs_eqns(homogeneous=True)
             return Cone_normalizQQ._new(ieqs, eqns)
         elif backend == 'normaliz-NF':
-            require_package('PyNormaliz', 'cone')
+            from .features import pynormaliz_feature
+            pynormaliz_feature.require()
+
             from .cone import Cone_normalizNF
             ieqs, eqns = self.ieqs_eqns(homogeneous=True)
             return Cone_normalizNF._new(ieqs, eqns)

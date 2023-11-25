@@ -21,10 +21,12 @@ Utility functions.
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 # ****************************************************************************
 
-from .env import ppl
+import ppl
+
 
 def det2(u, v):
     return u[0]*v[1] - u[1]*v[0]
+
 
 def flipper_edge(T, e):
     r"""
@@ -40,9 +42,11 @@ def flipper_edge(T, e):
     e = e.label
     return n * (e < 0) + e
 
+
 def flipper_edge_perm(n):
     from array import array
     return array('i', range(n-1,-1,-1))
+
 
 def flipper_face_edge_perms(T):
     r"""
@@ -54,6 +58,7 @@ def flipper_face_edge_perms(T):
     # extract triangulation
     triangles = [(flipper_edge(T, e), flipper_edge(T, f), flipper_edge(T, g)) for e,f,g in T]
     return perm_init(triangles), flipper_edge_perm(n)
+
 
 def flipper_isometry_to_perm(isom, ep, inv=False):
     r"""
@@ -74,6 +79,7 @@ def flipper_isometry_to_perm(isom, ep, inv=False):
             j = ep[~j]
         p[i] = j
     return p
+
 
 def flipper_nf_to_sage(K, name='a'):
     r"""
@@ -97,6 +103,7 @@ def flipper_nf_to_sage(K, name='a'):
     s = AA.polynomial_root(p, RIF(l,u))
     return NumberField(p, name, embedding=s)
 
+
 def flipper_nf_element_to_sage(x, K=None):
     r"""
     Convert a flipper nf element to Sage.
@@ -119,6 +126,7 @@ def flipper_nf_element_to_sage(x, K=None):
     if K.degree() != len(coeffs):
         coeffs.extend([0] * (K.degree() - len(coeffs)))
     return K(list(map(QQ, coeffs)))
+
 
 def rays_to_ppl_cone(rays):
     gs = ppl.Generator_System()

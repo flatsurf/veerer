@@ -31,11 +31,6 @@ from .veering_triangulation import VeeringTriangulation, VeeringTriangulations
 from .linear_family import VeeringTriangulationLinearFamily
 from .automaton import FlipGraph, CoreAutomaton, ReducedCoreAutomaton, GeometricAutomaton, GeometricAutomatonSubspace
 from .flip_sequence import VeeringFlipSequence
-
-from .env import sage
-if sage is not None:
-    from .flat_structure import FlatVeeringTriangulation
-    from .layout import FlatVeeringTriangulationLayout
-    from .measured_train_track import MeasuredTrainTrack
-
-del sage
+from .flat_structure import FlatVeeringTriangulation
+from .layout import FlatVeeringTriangulationLayout
+from .measured_train_track import MeasuredTrainTrack

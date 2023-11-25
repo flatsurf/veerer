@@ -28,33 +28,21 @@ import itertools
 import numbers
 from random import choice, shuffle
 
-from .env import sage, ppl
+from sage.structure.element import get_coercion_model, Matrix
+from sage.rings.integer_ring import ZZ
+from sage.rings.rational_field import QQ
+from sage.matrix.constructor import matrix
+from sage.geometry.polyhedron.constructor import Polyhedron
+from sage.arith.misc import gcd
+from sage.categories.number_fields import NumberFields
+
 from .constants import VERTICAL, HORIZONTAL, BLUE, RED
 from .permutation import perm_cycle_string, perm_cycles, perm_check, perm_conjugate, perm_on_list
 from .polyhedron import LinearExpressions, ConstraintSystem
 from .veering_triangulation import VeeringTriangulation
 
-
-if sage is not None:
-    from sage.structure.element import get_coercion_model
-    from sage.rings.integer_ring import ZZ
-    from sage.rings.rational_field import QQ
-    from sage.matrix.constructor import matrix
-    from sage.geometry.polyhedron.constructor import Polyhedron
-    from sage.arith.misc import gcd
-    from sage.categories.number_fields import NumberFields
-
-    cm = get_coercion_model()
-    _NumberFields = NumberFields()
-else:
-    matrix = None
-    Polyhedron = None
-    gcd = None
-    ZZ = None
-    QQ = None
-
-    cm = None
-    _NumberFields = None
+cm = get_coercion_model()
+_NumberFields = NumberFields()
 
 
 def subspace_are_equal(subspace1, subspace2, check=True):
@@ -210,7 +198,7 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
             t, colouring, subspace = args
         VeeringTriangulation.__init__(self, t, colouring, mutable=mutable, check=False)
 
-        if not isinstance(subspace, sage.structure.element.Matrix):
+        if not isinstance(subspace, Matrix):
             subspace = matrix(subspace)
 
         self._subspace = subspace
