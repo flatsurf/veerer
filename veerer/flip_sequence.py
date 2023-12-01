@@ -59,7 +59,7 @@ The same flip sequence defined in one line::
 from .constants import colour_from_char, colour_to_char, RED, BLUE, PURPLE, GREEN, HORIZONTAL, VERTICAL
 from .permutation import perm_init, perm_check, perm_id, perm_is_one, perm_preimage, perm_invert, perm_cycle_string, perm_compose, perm_pow, perm_conjugate
 from .veering_triangulation import VeeringTriangulation
-from .env import require_package, sage, ppl
+
 
 def flip_sequence_to_string(sequence):
     return " ".join("%d%s" % (e, colour_to_char(col)) for e,col in sequence)

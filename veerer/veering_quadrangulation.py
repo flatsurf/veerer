@@ -48,7 +48,6 @@ from sage.modules.free_module_element import vector
 from sage.matrix.special import identity_matrix, zero_matrix, block_matrix
 from sage.libs.gap.libgap import libgap
 
-from veerer.env import require_package
 from veerer.permutation import *
 
 RIGHT = 1
@@ -157,7 +156,9 @@ class VeeringQuadrangulation:
                  perm_cycle_string(self._pl, n=self._n))
 
     def to_origami(self):
-        require_package('surface_dynamics', 'to_origami')
+        from .features import surface_dynamics_feature
+        surface_dynamics_feature.require()
+
         from surface_dynamics import Origami
         return Origami(list(self._pr), list(self._pl), as_tuple=True, check=False)
 

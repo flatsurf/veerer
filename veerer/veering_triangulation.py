@@ -32,6 +32,9 @@ import itertools
 import numbers
 from random import choice, shuffle
 from array import array
+import ppl
+
+from sage.structure.richcmp import op_LT, op_LE, op_EQ, op_NE, op_GT, op_GE, rich_to_bool
 
 from .constants import *
 from .permutation import *
@@ -39,8 +42,6 @@ from .misc import det2
 from .triangulation import Triangulation
 from .polyhedron import LinearExpressions, ConstraintSystem
 from .polyhedron.linear_algebra import linear_form_project, linear_form_normalize
-
-from .env import curver, sage, surface_dynamics, ppl, flipper, random, require_package, rich_to_bool, op_LE, op_LT, op_EQ, op_NE, op_GT, op_GE, CHECK
 
 
 class VeeringTriangulation(Triangulation):
@@ -434,7 +435,9 @@ class VeeringTriangulation(Triangulation):
             sage: T.stratum()                                     # optional - surface_dynamics
             H_3(4)
         """
-        require_package('surface_dynamics', 'from_square_tiled')
+        from .features import surface_dynamics_feature
+        surface_dynamics_feature.require()
+
         from surface_dynamics.flat_surfaces.origamis.origami_dense import Origami_dense_pyx
 
         if col not in [BLUE, RED]:
@@ -516,7 +519,8 @@ class VeeringTriangulation(Triangulation):
             sage: CT.stratum()                                                # optional - surface_dynamics
             H_4(6)
         """
-        require_package('surface_dynamics', 'from_stratum')
+        from .features import surface_dynamics_feature
+        surface_dynamics_feature.require()
 
         # TODO: for now there is no account of possible folded edges
         # in the cylinder diagram. This has to be changed in
@@ -1124,7 +1128,8 @@ class VeeringTriangulation(Triangulation):
             sage: t.stratum()                                                    # optional - surface_dynamics
             Q_2(1^4)
         """
-        require_package('surface_dynamics', 'stratum')
+        from .features import surface_dynamics_feature
+        surface_dynamics_feature.require()
 
         A = self.angles()
         if any(a%2 for a in A) or not self.is_abelian():
@@ -2945,8 +2950,6 @@ class VeeringTriangulation(Triangulation):
             sage: T.train_track_min_solution(HORIZONTAL, allow_degenerations=True)
             point(1/1, 0/1, 1/1)
         """
-        require_package('ppl', 'train_track_min_solution')
-
         n = self.num_edges()
         M = ppl.MIP_Problem(n)
 
@@ -3723,7 +3726,7 @@ class VeeringTriangulation(Triangulation):
             [([3, 4, 5], 1), ([3, 4, 5], 2)]
             sage: sorted(f.geometric_flips(backend='sage'))
             [([3, 4, 5], 1), ([3, 4, 5], 2)]
-            sage: sorted(f.geometric_flips(backend='normaliz-QQ'))  # optional - PyNormaliz
+            sage: sorted(f.geometric_flips(backend='normaliz-QQ'))  # optional - pynormaliz
             [([3, 4, 5], 1), ([3, 4, 5], 2)]
 
         To be compared with the geometric flips in the ambient stratum::
@@ -3746,7 +3749,7 @@ class VeeringTriangulation(Triangulation):
             [([4], 2), ([5], 1), ([5], 2)]
             sage: sorted(f.geometric_flips(backend='sage'))
             [([4], 2), ([5], 1), ([5], 2)]
-            sage: sorted(f.geometric_flips(backend='normaliz-QQ'))  # optional - PyNormaliz
+            sage: sorted(f.geometric_flips(backend='normaliz-QQ'))  # optional - pynormaliz
             [([4], 2), ([5], 1), ([5], 2)]
 
         TESTS::

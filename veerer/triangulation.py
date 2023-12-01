@@ -26,12 +26,13 @@ Triangulation of surfaces.
 import numbers
 from array import array
 
+from sage.structure.richcmp import op_LT, op_LE, op_EQ, op_NE, op_GT, op_GE, rich_to_bool
+
 from .permutation import (perm_init, perm_check, perm_cycles, perm_dense_cycles,
                           perm_invert, perm_conjugate, perm_cycle_string, perm_cycles_lengths,
                           perm_num_cycles, str_to_cycles, perm_compose, perm_from_base64_str,
                           uint_base64_str, uint_from_base64_str, perm_base64_str,
                           perms_are_transitive, triangulation_relabelling_from)
-from .env import require_package, flipper, curver, sage, rich_to_bool, op_LE, op_LT, op_EQ, op_NE, op_GT, op_GE
 
 
 def face_edge_perms_init(data):
@@ -591,7 +592,10 @@ class Triangulation(object):
             sage: V.to_flipper()  # optional - flipper
             [(~2, ~0, ~1), (0, 1, 2)]
         """
-        require_package('flipper', 'to_flipper')
+        from .features import flipper_feature
+        flipper_feature.require()
+
+        import flipper
         ep = self._ep
         F = []
         for f in self.faces():
@@ -625,7 +629,10 @@ class Triangulation(object):
             sage: V.to_curver()  # optional - curver
             [(~2, ~0, ~1), (0, 1, 2)]
         """
-        require_package('curver', 'to_curver')
+        from .features import curver_feature
+        curver_feature.require()
+
+        import curver
         ep = self._ep
         F = []
         for f in self.faces():
