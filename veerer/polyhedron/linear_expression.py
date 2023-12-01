@@ -560,14 +560,14 @@ class ConstraintSystem:
             ieqs, eqns = self.ieqs_eqns()
             return Cone_sage._new(ieqs, eqns)
         elif backend == 'normaliz-QQ':
-            from .features import pynormaliz_feature
+            from ..features import pynormaliz_feature
             pynormaliz_feature.require()
 
             from .cone import Cone_normalizQQ
             ieqs, eqns = self.ieqs_eqns(homogeneous=True)
             return Cone_normalizQQ._new(ieqs, eqns)
         elif backend == 'normaliz-NF':
-            from .features import pynormaliz_feature
+            from ..features import pynormaliz_feature
             pynormaliz_feature.require()
 
             from .cone import Cone_normalizNF
