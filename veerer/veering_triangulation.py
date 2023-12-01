@@ -3726,7 +3726,7 @@ class VeeringTriangulation(Triangulation):
             [([3, 4, 5], 1), ([3, 4, 5], 2)]
             sage: sorted(f.geometric_flips(backend='sage'))
             [([3, 4, 5], 1), ([3, 4, 5], 2)]
-            sage: sorted(f.geometric_flips(backend='normaliz-QQ'))  # optional - PyNormaliz
+            sage: sorted(f.geometric_flips(backend='normaliz-QQ'))  # optional - pynormaliz
             [([3, 4, 5], 1), ([3, 4, 5], 2)]
 
         To be compared with the geometric flips in the ambient stratum::
@@ -3749,7 +3749,7 @@ class VeeringTriangulation(Triangulation):
             [([4], 2), ([5], 1), ([5], 2)]
             sage: sorted(f.geometric_flips(backend='sage'))
             [([4], 2), ([5], 1), ([5], 2)]
-            sage: sorted(f.geometric_flips(backend='normaliz-QQ'))  # optional - PyNormaliz
+            sage: sorted(f.geometric_flips(backend='normaliz-QQ'))  # optional - pynormaliz
             [([4], 2), ([5], 1), ([5], 2)]
 
         TESTS::
