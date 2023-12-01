@@ -13,10 +13,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - optionals: "sage,sage_flatsurf,pyeantic,pyintervalxt,pynormaliz,surface_dynamicsr"
+          - optionals: "sage,sage_flatsurf,pyeantic,pyintervalxt,surface_dynamicsr"
             sagelib: "9.3"
             python: "3.9.2"
-          - optionals: "sage,sage_flatsurf,pyeantic,pyintervalxt,pynormaliz,surface_dynamics"
+          - optionals: "sage,sage_flatsurf,pyeantic,pyintervalxt,surface_dynamics"
             sagelib: "9.4"
             python: "3.9.5"
           - optionals: "sage,sage_flatsurf,pyeantic,pyintervalxt,pynormaliz,surface_dynamics"
