@@ -584,8 +584,40 @@ class Automaton(object):
             sage: C.run()
             sage: C
             Reduced core veering automaton with 356 vertices
+
+        TESTS::
+
+            sage: from veerer import VeeringTriangulation, CoreAutomaton
+            sage: T = VeeringTriangulation("(0,2,~1)(1,~0,~2)", "RBB")
+            sage: A = CoreAutomaton()
+            sage: A
+            Uninitialized core veering automaton with 0 vertex
+            sage: A.set_seed(T)
+            sage: A
+            Partial core veering automaton with 1 vertex
+            sage: A.run(1)
+            sage: A
+            Partial core veering automaton with 2 vertices
+            sage: A.run(1)
+            sage: A
+            Core veering automaton with 2 vertices
+
+            sage: A0 = CoreAutomaton()
+            sage: A0.set_seed(T)
+            sage: A0.run()
+            sage: A0._flip_branch
+            [[]]
+            sage: A1 = CoreAutomaton()
+            sage: A1.set_seed(T)
+            sage: A1.run(1)
+            sage: A1.run(1)
+            sage: A1._flip_branch
+            [[]]
         """
         if not self._flip_branch:
+            raise ValueError('uninitialized automaton; call set_seed() first')
+
+        if len(self._flip_branch) == 1 and not self._flip_branch[0]:
             return
 
         T = self._state
@@ -683,6 +715,8 @@ class Automaton(object):
                 flip_branch.pop()
                 assert T == state_branch[-1]
             if not flip_branch[-1]:
+                # done
+                assert len(flip_branch) == 1
                 break
 
         if self._verbosity == 1:
