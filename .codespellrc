@@ -1,0 +1,3 @@
+[codespell]
+skip = Fields_veerer_demo.ipynb
+ignore-words-list = ans,nd,rever
