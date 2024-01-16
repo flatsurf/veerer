@@ -3612,10 +3612,10 @@ class VeeringTriangulation(Triangulation):
             sage: P2.affine_dimension()
             2
         """
-        # TODO: we should only searching for vertex cylces; i.e. not allow more
+        # TODO: we should only search for vertex cycles; i.e. not allow more
         # than two pairs (i, ~i) to be both seen (barbell are fine but not more)
 
-        # TODO: we want the._colouring to also take care of negative edges
+        # TODO: we want the ._colouring to also take care of negative edges
         # (bad alternative: take "norm" function from flipper)
         colouring = self._colouring
         edge_rep = self._edge_rep
