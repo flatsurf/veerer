@@ -163,7 +163,7 @@ def relabel_on_edges(ep, r, n, m):
 
 def matrix_permutation(mat, perm):
     r"""
-    Permute in place the columnns of ``mat`` according to the permutation ``perm``
+    Permute in place the columns of ``mat`` according to the permutation ``perm``
 
     EXAMPLES::
 
