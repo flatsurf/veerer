@@ -47,7 +47,7 @@ An example over a number field::
     sage: cone_sage = cs.cone('sage')
     sage: cone_nmz = cs.cone('normaliz-NF') # optional - pynormaliz
 
-Note that sage and noramliz use different noramlization::
+Note that sage and normaliz use different normalizations::
 
     sage: cone_sage.ieqs()
     [[1, -phi, 0]]
