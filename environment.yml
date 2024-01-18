@@ -23,6 +23,7 @@ dependencies:
   - sage-flatsurf  # optional: sage_flatsurf
   - pyeantic >=1.0.0,<2  # optional: pyeantic
   - pyintervalxt >=3.1.0,<4  # optional: pyintervalxt
+  - pyflatsurf # optional: pyflatsurf
   # Work around https://github.com/conda-forge/pynormaliz-feedstock/issues/10 by pinning normaliz and pynormaliz
   - pynormaliz 2.17 # optional: pynormaliz
   - normaliz 3.9.4  # optional: pynormaliz
