@@ -155,17 +155,17 @@ def sage_flatsurf_orbit_closure_to_veerer_linear_family(orbit_closure):
 
     EXAMPLES::
 
-        sage: from flatsurf import Polygon, similarity_surfaces, GL2ROrbitClosure
+        sage: from flatsurf import Polygon, similarity_surfaces, GL2ROrbitClosure  # optional - sage_flatsurf
         sage: from veerer.flatsurf_conversion import sage_flatsurf_orbit_closure_to_veerer_linear_family
-        sage: P = Polygon(angles=(1,1,1,7), lengths=(3, 2))
-        sage: S1 = similarity_surfaces.billiard(P).minimal_cover("translation").erase_marked_points()
-        sage: S2 = S1.l_infinity_delaunay_triangulation()
-        sage: O = GL2ROrbitClosure(S2)
-        sage: for d in O.decompositions(4):
+        sage: P = Polygon(angles=(1,1,1,7), lengths=(3, 2))  # optional - sage_flatsurf
+        sage: S1 = similarity_surfaces.billiard(P).minimal_cover("translation").erase_marked_points()  # optional - sage_flatsurf
+        sage: S2 = S1.l_infinity_delaunay_triangulation()  # optional - sage_flatsurf
+        sage: O = GL2ROrbitClosure(S2)  # optional - sage_flatsurf
+        sage: for d in O.decompositions(4):  # optional - sage_flatsurf
         ....:     O.update_tangent_space_from_flow_decomposition(d)
         ....:     if O.dimension() == 4:
         ....:         break
-        sage: sage_flatsurf_orbit_closure_to_veerer_linear_family(O)
+        sage: sage_flatsurf_orbit_closure_to_veerer_linear_family(O)  # optional - sage_flatsurf
     	VeeringTriangulationLinearFamily("(0,1,2)(3,4,~0)(5,6,~1)(7,8,~2)(9,~3,10)(11,~8,~4)(12,~5,13)(14,~6,15)(16,~11,~10)(17,18,~12)(19,~13,20)(~20,~17,~16)(~19,~18,~14)(~15,~7,~9)", "BRRRRRBRBBBRRBRRRBRBR", [(1, 0, 1, 0, 1, c0, c0, 0, -1, -c0, -c0, 0, 0, c0, 2*c0, c0, c0, -c0, c0, c0, 0), (0, 1, 1, 0, 0, c0, c0 - 1, 0, -1, -1, -1, -1, c0 - 1, 1, c0, 1, 0, -c0 + 1, 2*c0 - 2, -c0 + 2, -c0 + 1), (0, 0, 0, 1, 1, 0, 0, 0, 0, -c0, -c0 + 1, 1, 0, 0, c0, c0, c0, -1, 1, c0 - 1, c0 - 1), (0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, c0 - 1, -c0 + 1, c0 - 1, c0 - 1)])
     """
     vt, x_orientation = pyflatsurf_surface_to_veerer_veering_triangulation(orbit_closure._surface)
