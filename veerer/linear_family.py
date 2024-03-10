@@ -310,6 +310,17 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
                     mat[i, j] *= -1
         return mat
 
+    def switch_subspace_generators_matrix(self, slope=VERTICAL):
+        if slope == VERTICAL:
+            if not self._mutable:
+                return self._subspace
+            else:
+                return self._subspace.__copy__()
+        elif slope == HORIZONTAL:
+            return self._horizontal_subspace
+        else:
+            raise ValueError
+
     def as_linear_family(self):
         return self
 

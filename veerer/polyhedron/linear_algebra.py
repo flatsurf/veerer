@@ -99,3 +99,6 @@ def linear_form_normalize(base_ring, linear_form):
                 linear_form[k] /= c
 
     return linear_form
+
+
+vector_normalize = linear_form_normalize
