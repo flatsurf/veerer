@@ -35,13 +35,15 @@ from array import array
 import ppl
 
 from sage.structure.richcmp import op_LT, op_LE, op_EQ, op_NE, op_GT, op_GE, rich_to_bool
+from sage.modules.free_module import FreeModule
+from sage.matrix.constructor import matrix
 
 from .constants import *
 from .permutation import *
 from .misc import det2
 from .triangulation import Triangulation
 from .polyhedron import LinearExpressions, ConstraintSystem
-from .polyhedron.linear_algebra import linear_form_project, linear_form_normalize
+from .polyhedron.linear_algebra import linear_form_project, vector_normalize
 
 
 class VeeringTriangulation(Triangulation):
@@ -88,11 +90,34 @@ class VeeringTriangulation(Triangulation):
 
         sage: VeeringTriangulation("(0,~6,~3)(1,7,~2)(2,~1,~0)(3,5,~4)(4,8,~5)(6,~8,~7)", "RBPBRBPRB")
         VeeringTriangulation("(0,~6,~3)(1,7,~2)(2,~1,~0)(3,5,~4)(4,8,~5)(6,~8,~7)", "RBPBRBPRB")
+
+    Triangulations with boundary::
+
+        sage: VeeringTriangulation("(0,1,2)(~0,3,4)", "(~1:1)(~2:1)(~3:1)(~4:1)", "RBRBR")
+        VeeringTriangulation("(0,1,2)(3,4,~0)", boundary="(~4)(~3)(~2)(~1)", colouring="RBRBR")
+        sage: VeeringTriangulation("(0,1,2)(~0,3,4)", boundary="(~1:1)(~2:1)(~3:1)(~4:1)", colouring="RBRBR")
+        VeeringTriangulation("(0,1,2)(3,4,~0)", boundary="(~4)(~3)(~2)(~1)", colouring="RBRBR")
     """
     __slots__ = ['_colouring']
 
-    def __init__(self, triangulation,  colouring, mutable=False, check=True):
-        Triangulation.__init__(self, triangulation, mutable=mutable, check=False)
+    def __init__(self, *args, triangulation=None, boundary=None, colouring=None, mutable=False, check=True):
+        if len(args) == 3:
+            if triangulation is not None or boundary is not None or colouring is not None:
+                raise ValueError('invalid data in constructor')
+            # triangulation_data boundary colouring
+            triangulation, boundary, colouring = args
+        elif len(args) == 2:
+            # either (triangulation, colouring)
+            # or (triangulation_data, colouring)
+            if triangulation is not None or colouring is not None:
+                raise ValueError('invalid data in constructor')
+            triangulation, colouring = args
+        elif len(args) == 1:
+            if triangulation is not None:
+                raise ValueError('invalid data in constructor')
+            triangulation, = args
+
+        Triangulation.__init__(self, triangulation, boundary=boundary, mutable=mutable, check=False)
         n = self._n  # number of half edges (get initialized by the triangulation)
 
         if isinstance(colouring, str):
@@ -137,6 +162,8 @@ class VeeringTriangulation(Triangulation):
         # 1-degenerate: PBR (PURPLE), GRB (GREEN)
         # 2-degenerate: BPG (BLUE|PURPLE|GREEN), RGP (RED|GREEN|PURPLE)
         for a in range(n):
+            if self._bdry[a]:
+                continue
             col, a, b, c = self.triangle(a)
             good = False
             if col == BLUE:
@@ -157,9 +184,11 @@ class VeeringTriangulation(Triangulation):
 
         # no monochromatic vertex
         for v in self.vertices():
+            if self._bdry[v[0]]:
+                continue
             col = cols[v[0]]
             i = 1
-            while i < len(v) and cols[v[i]] == col:
+            while i < len(v) and cols[v[i]] == col and not self._bdry[v[i]]:
                 i += 1
             if i == len(v):
                 raise error('monochromatic vertex {} of colour {}'.format(v, colour_to_string(cols[v[0]])))
@@ -171,10 +200,14 @@ class VeeringTriangulation(Triangulation):
             sage: from veerer import VeeringTriangulation
             sage: t = VeeringTriangulation("(0,1,2)", "BBR")
             sage: dumps(t)  # indirect doctest
-            b'x\x9ck`J.KM-J-\xd2\x03Q\x99y\xe9\xf1%E\x99\x89y\xe9\xa59\x89%\x99\xf9y\\a\x10\xd1\x10\x14\xc1B\x06\xcd\xc6B\xc6\xd8B&\roFo&o\x06 \x04\xd1 \xc8\xd8\x99\x9a\xa4\x07\x005\xe2\x1bc'
+            b'x\x9ck`J.KM-J-\xd2\x03Q\x99y\xe9\xf1%E\x99\x89y\xe9\xa59\x89%\x99\xf9y\\a\x10\xd1\x10\x14\xc1B\x06\xcd\xc6B\xc6\xd8B&\roFo&o\x06 \x84\xd1\x0c@\x9a\xc9\x9b\xb135I\x0f\x00\xd8*\x1cD'
+            sage: t = VeeringTriangulation("(0,1,2)(~0,3,4)", "(~1:1)(~2:1)(~3:1)(~4:1)", "RBRBR")
+            sage: dumps(t)  # indirect doctest
+            b'x\x9ck`J.KM-J-\xd2\x03Q\x99y\xe9\xf1%E\x99\x89y\xe9\xa59\x89%\x99\xf9y\\a\x10\xd1\x10\x14\xc1B\x06\xcd\xc6B\xc6\xd8B&\roFo&o\x06o\x16oNoVo6ovo\x0eof \x9b\x03\xc8b\x03\x8a\xb0\x00yL@5\x0cH\x90\x11\n\x19\xc0z!\x18\xce\xeaLM\xd2\x03\x00\xd7\x88$\xd9'
         """
         a = list(self._fp)
         a.extend(self._ep)
+        a.extend(self._bdry)
         a.extend(self._colouring)
         a.append(self._mutable)
         return a
@@ -186,6 +219,8 @@ class VeeringTriangulation(Triangulation):
             sage: from veerer import VeeringTriangulation
             sage: t0 = VeeringTriangulation("(0,1,2)", "BBR", mutable=False)
             sage: t1 = VeeringTriangulation("(0,1,2)", "BBR", mutable=True)
+            sage: t2 = VeeringTriangulation("(0,1,2)(~0,3,4)", "(~1:1)(~2:1)(~3:1)(~4:1)", "RBRBR")
+
             sage: s0 = loads(dumps(t0))  # indirect doctest
             sage: assert s0 == t0
             sage: s0._mutable
@@ -197,12 +232,16 @@ class VeeringTriangulation(Triangulation):
             sage: s1._mutable
             True
             sage: s1._check()
+
+            sage: s2 = loads(dumps(t2))
+            sage: assert s2 == t2
         """
-        n = (len(arg) - 1) // 3
+        n = (len(arg) - 1) // 4
         self._n = n
         self._fp = array('i', arg[:n])
         self._ep = array('i', arg[n:2*n])
-        self._colouring = array('i', arg[2*n:3*n])
+        self._bdry = array('i', arg[2*n:3*n])
+        self._colouring = array('i', arg[3*n:4*n])
         self._mutable = arg[-1]
         self._vp = array('i', [-1] * n)
         for i in range(n):
@@ -311,7 +350,7 @@ class VeeringTriangulation(Triangulation):
         P = self.train_track_linear_space()
         return VeeringTriangulationLinearFamily(self, self.train_track_linear_space().lines(), mutable=mutable)
 
-    def triangle(self, a):
+    def triangle(self, a, check=True):
         r"""
         Return a quadruple ``(colour, e0, e1, e2)`` in canonical form for the triangle with half edge ``a``.
 
@@ -345,6 +384,10 @@ class VeeringTriangulation(Triangulation):
         # non-dgenerate: BBR (BLUE), RRB (RED)
         # 1-degenerate: PBR (PURPLE), GRB (GREEN)
         # 2-degenerate: RGP (RED|GREEN|PURPLE), BPG (BLUE|GREEN|PURPLE)
+        if check:
+            a = self._check_half_edge(a)
+            if self._bdry[a]:
+                raise ValueError('boundary edge')
         b = self._fp[a]
         c = self._fp[b]
         cols = self._colouring
@@ -604,6 +647,8 @@ class VeeringTriangulation(Triangulation):
             vp = array('i', [-1] * n)
             for i in range(n):
                 vp[fp[ep[i]]] = i
+
+        T._bdry = array('i', [0] * n)
         T._vp = vp
         T._colouring = colouring
         T._mutable = mutable
@@ -777,6 +822,7 @@ class VeeringTriangulation(Triangulation):
                 T._vp = self._vp
                 T._ep = self._ep
                 T._fp = self._fp
+                T._bdry = self._bdry
                 T._colouring = self._colouring
                 T._mutable = mutable
 
@@ -787,6 +833,7 @@ class VeeringTriangulation(Triangulation):
             T._vp = self._vp[:]
             T._ep = self._ep[:]
             T._fp = self._fp[:]
+            T._bdry = self._bdry[:]
             T._colouring = self._colouring[:]
             T._mutable = mutable
 
@@ -821,10 +868,22 @@ class VeeringTriangulation(Triangulation):
 
             sage: VeeringTriangulation("(0,1,2)", [RED, RED, BLUE])
             VeeringTriangulation("(0,1,2)", "RRB")
+            sage: VeeringTriangulation("(0,1,2)(3,4,~0)", "(~4:1,~3:1,~2:1,~1:1)", "RRBRB")
+            VeeringTriangulation("(0,1,2)(3,4,~0)", boundary="(~4,~3,~2,~1)", colouring="RRBRB")
         """
-        return "VeeringTriangulation(\"{}\", \"{}\")".format(
-                perm_cycle_string(self._fp, False, self._n, self._ep),
-                self._colouring_string(short=True))
+        cycles = perm_cycles(self._fp, n=self._n)
+        face_cycles = perm_cycles_to_string([c for c in cycles if self._bdry[c[0]] == 0], involution=self._ep)
+        bdry_cycles = perm_cycles_to_string([c for c in cycles if self._bdry[c[0]] == 1], involution=self._ep)
+        colouring = self._colouring_string(short=True)
+        if bdry_cycles:
+            return "VeeringTriangulation(\"{}\", boundary=\"{}\", colouring=\"{}\")".format(
+                            face_cycles,
+                            bdry_cycles,
+                            colouring)
+        else:
+            return "VeeringTriangulation(\"{}\", \"{}\")".format(
+                       face_cycles,
+                       colouring)
 
     def __repr__(self):
         return str(self)
@@ -834,9 +893,83 @@ class VeeringTriangulation(Triangulation):
         e = int(e)
         return self._colouring[e]
 
-    def angles(self):
+    def vertex_angle(self, e):
+        r"""
+        Return the angle at the vertex the half-edge ``e`` is adjacent to.
+
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation, RED, BLUE
+            sage: T = VeeringTriangulation([(-12, 4, -4), (-11, -1, 11), (-10, 0, 10),
+            ....:                            (-9, 9, 1), (-8, 8, -2), (-7, 7, 2),
+            ....:                            (-6, 6, -3), (-5, 5, 3)],
+            ....:   [RED, RED, RED, RED, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE])
+            sage: T.vertex_angle(0)
+            1
+            sage: T.vertex_angle(1)
+            3
+        """
+        e = self._check_half_edge(e)
+        vp = self.vertex_permutation(copy=False)
+
+        a = 0
+        e0 = e
+        col = self._colouring[e]
+        # NOTE: we count by multiples of pi/2 and then divide by 2
+        ee = vp[e]
+        while True:
+            ee = vp[e]
+            ccol = self._colouring[ee]
+            switch = bool(col != ccol and (((col & (BLUE|RED)) and (ccol & (BLUE|RED))) or (col & (GREEN|PURPLE))))
+            a += switch + 2 * self._bdry[e]
+            e = ee
+            col = ccol
+            if e == e0:
+                break
+        assert a % 2 == 0, a
+        return a // 2
+
+    def face_angle(self, e):
+        r"""
+        Return the angle associated to the pole in the middle of the face ``e`` is adjacent to.
+
+        EXAMPLES::
+
+            sage: from veerer import Triangulation, VeeringTriangulation
+            sage: t = Triangulation("(0,1,2)", boundary="(~2:2,~1:1,~0:1)")
+            sage: vt = VeeringTriangulation(t, "BRB")
+            sage: vt.face_angle(3)
+            -2
+        """
+        e = self._check_half_edge(e)
+        fp = self.face_permutation(copy=False)
+
+        if not self._bdry[e]:
+            raise ValueError('e={} not on a boundary face'.format(self._half_edge_string(e)))
+
+        cum_angle = 0
+        alternations = 0
+        num_sides = 0
+        col = self._colouring[e]
+        e0 = e
+        while True:
+            ee = fp[e]
+            ccol = self._colouring[ee]
+            cum_angle += self._bdry[e]
+            alternations += (col != ccol)
+            num_sides += 1
+            col = ccol
+            e = ee
+            if e == e0:
+                break
+        return (num_sides - cum_angle - alternations // 2)
+
+    def angles(self, half_edge_representatives=False):
         r"""
         Return the list of angles (divided by \pi).
+
+        There is a positive angle for each vertex and a non-positive angle for
+        each boundary face (if any).
 
         EXAMPLES::
 
@@ -871,30 +1004,88 @@ class VeeringTriangulation(Triangulation):
             sage: t.forgot_forward_flippable_colour()
             sage: t.angles()
             [3, 3, 3, 3]
+
+        The plane with 4 marked points::
+
+            sage: t = Triangulation("(0,1,2)(~0,3,4)", boundary="(~4:1,~3:1,~2:1,~1:1)")
+            sage: VeeringTriangulation(t, "RRBRB").angles()
+            [2, 2, 2, 2, -2]
+
+        A bi-infinite cylinder with 2 marked points::
+
+            sage: t = Triangulation("(0,1,2)(~1,~2,3)", boundary="(~0:1)(~3:1)")
+            sage: VeeringTriangulation(t, "RBRR").angles()
+            [2, 2, 0, 0]
+
+        A bi-infinite cylinder with a single marked points::
+
+            sage: t = Triangulation("", boundary="(0:1)(~0:1)")
+            sage: VeeringTriangulation(t, "R").angles()
+            [2, 0, 0]
+
+        Complement of a segment in the plane::
+
+            sage: t = Triangulation("", boundary="(0:2,~0:2)")
+            sage: VeeringTriangulation(t, "R").angles()
+            [2, 2, -2]
+
+        Complement of a triangle in the plane::
+
+            sage: t = Triangulation("(0,1,2)", boundary="(~2:2,~1:1,~0:1)")
+            sage: VeeringTriangulation(t, "BRB").angles()
+            [2, 2, 2, -2]
         """
+        # TODO: handle non-connected stratum correctly!
         n = self.num_half_edges()
         angles = []
+        half_edges = []
         seen = [False] * n
         vp = self.vertex_permutation(copy=False)
-        for e in range(n):
-            if seen[e]: continue
+        fp = self.face_permutation(copy=False)
 
+        # zeros (and simple poles) from vertices
+        for e in range(n):
+            if seen[e]:
+                continue
             a = 0
             col = self._colouring[e]
             # NOTE: we count by multiples of pi/2 and then divide by 2
+            half_edges.append(e)
             while not seen[e]:
                 seen[e] = True
                 ee = vp[e]
                 ccol = self._colouring[ee]
-                a += bool(col != ccol and (((col & (BLUE|RED)) and (ccol & (BLUE|RED))) or
-                                           (col & (GREEN|PURPLE))))
+                switch = bool(col != ccol and (((col & (BLUE|RED)) and (ccol & (BLUE|RED))) or (col & (GREEN|PURPLE))))
+                a += switch + 2 * self._bdry[e]
                 e = ee
                 col = ccol
-            a += col != ccol
-
+            assert a % 2 == 0, a
             angles.append(a // 2)
 
-        return angles + [1] * self.num_folded_edges()
+        # angles at infinity from boundary faces (meromorphic differentials)
+        seen = [False] * n
+        for e in range(n):
+            if seen[e] or not self._bdry[e]:
+                continue
+
+            cum_angle = 0
+            alternations = 0
+            num_sides = 0
+            col = self._colouring[e]
+            half_edges.append(e)
+            while not seen[e]:
+                seen[e] = True
+                ee = fp[e]
+                ccol = self._colouring[ee]
+                cum_angle += self._bdry[e]
+                alternations += (col != ccol)
+                num_sides += 1
+                col = ccol
+                e = ee
+            angles.append(num_sides - cum_angle - alternations // 2)
+        angles.extend([1] * self.num_folded_edges())
+
+        return (angles, half_edges) if half_edge_representatives else angles
 
     def is_abelian(self, certificate=False):
         r"""
@@ -949,14 +1140,26 @@ class VeeringTriangulation(Triangulation):
             sage: t.forgot_backward_flippable_colour()
             sage: t.is_abelian()
             False
+
+        Examples with boundaries::
+
+            sage: t = Triangulation("", "(0:1)(~0:1)")
+            sage: VeeringTriangulation(t, "R").is_abelian()
+            True
+
+            sage: t = Triangulation("", "(0:1)(1:1)(~0:1,2:1,~1:1,~2:1)")
+            sage: VeeringTriangulation(t, "RRR").is_abelian()
+            False
         """
         ep = self._ep
         vp = self._vp
         cols = self._colouring
 
-        # Perform a BFS. We store an orientation for each edge that specifies
-        # its orientation in R^2: True if x > 0 or (x == 0 and y > 0)
-        #                         False if x < 0 or (x == 0 and y < 0)
+        # Try to choose holonomy with signs for each vector. It is enough
+        # to store a boolean for each edge:
+        #   True: (+, +) or (+,-)
+        #   False: (-,-) or (-,+)
+        # There is a coherence around vertices and faces
         oris = [None] * self._n
         oris[0] = True
         q = [0]
@@ -965,7 +1168,10 @@ class VeeringTriangulation(Triangulation):
             o = oris[e0]
             f = vp[e]
             while f != e0:
-                if (cols[e] == RED and cols[f] == BLUE) or (cols[e] == GREEN):
+                if self._bdry[f]:
+                    if not (cols[e] == RED and cols[f] == BLUE):
+                        o = not o
+                elif (cols[e] == RED and cols[f] == BLUE) or (cols[e] == GREEN):
                     o = not o
 
                 oris[f] = o
@@ -976,8 +1182,12 @@ class VeeringTriangulation(Triangulation):
                     return (False, None) if certificate else False
                 e, f = f, vp[f]
 
-            if (cols[e] == RED and cols[f] == BLUE) or cols[e] == GREEN:
+            if self._bdry[f]:
+                if not (cols[e] == RED and cols[f] == BLUE):
+                    o = not o
+            elif (cols[e] == RED and cols[f] == BLUE) or (cols[e] == GREEN):
                 o = not o
+
             if oris[e0] != o:
                 return (False, None) if certificate else False
 
@@ -1092,13 +1302,21 @@ class VeeringTriangulation(Triangulation):
             sage: t.forgot_forward_flippable_colour()                            # optional - surface_dynamics
             sage: t.stratum()                                                    # optional - surface_dynamics
             Q_2(1^4)
+
+        Some examples with boundaries::
+
+            sage: t = Triangulation("", "(0:1)(~0:1)")
+            sage: VeeringTriangulation(t, "R").stratum()  # optional - surface_dynamics
+            H_0(0, -1^2)
         """
         from .features import surface_dynamics_feature
         surface_dynamics_feature.require()
         from surface_dynamics import Stratum
 
+        from surface_dynamics.flat_surfaces.strata import Stratum
+
         A = self.angles()
-        if any(a%2 for a in A) or not self.is_abelian():
+        if any(a % 2 for a in A) or not self.is_abelian():
             return Stratum([(a - 2) for a in A], 2)
         else:
             return Stratum([(a - 2) // 2 for a in A], 1)
@@ -1564,6 +1782,7 @@ class VeeringTriangulation(Triangulation):
 
         return starts
 
+    # TODO: check the argument!!!
     def edge_colour(self, e):
         return self._colouring[e]
 
@@ -2878,6 +3097,13 @@ class VeeringTriangulation(Triangulation):
             [[1, 0, 1], [1, 1, 0]]
             sage: sorted(T.train_track_polytope(HORIZONTAL, backend='sage').rays())
             [[0, 1, 1]]
+
+        Examples with boundaries (meromorphic differentials)::
+
+            sage: VeeringTriangulation("", "(0:1)(~0:1)", "R").train_track_polytope()
+            Cone of dimension 1 in ambient dimension 1 made of 1 facets (backend=ppl)
+            sage: VeeringTriangulation("(0,1,2)(~1,~2,3)", "(~0:1)(~3:1)", "RBRR").train_track_polytope()
+            Cone of dimension 2 in ambient dimension 4 made of 2 facets (backend=ppl)
         """
         from sage.rings.integer_ring import ZZ
         L = LinearExpressions(ZZ)
@@ -3760,7 +3986,7 @@ class VeeringTriangulation(Triangulation):
             constraint = x[self._norm(e)] == y[self._norm(a)] + y[self._norm(d)]
             constraint = constraint.coefficients(dim=2*ne, homogeneous=True)
             linear_form_project(eqns, constraint)
-            linear_form_normalize(base_ring, constraint)
+            vector_normalize(base_ring, constraint)
             constraint = tuple(constraint)
             if constraint in delaunay_facets:
                 delaunay_facets[constraint].append(e)
@@ -3841,6 +4067,124 @@ class VeeringTriangulation(Triangulation):
                 else:
                     self.flip_back(e, old_col)
 
+    def switch_subspace_generators_matrix(self, slope=VERTICAL):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation
+            sage: vt = VeeringTriangulation("(0,1,2)(3,4,5)(6,7,8)(~0,~7,~5)(~3,~4,~2)(~6,~1,~8)", "RRBRRBRRB")
+            sage: vt.switch_subspace_generators_matrix()
+            [ 1  1  0  0  0  0  1  1  0]
+            [ 0  0  0  1  1  0  0  0  0]
+            [ 1  0 -1  1  0 -1  0  0  0]
+            [ 0  0  0  0  0  0  1  0 -1]
+        """
+        return matrix(self.base_ring(), self.train_track_switch_constraints(slope).cone().lines())
+
+    def parallel_cylinders(self, col=RED):
+        r"""
+        Return the L-parallel cylinders.
+
+        EXAMPLES::
+
+            sage: from veerer.linear_family import VeeringTriangulationLinearFamilies
+            sage: X9 = VeeringTriangulationLinearFamilies.prototype_H1_1(0, 2, 1, -1)
+            sage: X9.parallel_cylinders()
+            [([(0, 0, 0, 1, 1, 0, 0, 1, 1), (0, 0, 0, 0, 0, 1, 1, 0, 0)], [1, 1])]
+        """
+        cylinders = list(self.cylinders(col))
+        if not cylinders:
+            []
+
+        B = []  # boundary edges
+        C = []  # middle edges
+        for cyl in cylinders:
+            b = [0] * self.num_edges()  # indicatrix of bottom edges
+            t = [0] * self.num_edges()  # indicatrix of top edges
+            c = [0] * self.num_edges()  # indicatrix of the middle edges
+            for e in cyl[0]:
+                c[self._norm(e)] = 1
+            for e in cyl[1]:
+                b[self._norm(e)] = 1
+            for e in cyl[2]:
+                t[self._norm(e)] = 1
+            C.append(c)
+            B.append((b, t))
+
+        # take intersection of the cylinder twists in the tangent space
+        F = FreeModule(self.base_ring(), self.num_edges())
+        U = F.submodule(self.switch_subspace_generators_matrix())
+        T = F.submodule(C)
+
+        # what would be even nicer are the equations on the coefficients of C
+        basis = U.intersection(T).basis_matrix()
+        twist_coeffs = []
+        C = matrix(C)
+        seen = set()
+        parallel_families = []
+        for b in basis.rows():
+            # conjecture: the reduced echelon form is a basis with the following property
+            # * the nonzero positions for elements of the basis are disjoint (correspond to a weighted union of cylinders)
+            # * it is >= 0
+            # In other words, the equivalence classes of Benirschke are tight by a single equation.
+            # Moreover, the coefficients give the circumference ratios
+            u = C.solve_left(b)
+            u = vector_normalize(self.base_ring(), u)
+            pos = u.nonzero_positions()
+            assert not any(i in seen for i in pos)
+            seen.update(pos)
+            parallel_cylinders = [C[i] for i in pos]
+            parallel_families.append((parallel_cylinders, [u[i] for i in pos]))
+
+        return parallel_families
+
+    def contraction(self, edges):
+        r"""
+        Return the degeneration obtained by contracting the edges in ``contractions`` and
+        blowing-up the ones in blowups.
+        """
+
+    def blowup(self, edges):
+        n = self._n
+        edges = set(edges)
+        edges.update([self._ep[e] for e in edges])
+
+        kept_half_edges = [e for e in range(self._n) if e not in edges]
+        m = len(kept_half_edges)
+        relabelling = {e: j for j, e in enumerate(kept_half_edges)}
+
+        fp = array('i', [0] * m)
+        ep = array('i', [0] * m)
+        boundary = array('i', [0] * m)
+        colouring = array('i', [0] * m)
+        for e in half_edges:
+            ep[relabelling[e]] = relabelling[self._ep[e]]
+            f = self._fp[e]
+            while f not in relabelling:
+                f = self._fp[f]
+            fp[relabelling[e]] = relabelling[f]
+            # TODO: should be updated
+            boundary[relabelling[e]] = self._bdry[e]
+            colouring[relabelling[e]] = self._colouring[e]
+
+        t = Triangulation.from_face_edge_perms(fp, ep, boundary=boundary)
+        return VeeringTriangulation(t, colouring), edge_map
+
+    def codimension_one_horizontal_degenerations(self, i=None):
+        r"""
+        Return codimension one horizontal degenerations.
+        """
+        if i is not None and i != 0:
+            raise ValueError('invalid level specification')
+
+        n = self._n
+        for cyl_family in self.parallel_cylinders():
+            edges = []
+            for cyl in cyl_family[0]:
+                for i, j in enumerate(cyl):
+                    if j:
+                        edges.append(i)
+            yield self.blowup(edges)
 
 class VeeringTriangulations:
     @staticmethod

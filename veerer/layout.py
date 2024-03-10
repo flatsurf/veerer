@@ -785,10 +785,15 @@ class FlatVeeringTriangulationLayout(object):
 
         if tilde:
             if a > ep[a]:
-                lab = "%s=~%s" % (a, ep[a])
+                #lab = "%s=~%s" % (a, ep[a])
+                # nicer shorter version
+                lab = "~" + str(ep[a])
             else:
                 lab = str(a)
         else:
+            if a > ep[a]:
+                from sage.plot.graphics import Graphics
+                return Graphics()
             lab = str(a)
 
         x, y = self._triangulation._holonomies[a]

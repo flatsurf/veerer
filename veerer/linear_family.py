@@ -214,6 +214,7 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
         R = self.base_ring()
         a = list(self._fp[:])
         a.extend(self._ep)
+        a.extend(self._bdry)
         a.extend(self._colouring)
         a.append(self._mutable)
         # NOTE: here we know that all entries have the same parent
@@ -257,11 +258,12 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
             sage: lf2._check()
         """
         a, R, raw_entries = arg
-        n = (len(a) - 1) // 3
+        n = (len(a) - 1) // 4
         self._n = n
         self._fp = array('i', a[:n])
         self._ep = array('i', a[n:2*n])
-        self._colouring = array('i', a[2*n:3*n])
+        self._bdry = array('i', a[2*n:3*n])
+        self._colouring = array('i', a[3*n:4*n])
         self._mutable = a[-1]
         self._vp = array('i', [-1] * n)
         for i in range(n):
@@ -309,6 +311,17 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
                 for i in range(mat.nrows()):
                     mat[i, j] *= -1
         return mat
+
+    def switch_subspace_generators_matrix(self, slope=VERTICAL):
+        if slope == VERTICAL:
+            if not self._mutable:
+                return self._subspace
+            else:
+                return self._subspace.__copy__()
+        elif slope == HORIZONTAL:
+            return self._horizontal_subspace
+        else:
+            raise ValueError
 
     def as_linear_family(self):
         return self
@@ -361,6 +374,17 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
     def copy(self, mutable=None):
         r"""
         Return a copy of this linear family.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: fp = "(0,1,2)(~0,~4,~2)(3,4,5)(~3,~1,~5)"
+            sage: cols = "BRRBRR"
+            sage: f = VeeringTriangulation(fp, cols).as_linear_family(mutable=False)
+            sage: f2 = f.copy(mutable=True)
+            sage: f2._check()
+            sage: f2._mutable
+            True
         """
         if mutable is None:
             mutable = self._mutable
@@ -374,6 +398,7 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
         L._vp = self._vp[:]
         L._ep = self._ep[:]
         L._fp = self._fp[:]
+        L._bdry = self._bdry[:]
         L._colouring = self._colouring[:]
         L._subspace = copy(self._subspace)
         L._mutable = mutable

@@ -30,13 +30,16 @@ from sage.structure.richcmp import op_LT, op_LE, op_EQ, op_NE, op_GT, op_GE, ric
 
 from .permutation import (perm_init, perm_check, perm_cycles, perm_dense_cycles,
                           perm_invert, perm_conjugate, perm_cycle_string, perm_cycles_lengths,
-                          perm_num_cycles, str_to_cycles, perm_compose, perm_from_base64_str,
+                          perm_cycles_to_string, perm_on_list,
+                          perm_num_cycles, str_to_cycles, str_to_cycles_and_data, perm_compose, perm_from_base64_str,
                           uint_base64_str, uint_from_base64_str, perm_base64_str,
                           perms_are_transitive, triangulation_relabelling_from)
 
 
-def face_edge_perms_init(data):
+def face_edge_perms_init(faces):
     r"""
+    INPUT:: ``faces`` - a list or a string encoding a permutation
+
     EXAMPLES::
 
         sage: from veerer.triangulation import face_edge_perms_init  # random output due to deprecation warnings from realalg
@@ -47,6 +50,9 @@ def face_edge_perms_init(data):
         sage: face_edge_perms_init('(0,1,2)')
         (array('i', [1, 2, 0]), array('i', [0, 1, 2]))
 
+        sage: face_edge_perms_init('(0,1,2)(~0)(~1)(~2)')
+        (array('i', [1, 2, 0, 3, 4, 5]), array('i', [5, 4, 3, 2, 1, 0]))
+
     TESTS:
 
     Check that edge permutation do not depend on the details of faces::
@@ -56,10 +62,10 @@ def face_edge_perms_init(data):
         sage: f3 = "(6,4,3)(~6,~5,1)(5,0,2)"
         sage: assert face_edge_perms_init(f1)[1] == face_edge_perms_init(f2)[1] == face_edge_perms_init(f3)[1]
     """
-    if isinstance(data, str):
-        l = str_to_cycles(data)
+    if isinstance(faces, str):
+        l = str_to_cycles(faces)
     else:
-        l = [[int(i) for i in c] for c in data]
+        l = [[int(i) for i in c] for c in faces]
 
     pos = []
     neg = []
@@ -117,6 +123,37 @@ def face_edge_perms_init(data):
 
     return perm_init(fp), perm_init(ep)
 
+
+def boundary_init(fp, ep, boundary):
+    n = len(ep)
+
+    if boundary is None:
+        return array('i', [0] * n)
+    elif isinstance(boundary, (array, tuple, list)):
+        if len(boundary) != n:
+            raise ValueError('invalid input argument')
+        return array('i', boundary)
+    elif isinstance(boundary, dict):
+        output = array('i', [0] * n)
+        for e, v in boundary.items():
+            if isinstance(e, str):
+                if not e:
+                    raise ValueError('keys must be valid edges, got {!r}'.format(e))
+                elif e[0] == '~':
+                    e = ~int(e[1:])
+                else:
+                    e = int(e)
+            elif isinstance(e, numbers.Integral):
+                e = int(e)
+            if e > n:
+                raise ValueError('keys must be valid edges, got {!r}'.format(e))
+            output[e] = v
+        return output
+    else:
+        raise TypeError('invalid boundary data')
+
+
+
 # NOTE: we don't really care that we have a triangulation here. When
 # there is no restriction on the cycle decomposition of _fp we got
 # a coding for any cell decomposition (with possibly folded edges).
@@ -141,6 +178,17 @@ def face_edge_perms_init(data):
 #
 #    https://github.com/flatsurf/sage-flatsurf
 
+
+# TODO: surface_dynamics compatible datastructure
+# {
+#  _n: number of standard edges
+#  _m: number of self-glued edges
+#  _vp, _fp: array of size 2 _n + _m
+#  _boundary: bitset
+# }
+# boundary requirement: boundary is necessarily glued to a non-boundary
+# edges are 0, 1, ..., n+m-1 and half-edges are
+# 0, ~0, 1, ~1, ..., (n-1), ~(n-1), n, n+1, ..., n+m-1
 
 class Triangulation(object):
     r"""
@@ -215,15 +263,40 @@ class Triangulation(object):
         Traceback (most recent call last):
         ...
         ValueError: (fp, ep, vp) do not generate a transitive group
-    """
-    __slots__ = ['_mutable', '_n', '_fp', '_ep', '_vp']
 
-    def __init__(self, triangles, mutable=False, check=True):
+    Examples with boundaries::
+
+        sage: Triangulation("(0,1,2)(~0)(~1)(~2)", boundary={"~0": 1, "~1": 1, "~2": 1})
+        Triangulation("(0,1,2)", boundary="(~2:1)(~1:1)(~0:1)")
+        sage: Triangulation("(0,1,2)", boundary="(~0:1)(~1:1,~2:1)")
+        Triangulation("(0,1,2)", boundary="(~2:1,~1:1)(~0:1)")
+        sage: Triangulation("(0,1,2)(~0,~1,~2)", boundary={"~0": 0})
+        Triangulation("(0,1,2)(~2,~0,~1)")
+
+    Examples with invalid boundaries::
+
+        sage: Triangulation("(0,1,2)(~0,~1,~2)", boundary={"~0": 1, "~1": 1, "~2": 0})
+        Traceback (most recent call last):
+        ...
+        ValueError: invalid boundary data: 0 at half-edge i=~2 and 1 at half-edge fp[i]=~0
+    """
+    __slots__ = ['_mutable', '_n', '_fp', '_ep', '_vp', '_bdry']
+
+    def __init__(self, triangles, boundary=None, mutable=False, check=True):
         if isinstance(triangles, Triangulation):
             self._fp = triangles.face_permutation(copy=True)
             self._ep = triangles.edge_permutation(copy=True)
+            self._bdry = triangles.boundary_vector(copy=True)
         else:
+            if boundary is not None and isinstance(boundary, str):
+                boundary_cycles, boundary = str_to_cycles_and_data(boundary)
+                if isinstance(triangles, str):
+                    triangles = str_to_cycles(triangles)
+                else:
+                    triangles = list(triangles)
+                triangles.extend(boundary_cycles)
             self._fp, self._ep = face_edge_perms_init(triangles)
+            self._bdry = boundary_init(self._fp, self._ep, boundary)
 
         self._mutable = mutable
 
@@ -231,23 +304,9 @@ class Triangulation(object):
         ep = self._ep
         n = self._n = len(fp)
 
-        # TODO: face labels are disabled for now. We should actually
-        # make it a *partition* of the faces (two faces are allowed to
-        # have the same label) The trivial partition {0,1,2,...,F-1}
-        # would correspond to no labels and the atomic
-        # {{0},{1},...,{F-1}} would correspond to everybody being
-        # labelled
-        # fl = self._fl = [None] * F # face labels
-
-        # TODO: edge labels are disabled for now.
-        # el = self._fl = [None] * E # edge labels
-
         vp = self._vp = array('i', [-1] * n)
         for i in range(n):
             vp[fp[ep[i]]] = i
-
-        # TODO: vertex labels are disabled for now
-        # vl = self._vl = perm_cycles(vp)[1]....
 
         if check:
             self._check(ValueError)
@@ -259,10 +318,11 @@ class Triangulation(object):
             sage: from veerer import Triangulation
             sage: t = Triangulation("(0,1,2)")
             sage: dumps(t)  # indirect doctest
-            b'x\x9ck`J.KM-J-\xd2+)\xcaL\xccK/\xcdI,\xc9\xcc\xcf\xe3\nA\xe1\x152h6\x162\xc6\x162ix3z3y3\x00!\x90\xeeLM\xd2\x03\x00\xe7\x1e\x14^'
+            b'x\x9ck`J.KM-J-\xd2+)\xcaL\xccK/\xcdI,\xc9\xcc\xcf\xe3\nA\xe1\x152h6\x162\xc6\x162ix3z3y3\x00!\x8cf\xe8LM\xd2\x03\x00_u\x15?'
         """
         a = list(self._fp)
         a.extend(self._ep)
+        a.extend(self._bdry)
         a.append(self._mutable)
         return a
 
@@ -283,10 +343,11 @@ class Triangulation(object):
             True
             sage: s1._check()
         """
-        n = (len(arg) - 1) // 2
+        n = (len(arg) - 1) // 3
         self._n = n
         self._fp = array('i', arg[:n])
         self._ep = array('i', arg[n:2*n])
+        self._bdry = array('i', arg[2*n:3*n])
         self._mutable = arg[-1]
         self._vp = array('i', [-1] * n)
         for i in range(n):
@@ -356,7 +417,7 @@ class Triangulation(object):
         return x
 
     @staticmethod
-    def from_face_edge_perms(fp, ep, vp=None, mutable=False, check=True):
+    def from_face_edge_perms(fp, ep, vp=None, boundary=None, mutable=False, check=True):
         r"""
         INPUT:
 
@@ -387,6 +448,10 @@ class Triangulation(object):
             for i in range(n):
                 vp[fp[ep[i]]] = i
         T._vp = vp
+        if boundary is None:
+            T._bdry = array('i', [0] * n)
+        else:
+            T._bdry = array('i', boundary)
 
         T._mutable = mutable
 
@@ -431,7 +496,7 @@ class Triangulation(object):
             sage: Triangulation("(0)")
             Traceback (most recent call last):
             ...
-            ValueError: broken face permutation
+            ValueError: non-triangle internal face starting at half-edge i=0
 
             sage: from array import array
             sage: fp = array('i', [1,2,0])
@@ -440,7 +505,7 @@ class Triangulation(object):
             sage: Triangulation.from_face_edge_perms(fp, ep, vp)
             Traceback (most recent call last):
             ...
-            ValueError: fev relation not satisfied
+            ValueError: fev relation not satisfied at half-edge i=0
 
             sage: fp = array('i', [1,2,0])
             sage: ep = array('i', [1,2,0])
@@ -448,10 +513,12 @@ class Triangulation(object):
             sage: Triangulation.from_face_edge_perms(fp, ep, vp)
             Traceback (most recent call last):
             ...
-            ValueError: broken edge permutation
+            ValueError: invalid edge permutation at half-edge i=0
         """
         n = self._n
 
+        if not (hasattr(self, '_n') and hasattr(self, '_vp') and hasattr(self, '_ep') and hasattr(self, '_fp') and hasattr(self, '_bdry') and hasattr(self, '_mutable')):
+            raise error('missing attributes: these must be _vp, _ep, _fp, _bdry, _mutable')
         if not perm_check(self._fp, n):
             raise error('fp is not a permutation: {}'.format(self._fp))
         if not perm_check(self._ep, n):
@@ -460,6 +527,8 @@ class Triangulation(object):
             raise error('vp is not a permutation: {}'.format(self._vp))
         if not perms_are_transitive([self._fp, self._ep, self._vp]):
             raise error('(fp, ep, vp) do not generate a transitive group')
+        if not isinstance(self._bdry, array) or self._bdry.typecode != 'i' or len(self._bdry) != n:
+            raise error('bdry must be an integer array of same length as the underlying permutations')
 
         # The face, edge, and vertex permutations fp, ep, and vp must
         # satisfy the relations fp^3 = ep^2 = fp.ep.vp = Id.  Note
@@ -467,14 +536,19 @@ class Triangulation(object):
         # \infty) into the symmetric group on the half edges.
 
         for i in range(n):
-            # NOTE: this first test is relevant only if we enforce triangulations
-            # when we generalize to CW complex we can simply remove it
-            if self._fp[i] == i or self._fp[self._fp[self._fp[i]]] != i:
-                raise error('broken face permutation')
+            j = self._fp[i]
+            if (self._bdry[i] == 0) != (self._bdry[j] == 0):
+                raise error('invalid boundary data: {} at half-edge i={} and {} at half-edge fp[i]={}'.format(
+                    self._bdry[i], self._half_edge_string(i),
+                    self._bdry[j], self._half_edge_string(j)))
+
+        for i in range(n):
+            if not self._bdry[i] and (self._fp[i] == i or self._fp[self._fp[self._fp[i]]] != i):
+                raise error('non-triangle internal face starting at half-edge i={}'.format(self._half_edge_string(i)))
             if self._ep[self._ep[i]] != i:
-                raise error('broken edge permutation')
+                raise error('invalid edge permutation at half-edge i={}'.format(self._half_edge_string(i)))
             if self._fp[self._ep[self._vp[i]]] != i:
-                raise error('fev relation not satisfied')
+                raise error('fev relation not satisfied at half-edge i={}'.format(self._half_edge_string(i)))
 
     def _check_half_edge(self, e):
         if not isinstance(e, numbers.Integral):
@@ -561,6 +635,7 @@ class Triangulation(object):
                 T._fp = self._fp
                 T._ep = self._ep
                 T._vp = self._vp
+                T._bdry = self._bdry
                 T._mutable = mutable
 
                 return T
@@ -570,6 +645,7 @@ class Triangulation(object):
             T._fp = self._fp[:]
             T._ep = self._ep[:]
             T._vp = self._vp[:]
+            T._bdry = self._bdry[:]
             T._mutable = mutable
 
             return T
@@ -666,6 +742,12 @@ class Triangulation(object):
         else:
             return self._vp
 
+    def boundary_vector(self, copy=True):
+        if copy:
+            return self._bdry[:]
+        else:
+            return self._bdry
+
     def next_at_vertex(self, i, check=True):
         r"""
         EXAMPLES::
@@ -720,7 +802,7 @@ class Triangulation(object):
             i = self._check_half_edge(i)
         return self._fp[self._ep[i]]
 
-    def previous_in_face(self, i):
+    def previous_in_face(self, i, check=True):
         r"""
         EXAMPLES::
 
@@ -734,6 +816,8 @@ class Triangulation(object):
             sage: T.previous_in_face(3)
             5
         """
+        if check:
+            i = self._check_half_edge(i)
         return self._ep[self._vp[i]]
 
     def num_half_edges(self):
@@ -763,22 +847,52 @@ class Triangulation(object):
         f = self._ep[e]
         return f if f < e else e
 
+    def _half_edge_string(self, e):
+        f = self._ep[e]
+        return '~%d' % f if f < e else '%d' % e
+
     def num_faces(self):
-        return perm_num_cycles(self._fp)
+        r"""
+        Return the number of triangles.
+        """
+        return sum(self._bdry[c[0]] == 0 for c in perm_cycles(self._fp))
+
+    def num_boundaries(self):
+        r"""
+        Return the number of boundaries.
+        """
+        return sum(self._bdry[c[0]] == 1 for c in perm_cycles(self._fp))
 
     def faces(self):
         r"""
-        Return the list of faces as triples of half-edges
+        Return the list of internal faces as triples of half-edges
 
         EXAMPLES::
 
-            sage: from veerer import *
+            sage: from veerer import Triangulation
 
             sage: T = Triangulation("(0,1,2)(3,4,5)(~0,~3,6)")
             sage: T.faces()
             [[0, 1, 2], [3, 4, 5], [6, 8, 7]]
         """
-        return perm_cycles(self._fp, True, self._n)
+        return [c for c in perm_cycles(self._fp, True, self._n) if self._bdry[c[0]] == 0]
+
+    def boundaries(self):
+        r"""
+        Return the list of boundaries as lists of half-edges.
+
+        EXAMPLES::
+
+            sage: from veerer import Triangulation
+
+            sage: T = Triangulation("(0,1,2)(3,4,5)(~0,~3,6)")
+            sage: T.boundaries()
+            []
+            sage: T = Triangulation("(0,1,2)(~0)(~1,~2)", {"~0": 1, "~1": 1, "~2": 1})
+            sage: T.boundaries()
+            [[3, 4], [5]]
+        """
+        return [c for c in perm_cycles(self._fp, True, self._n) if self._bdry[c[0]]]
 
     def edges(self):
         r"""
@@ -809,6 +923,9 @@ class Triangulation(object):
         return perm_cycles(self._vp, True, self._n)
 
     def num_vertices(self):
+        r"""
+        Return the number of vertices.
+        """
         return perm_num_cycles(self._vp)
 
     def euler_characteristic(self):
@@ -836,6 +953,18 @@ class Triangulation(object):
             sage: T = Triangulation("(0,1,2)(~2,3,4)(~4,5,6)(~6,~0,7)(~7,~1,8)(~8,~3,~5)")
             sage: T.euler_characteristic()
             -2
+
+        A cylinder::
+
+            sage: T = Triangulation("(0,1,2)(~0,3,4)(~1,~2)(~3,~4)", {"~1": 1, "~2": 1, "~3": 1, "~4": 1})
+            sage: T.euler_characteristic()
+            0
+
+        A pair of pants::
+
+            sage: T = Triangulation("(0,1,2)(~0)(~1)(~2)", {"~0": 1, "~1": 1, "~2": 1})
+            sage: T.euler_characteristic()
+            -1
         """
         return self.num_faces() - self.num_edges() + (self.num_vertices() + self.num_folded_edges())
 
@@ -854,9 +983,21 @@ class Triangulation(object):
             sage: T = Triangulation([(-3,1,-1), (-2,0,2)])
             sage: T.genus()
             1
+
+        A cylinder::
+
+            sage: T = Triangulation("(0,1,2)(~0,3,4)(~1,~2)(~3,~4)", {"~1": 1, "~2": 1, "~3": 1, "~4": 1})
+            sage: T.genus()
+            0
+
+        A pair of pants::
+
+            sage: T = Triangulation("(0,1,2)(~0)(~1)(~2)", {"~0": 1, "~1": 1, "~2": 1})
+            sage: T.genus()
+            0
         """
-        # chi = 2 - 2g
-        return (2 - self.euler_characteristic()) // 2
+        # chi = 2 - 2g - n
+        return (2 - self.euler_characteristic() - self.num_boundaries()) // 2
 
     def __str__(self):
         r"""
@@ -867,7 +1008,13 @@ class Triangulation(object):
             sage: str(T)
             'Triangulation("(0,1,2)(~2,~0,~1)")'
         """
-        return 'Triangulation("%s")' % perm_cycle_string(self._fp, n=self._n, involution=self._ep)
+        cycles = perm_cycles(self._fp, n=self._n)
+        face_cycles = perm_cycles_to_string([c for c in cycles if not self._bdry[c[0]]], involution=self._ep)
+        bdry_cycles = perm_cycles_to_string([c for c in cycles if self._bdry[c[0]]], involution=self._ep, data=self._bdry)
+        if bdry_cycles:
+            return 'Triangulation("%s", boundary="%s")' % (face_cycles, bdry_cycles)
+        else:
+            return 'Triangulation("%s")' % face_cycles
 
     def __repr__(self):
         return str(self)
@@ -1176,7 +1323,7 @@ class Triangulation(object):
         E = self._ep[e]
         a = self._fp[e]
         b = self._fp[a]
-        return a != E and b != E
+        return a != E and b != E and self._bdry[e] == 0 and self._bdry[E] == 0
 
     def flippable_edges(self):
         r"""
@@ -1190,12 +1337,16 @@ class Triangulation(object):
             sage: V = VeeringTriangulation(T, [RED, RED, BLUE])
             sage: V.flippable_edges()
             [0, 1]
+
+            sage: T = Triangulation("(0,1,2)(~0,3,4)(~1,~2)(~3,~4)", {"~1": 1, "~2": 1, "~3": 1, "~4": 1})
+            sage: T.flippable_edges()
+            [0]
         """
         n = self._n
         ep = self._ep
         return [e for e in range(n) if e <= ep[e] and self.is_flippable(e)]
 
-    def square_about_edge(self, e):
+    def square_about_edge(self, e, check=True):
         r"""
         Return the four edges that makes ``e`` the diagonal of a quadrilateral.
 
@@ -1225,8 +1376,12 @@ class Triangulation(object):
         # v/    c     |
         # x---------->x
 
-        e = int(e)
+        if check:
+            e = self._check_half_edge(e)
+
         E = self._ep[e]
+        if self._bdry[e] or self._bdry[E]:
+            raise ValueError('non internal edge')
 
         a = self._fp[e]
         b = self._fp[a]
@@ -1235,7 +1390,7 @@ class Triangulation(object):
 
         return a, b, c, d
 
-    def swap(self, e):
+    def swap(self, e, check=True):
         r"""
         Change the orientation of the edge ``e``.
 
@@ -1288,6 +1443,9 @@ class Triangulation(object):
         if not self._mutable:
             raise ValueError('immutable triangulation; use a mutable copy instead')
 
+        if check:
+            e = self._check_half_edge(e)
+
         vp = self._vp
         ep = self._ep
         fp = self._fp
@@ -1320,6 +1478,8 @@ class Triangulation(object):
         fp[E] = e_fp
         vp[e] = E_vp
         vp[E] = e_vp
+
+        self._bdry[e], self._bdry[E] = self._bdry[E], self._bdry[e]
 
     def relabel(self, p, check=True):
         r"""
@@ -1354,6 +1514,13 @@ class Triangulation(object):
             sage: T.relabel("(0,2)(1,3)")
             sage: T == T0
             True
+
+        An example with boundary::
+
+            sage: t = Triangulation("(0,1,2)(~0,3,4)(~4,~3,~2,~1)", {"~1": 1, "~2": 1, "~3": 1, "~4": 1}, mutable=True)
+            sage: t.relabel("(0,3)(1,~2)")
+            sage: t
+            Triangulation("(0,4,~3)(3,~2,~1)", boundary="(1:1,2:1,~4:1,~0:1)")
         """
         if not self._mutable:
             raise ValueError('immutable triangulation; use a mutable copy instead')
@@ -1369,6 +1536,7 @@ class Triangulation(object):
         self._vp = perm_conjugate(self._vp, p)
         self._ep = perm_conjugate(self._ep, p)
         self._fp = perm_conjugate(self._fp, p)
+        perm_on_list(p, self._bdry, n)
 
     def flip(self, e, check=True):
         r"""
@@ -1392,6 +1560,17 @@ class Triangulation(object):
 
             sage: T == Triangulation("(0,1,2)")
             True
+
+        An example with boundaries::
+
+            sage: t = Triangulation("(0,1,2)(~0,3,4)", boundary="(~4:1,~3:1,~2:1,~1:1)", mutable=True)
+            sage: t.flip(0)
+            sage: t
+            Triangulation("(0,2,3)(1,~0,4)", boundary="(~4:1,~3:1,~2:1,~1:1)")
+            sage: t.flip(2)
+            Traceback (most recent call last):
+            ...
+            ValueError: can not flip non internal edge 2
         """
         # v<----------u     v<----------u
         # |     a    ^^     |^    a     ^
@@ -1414,6 +1593,8 @@ class Triangulation(object):
             e = self._check_half_edge(e)
 
         E = self._ep[e]
+        if self._bdry[e] or self._bdry[E]:
+            raise ValueError('can not flip non internal edge %s' % self._norm(e))
 
         a = self._fp[e]
         b = self._fp[a]
@@ -1507,6 +1688,9 @@ class Triangulation(object):
             e = self._check_half_edge(e)
 
         E = self._ep[e]
+
+        if self._bdry[e] or self._bdry[E]:
+            raise ValueError('can not flip non internal edge %s' % self._norm(e))
 
         a = self._fp[e]
         b = self._fp[a]
@@ -1677,6 +1861,7 @@ class Triangulation(object):
         return triangulation_relabelling_from(self._vp, self._ep, start_edge)
 
     def _automorphism_good_starts(self):
+        # TODO: we should also discriminate based on boundaries!
         # we discriminate based on the lengths of cycles in
         #   vp, ep, fp and vp[ep[fp]]
         n = self._n
@@ -1689,7 +1874,7 @@ class Triangulation(object):
 
         d = {}
         for i in range(n):
-            s = ((lv[i] * n + le[i]) * n + lf[i]) * n + lvef[i]
+            s = (((self._bdry[i] * n + lv[i]) * n + le[i]) * n + lf[i]) * n + lvef[i]
             if s in d:
                 d[s].append(i)
             else:
@@ -1715,6 +1900,9 @@ class Triangulation(object):
 
         The output is a list of arrays that are permutations acting on the set
         of half edges.
+
+        For triangulations with boundaries, we allow automorphism to permute
+        boundaries. Though, boundary edge have to be mapped on boundary edge.
 
         EXAMPLES::
 
@@ -1745,9 +1933,22 @@ class Triangulation(object):
             sage: for a in A:
             ....:     S.relabel(a)
             ....:     assert S == V
+
+        Examples with boundaries::
+
+            sage: t = Triangulation("(0,1,2)", boundary="(~0:1)(~1:1)(~2:1)")
+            sage: len(t.automorphisms())
+            3
+            sage: t = Triangulation("(0,1,2)", boundary="(~0:1,~1:1,~2:1)")
+            sage: len(t.automorphisms())
+            3
+            sage: t = Triangulation("(0,1,2)", boundary="(~0:1,~1:1,~2:2)")
+            sage: len(t.automorphisms())
+            1
         """
         fp = self._fp
         ep = self._ep
+        bdry = self._bdry
 
         best = None
         best_relabellings = []
@@ -1757,8 +1958,9 @@ class Triangulation(object):
 
             fp_new = perm_conjugate(fp, relabelling)
             ep_new = perm_conjugate(ep, relabelling)
+            bdry_new = perm_on_list(relabelling, self._bdry, self._n)
 
-            T = (fp_new, ep_new)
+            T = (fp_new, ep_new, bdry_new)
             if best is None or T == best:
                 best_relabellings.append(relabelling)
                 best = T
@@ -1785,8 +1987,10 @@ class Triangulation(object):
 
             fp_new = perm_conjugate(fp, relabelling)
             ep_new = perm_conjugate(ep, relabelling)
+            bdry_new = self._bdry[:]
+            perm_on_list(relabelling, bdry_new, self._n)
 
-            T = (fp_new, ep_new)
+            T = (fp_new, ep_new, bdry_new)
             if best is None or T < best:
                 best_relabelling = relabelling
                 best = T
@@ -1841,6 +2045,20 @@ class Triangulation(object):
             ....:     L.relabel(p)
             ....:     L.set_canonical_labels()
             ....:     assert L == L0, (L, L0)
+
+        Examples with boundaries::
+
+            sage: t = Triangulation("(0,1,2)(~0,3,4)", boundary="(~1:1)(~2:2)(~3:3)(~4:4)", mutable=True)
+            sage: t.set_canonical_labels()
+            sage: t
+            Triangulation("(1,~3,~2)(~4,~1,~0)", boundary="(0:1)(2:4)(3:3)(4:2)")
+
+            sage: t0 = t.copy(mutable=False)
+            sage: for _ in range(10):
+            ....:     p = perm_random_centralizer(t.edge_permutation(copy=False))
+            ....:     t.relabel(p)
+            ....:     t.set_canonical_labels()
+            ....:     assert t == t0, (t, t0)
         """
         if not self._mutable:
             raise ValueError('immutable triangulation; use a mutable copy instead')
