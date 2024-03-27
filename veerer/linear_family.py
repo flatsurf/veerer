@@ -769,15 +769,15 @@ class VeeringTriangulationLinearFamilies:
             sage: list(VeeringTriangulationLinearFamilies.H2_prototype_parameters(5))
             [(0, 1, 1, -1)]
             sage: list(VeeringTriangulationLinearFamilies.H2_prototype_parameters(8))
-            [(0, 2, 1, 0), (0, 2, 1, 0), (0, 1, 1, -2)]
+            [(0, 2, 1, 0), (0, 1, 1, -2)]
             sage: list(VeeringTriangulationLinearFamilies.H2_prototype_parameters(9))
             [(0, 2, 1, -1)]
             sage: list(VeeringTriangulationLinearFamilies.H2_prototype_parameters(12))
-            [(0, 3, 1, 0), (0, 3, 1, 0), (0, 1, 2, -2), (0, 2, 1, -2)]
+            [(0, 3, 1, 0), (0, 1, 2, -2), (0, 2, 1, -2)]
             sage: list(VeeringTriangulationLinearFamilies.H2_prototype_parameters(13))
             [(0, 3, 1, 1), (0, 3, 1, -1), (0, 1, 1, -3)]
             sage: list(VeeringTriangulationLinearFamilies.H2_prototype_parameters(16))
-            [(0, 4, 1, 0), (0, 4, 1, 0), (0, 3, 1, -2)]
+            [(0, 4, 1, 0),  (0, 3, 1, -2)]
 
             sage: list(VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=0))
             [(1, 2, 2, -1), (0, 4, 1, 1), (0, 2, 1, -3)]
@@ -814,7 +814,11 @@ class VeeringTriangulationLinearFamilies:
             for b in bc.divisors():
                 c = bc // b
                 # need c + e < b
-                for s in (1,-1):
+                if e == 0:
+                    signs = (1,)
+                else:
+                    signs = (1, -1)
+                for s in signs:
                     if c + s*e < b:
                         for a in range(gcd(b, c)):
                             if gcd([a, b, c, e]) == 1:
