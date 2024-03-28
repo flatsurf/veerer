@@ -450,17 +450,18 @@ class Automaton(object):
             f.write("%24s %d\n" % (properties_to_string(k), v))
 
     @classmethod
-    def from_triangulation(self, T, reduced=False, max_size=None, verbosity=0):
-        if reduced:
-            A = ReducedCoreAutomaton(verbosity=verbosity)
-        else:
-            A = CoreAutomaton(verbosity=verbosity)
+    def from_triangulation(cls, T, *args, **kwds):
+        A = cls()
         A.set_seed(T)
-        A.run(max_size)
+        A.run(**kwds)
         return A
 
+    # TODO: it is a bit absurd to have this in the generic class since this does not make
+    # sense for triangulations
+    # TODO: this is broken for GeometricAutomaton with QuadraticStratum(8)
+    # TODO: one should be more careful whether one wants the poles to be half edges or vertices
     @classmethod
-    def from_stratum(self, stratum, reduced=False, **kwds):
+    def from_stratum(self, stratum, **kwds):
         r"""
         EXAMPLES::
 
@@ -468,13 +469,15 @@ class Automaton(object):
             sage: from surface_dynamics import *                 # optional - surface_dynamics
             sage: CoreAutomaton.from_stratum(AbelianStratum(2))  # optional - surface_dynamics
             Core veering automaton with 86 vertices
+            sage: GeometricAutomaton.from_stratum(AbelianStratum(2))  # optional - surface_dynamics
+            Geometric veering automaton with 54 vertices
 
             sage: Q = QuadraticStratum(8)                         # optional - surface_dynamics
             sage: A = CoreAutomaton.from_stratum(Q, max_size=100) # optional - surface_dynamics
             sage: A                                               # optional - surface_dynamics
             Partial core veering automaton with 101 vertices
         """
-        return self.from_triangulation(VeeringTriangulation.from_stratum(stratum), reduced=reduced, **kwds)
+        return self.from_triangulation(VeeringTriangulation.from_stratum(stratum), **kwds)
 
     ######################
     # DFS implementation #
@@ -935,8 +938,10 @@ class GeometricAutomaton(Automaton):
         flip_back_data = (edges, self._state.colour(edges[0]))
         for e in edges:
             self._state.flip(e, col, check=CHECK)
-        if CHECK and not self._state.is_geometric(backend=self._backend):
-            raise RuntimeError('that was indeed possible!')
+        if CHECK:
+            self._state._check(RuntimeError)
+            if not self._state.is_geometric(backend=self._backend):
+                raise RuntimeError
         return True, flip_back_data
 
     def _flip_back(self, flip_back_data):
@@ -944,8 +949,85 @@ class GeometricAutomaton(Automaton):
         for e in edges:
             self._state.flip_back(e, old_col, check=CHECK)
 
+    def cylinder_diagrams(self, col=RED):
+        r"""
+        A cylinder diagram is a cylindrical veering triangulation up to twist action.
 
-class GeometricAutomatonSubspace(Automaton):
+        EXAMPLES::
+
+            sage: from veerer import RED, BLUE, GeometricAutomaton
+            sage: from surface_dynamics import AbelianStratum                # optional - surface_dynamics
+            sage: A = GeometricAutomaton.from_stratum(AbelianStratum(2))     # optional - surface_dynamics
+            sage: len(A.cylinder_diagrams(RED))                              # optional - surface_dynamics
+            2
+            sage: A = GeometricAutomaton.from_stratum(AbelianStratum(1, 1))  # optional - surface_dynamics
+            sage: len(A.cylinder_diagrams(RED))                              # optional - surface_dynamics
+            4
+
+        For Veech surfaces, the cylinder diagrams are in bijection with cusps::
+
+            sage: from veerer import VeeringTriangulations, VeeringTriangulationLinearFamily
+            sage: t, x, y = VeeringTriangulations.L_shaped_surface(1, 1, 1, 1)
+            sage: f = VeeringTriangulationLinearFamily(t, [x, y])
+            sage: A = f.geometric_automaton()
+            sage: len(A.cylinder_diagrams())
+            2
+
+        We check that in H(2) prototypes coincide with cylinder diagrams made of two cylinders::
+
+            sage: from veerer.linear_family import VeeringTriangulationLinearFamilies
+            sage: for D in [5, 8, 9, 12, 13, 16]:
+            ....:     if D % 8 == 1:
+            ....:         spins = [0, 1]
+            ....:     else:
+            ....:         spins = [None]
+            ....:     for spin in spins:
+            ....:         prototypes = list(VeeringTriangulationLinearFamilies.H2_prototype_parameters(D, spin))
+            ....:         if not prototypes:
+            ....:             continue
+            ....:         a, b, c, e = prototypes[0]
+            ....:         F = VeeringTriangulationLinearFamilies.prototype_H2(a, b, c, e)
+            ....:         A = F.geometric_automaton()
+            ....:         cylsRED = A.cylinder_diagrams(RED)
+            ....:         n1RED = sum(len(next(iter(vts)).cylinders(RED)) == 1 for vts in cylsRED)
+            ....:         n2RED = sum(len(next(iter(vts)).cylinders(RED)) == 2 for vts in cylsRED)
+            ....:         cylsBLUE = A.cylinder_diagrams(BLUE)
+            ....:         n1BLUE = sum(len(next(iter(vts)).cylinders(BLUE)) == 1 for vts in cylsBLUE)
+            ....:         n2BLUE = sum(len(next(iter(vts)).cylinders(BLUE)) == 2 for vts in cylsBLUE)
+            ....:         assert n1RED == n1BLUE
+            ....:         assert n2RED == n2BLUE
+            ....:         assert n2RED == len(prototypes)
+            ....:         print(D, spin, n1RED, n2RED)
+            5 None 0 1
+            8 None 0 2
+            9 0 1 1
+            12 None 0 3
+            13 None 0 3
+            16 None 1 2
+        """
+        cylindricals = set()
+        orbits = []
+        for x in self._graph:
+            if x in cylindricals or not x.is_cylindrical(col):
+                continue
+            orbit = set()
+            todo = [x]
+            while todo:
+                x = todo.pop()
+                orbit.add(x)
+                for y, (edges, new_col) in self._graph[x]:
+                    if new_col == col and y not in orbit:
+                        assert y.is_cylindrical(col)
+                        orbit.add(y)
+                        todo.append(y)
+            orbits.append(orbit)
+            if not all(x not in cylindricals for x in orbit):
+                print("PROBLEM")
+            cylindricals.update(orbit)
+        return orbits
+
+
+class GeometricAutomatonSubspace(GeometricAutomaton):
     r"""
     Automaton of geometric veering triangulations with a linear subspace constraint.
 
@@ -980,9 +1062,6 @@ class GeometricAutomatonSubspace(Automaton):
     """
     _name = 'geometric veering linear constraint'
 
-    def _setup(self, backend=None):
-        self._backend = backend
-
     def _seed_setup(self, state):
         if not isinstance(state, VeeringTriangulationLinearFamily) or not state.is_geometric(backend=self._backend):
             raise ValueError('invalid seed')
@@ -992,26 +1071,3 @@ class GeometricAutomatonSubspace(Automaton):
         state = state.copy(mutable=True)
         state.set_canonical_labels()
         return state
-
-    def _forward_flips(self, state):
-        r"""
-        Return the list of forward flippable edges from ``state``
-        """
-        return state.geometric_flips(backend=self._backend)
-
-    def _flip(self, flip_data):
-        edges, col = flip_data
-        assert all(self._state.colour(e) == self._state.colour(edges[0]) for e in edges)
-        flip_back_data = (edges, self._state.colour(edges[0]))
-        for e in edges:
-            self._state.flip(e, col, check=CHECK)
-        if CHECK:
-            self._state._check(RuntimeError)
-            if not self._state.is_geometric(backend=self._backend):
-                raise RuntimeError
-        return True, flip_back_data
-
-    def _flip_back(self, flip_back_data):
-        edges, old_col = flip_back_data
-        for e in edges:
-            self._state.flip_back(e, old_col, check=CHECK)

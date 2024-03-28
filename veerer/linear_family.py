@@ -32,6 +32,7 @@ from sage.structure.element import get_coercion_model, Matrix
 from sage.rings.integer_ring import ZZ
 from sage.rings.rational_field import QQ
 from sage.matrix.constructor import matrix
+from sage.modules.free_module import FreeModule
 from sage.geometry.polyhedron.constructor import Polyhedron
 from sage.arith.misc import gcd
 from sage.categories.number_fields import NumberFields
@@ -659,6 +660,52 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
         VeeringTriangulation.flip_back(self, e, col, Gx=self._subspace, check=check)
         self._subspace.echelonize()
 
+    def is_cylindrical(self, col=None):
+        r"""
+        Return whether this linear family consists of a union of cylinders
+        whose moduli are allowed to degenerate to infinity.
+
+        EXAMPLES::
+
+            sage: from veerer import RED, VeeringTriangulation, VeeringTriangulationLinearFamily
+            sage: faces = "(0,~2,1)(2,6,~3)(3,5,4)"
+            sage: cols = "RBRRBRB"
+            sage: K = QuadraticField(5, 'sqrt5')
+            sage: sqrt5 = K.gen()
+            sage: x = (1, 0, 1, 1/2*sqrt5 + 1/2, -1, 1/2*sqrt5 - 1/2, -1/2*sqrt5 + 1/2)
+            sage: y = (0, 1, 1, 0, 1/2*sqrt5 - 1/2, 1/2*sqrt5 - 1/2, 1)
+            sage: f = VeeringTriangulationLinearFamily(faces, cols, [x, y])
+            sage: f.is_cylindrical(RED)
+            False
+            sage: VeeringTriangulation.is_cylindrical(f, RED)
+            True
+        """
+        if col is None:
+            return self.is_cylindrical(BLUE) or self.is_cylindrical(RED)
+        if col != RED and col != BLUE:
+            raise ValueError("'col' must be one of RED or BLUE")
+        if not VeeringTriangulation.is_cylindrical(self, col):
+            return False
+        cylinders = list(self.cylinders(col))
+
+        C = []  # middle edges
+        for cyl in cylinders:
+            c = [0] * self.num_edges()  # indicatrix of the middle edges
+            for e in cyl[0]:
+                c[self._norm(e)] = 1
+            C.append(c)
+
+        # take intersection of the cylinder twists in the tangent space
+        F = FreeModule(self.base_ring(), self.num_edges())
+        H = F.submodule(self._subspace).intersection(F.submodule(C))
+
+        mid_edges = set(i for c in C for i, j in enumerate(c) if j)
+        for b in H.basis_matrix():
+            for i, j in enumerate(b):
+                if j:
+                    mid_edges.discard(i)
+        return not mid_edges
+
     def geometric_polytope(self, x_low_bound=0, y_low_bound=0, hw_bound=0, backend=None):
         r"""
         Return the geometric polytope.
@@ -769,15 +816,15 @@ class VeeringTriangulationLinearFamilies:
             sage: list(VeeringTriangulationLinearFamilies.H2_prototype_parameters(5))
             [(0, 1, 1, -1)]
             sage: list(VeeringTriangulationLinearFamilies.H2_prototype_parameters(8))
-            [(0, 2, 1, 0), (0, 2, 1, 0), (0, 1, 1, -2)]
+            [(0, 2, 1, 0), (0, 1, 1, -2)]
             sage: list(VeeringTriangulationLinearFamilies.H2_prototype_parameters(9))
             [(0, 2, 1, -1)]
             sage: list(VeeringTriangulationLinearFamilies.H2_prototype_parameters(12))
-            [(0, 3, 1, 0), (0, 3, 1, 0), (0, 1, 2, -2), (0, 2, 1, -2)]
+            [(0, 3, 1, 0), (0, 1, 2, -2), (0, 2, 1, -2)]
             sage: list(VeeringTriangulationLinearFamilies.H2_prototype_parameters(13))
             [(0, 3, 1, 1), (0, 3, 1, -1), (0, 1, 1, -3)]
             sage: list(VeeringTriangulationLinearFamilies.H2_prototype_parameters(16))
-            [(0, 4, 1, 0), (0, 4, 1, 0), (0, 3, 1, -2)]
+            [(0, 4, 1, 0),  (0, 3, 1, -2)]
 
             sage: list(VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=0))
             [(1, 2, 2, -1), (0, 4, 1, 1), (0, 2, 1, -3)]
@@ -814,7 +861,11 @@ class VeeringTriangulationLinearFamilies:
             for b in bc.divisors():
                 c = bc // b
                 # need c + e < b
-                for s in (1,-1):
+                if e == 0:
+                    signs = (1,)
+                else:
+                    signs = (1, -1)
+                for s in signs:
                     if c + s*e < b:
                         for a in range(gcd(b, c)):
                             if gcd([a, b, c, e]) == 1:

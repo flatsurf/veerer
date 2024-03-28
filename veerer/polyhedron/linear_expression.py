@@ -551,6 +551,8 @@ class ConstraintSystem:
         if backend is None:
             from .cone import default_backend
             backend = default_backend(self.base_ring())
+        elif not isinstance(backend, str):
+            raise TypeError("'backend' must be a string")
 
         if backend == 'ppl':
             from .cone import Cone_ppl
