@@ -738,41 +738,6 @@ class VeeringTriangulation(Triangulation):
         c = (self._ep > other._ep) - (self._ep < other._ep)
         return rich_to_bool(op, c)
 
-    def to_core(self, slope=VERTICAL):
-        r"""
-        Change the colour of each forward (reps. backward) flippable edge in
-        PURPLE if ``slope`` is ``VERTICAL`` (resp ``HORIZONTAL``)
-
-        EXAMPLES::
-
-            sage: from veerer import *
-
-            sage: V = VeeringTriangulation("(0,1,2)", 'RRB')
-            sage: V.to_core()
-            sage: V
-            VeeringTriangulation("(0,1,2)", "RPB")
-            sage: V.forward_flippable_edges()
-            [1]
-        """
-        if slope == VERTICAL:
-            COLOR = PURPLE
-        elif slope == HORIZONTAL:
-            COLOR = GREEN
-        else:
-            raise ValueError("slope should either be HORIZONTAL or VERTICAL")
-
-        n = self.num_edges()
-        ep = self._ep
-        for e in range(n):
-            if ep[e] < e:
-                raise ValueError("veering triangulation not in canonical form")
-            if slope == VERTICAL:
-                if self.is_forward_flippable(e, check=False):
-                    self._colouring[e] = self._colouring[ep[e]] = COLOR
-            else:
-                if self.is_backward_flippable(e, check=False):
-                    self._colouring[e] = self._colouring[ep[e]] = COLOR
-
     def copy(self, mutable=None):
         r"""
         Return a copy of this coloured triangulation.
