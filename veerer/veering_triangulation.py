@@ -2342,6 +2342,7 @@ class VeeringTriangulation(Triangulation):
                 continue
             b = fp[a]
             c = fp[b]
+            seen[a] = seen[b] = seen[c] = True
             if col == PURPLE:
                 if cols[a] != PURPLE and cols[b] != PURPLE and cols[c] != PURPLE:
                     return False
