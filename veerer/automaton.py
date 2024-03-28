@@ -450,17 +450,18 @@ class Automaton(object):
             f.write("%24s %d\n" % (properties_to_string(k), v))
 
     @classmethod
-    def from_triangulation(self, T, reduced=False, max_size=None, verbosity=0):
-        if reduced:
-            A = ReducedCoreAutomaton(verbosity=verbosity)
-        else:
-            A = CoreAutomaton(verbosity=verbosity)
+    def from_triangulation(cls, T, *args, **kwds):
+        A = cls()
         A.set_seed(T)
-        A.run(max_size)
+        A.run(**kwds)
         return A
 
+    # TODO: it is a bit absurd to have this in the generic class since this does not make
+    # sense for triangulations
+    # TODO: this is broken for GeometricAutomaton with QuadraticStratum(8)
+    # TODO: one should be more careful whether one wants the poles to be half edges or vertices
     @classmethod
-    def from_stratum(self, stratum, reduced=False, **kwds):
+    def from_stratum(self, stratum, **kwds):
         r"""
         EXAMPLES::
 
@@ -468,13 +469,15 @@ class Automaton(object):
             sage: from surface_dynamics import *                 # optional - surface_dynamics
             sage: CoreAutomaton.from_stratum(AbelianStratum(2))  # optional - surface_dynamics
             Core veering automaton with 86 vertices
+            sage: GeometricAutomaton.from_stratum(AbelianStratum(2))  # optional - surface_dynamics
+            Geometric veering automaton with 54 vertices
 
             sage: Q = QuadraticStratum(8)                         # optional - surface_dynamics
             sage: A = CoreAutomaton.from_stratum(Q, max_size=100) # optional - surface_dynamics
             sage: A                                               # optional - surface_dynamics
             Partial core veering automaton with 101 vertices
         """
-        return self.from_triangulation(VeeringTriangulation.from_stratum(stratum), reduced=reduced, **kwds)
+        return self.from_triangulation(VeeringTriangulation.from_stratum(stratum), **kwds)
 
     ######################
     # DFS implementation #
@@ -935,8 +938,10 @@ class GeometricAutomaton(Automaton):
         flip_back_data = (edges, self._state.colour(edges[0]))
         for e in edges:
             self._state.flip(e, col, check=CHECK)
-        if CHECK and not self._state.is_geometric(backend=self._backend):
-            raise RuntimeError('that was indeed possible!')
+        if CHECK:
+            self._state._check(RuntimeError)
+            if not self._state.is_geometric(backend=self._backend):
+                raise RuntimeError
         return True, flip_back_data
 
     def _flip_back(self, flip_back_data):
@@ -945,7 +950,8 @@ class GeometricAutomaton(Automaton):
             self._state.flip_back(e, old_col, check=CHECK)
 
 
-class GeometricAutomatonSubspace(Automaton):
+
+class GeometricAutomatonSubspace(GeometricAutomaton):
     r"""
     Automaton of geometric veering triangulations with a linear subspace constraint.
 
@@ -980,9 +986,6 @@ class GeometricAutomatonSubspace(Automaton):
     """
     _name = 'geometric veering linear constraint'
 
-    def _setup(self, backend=None):
-        self._backend = backend
-
     def _seed_setup(self, state):
         if not isinstance(state, VeeringTriangulationLinearFamily) or not state.is_geometric(backend=self._backend):
             raise ValueError('invalid seed')
@@ -992,26 +995,3 @@ class GeometricAutomatonSubspace(Automaton):
         state = state.copy(mutable=True)
         state.set_canonical_labels()
         return state
-
-    def _forward_flips(self, state):
-        r"""
-        Return the list of forward flippable edges from ``state``
-        """
-        return state.geometric_flips(backend=self._backend)
-
-    def _flip(self, flip_data):
-        edges, col = flip_data
-        assert all(self._state.colour(e) == self._state.colour(edges[0]) for e in edges)
-        flip_back_data = (edges, self._state.colour(edges[0]))
-        for e in edges:
-            self._state.flip(e, col, check=CHECK)
-        if CHECK:
-            self._state._check(RuntimeError)
-            if not self._state.is_geometric(backend=self._backend):
-                raise RuntimeError
-        return True, flip_back_data
-
-    def _flip_back(self, flip_back_data):
-        edges, old_col = flip_back_data
-        for e in edges:
-            self._state.flip_back(e, old_col, check=CHECK)
