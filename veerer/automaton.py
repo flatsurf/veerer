@@ -949,6 +949,82 @@ class GeometricAutomaton(Automaton):
         for e in edges:
             self._state.flip_back(e, old_col, check=CHECK)
 
+    def cylinder_diagrams(self, col=RED):
+        r"""
+        A cylinder diagram is a cylindrical veering triangulation up to twist action.
+
+        EXAMPLES::
+
+            sage: from veerer import RED, BLUE, GeometricAutomaton
+            sage: from surface_dynamics import AbelianStratum                # optional - surface_dynamics
+            sage: A = GeometricAutomaton.from_stratum(AbelianStratum(2))     # optional - surface_dynamics
+            sage: len(A.cylinder_diagrams(RED))                              # optional - surface_dynamics
+            2
+            sage: A = GeometricAutomaton.from_stratum(AbelianStratum(1, 1))  # optional - surface_dynamics
+            sage: len(A.cylinder_diagrams(RED))                              # optional - surface_dynamics
+            4
+
+        For Veech surfaces, the cylinder diagrams are in bijection with cusps::
+
+            sage: from veerer import VeeringTriangulations, VeeringTriangulationLinearFamily
+            sage: t, x, y = VeeringTriangulations.L_shaped_surface(1, 1, 1, 1)
+            sage: f = VeeringTriangulationLinearFamily(t, [x, y])
+            sage: A = f.geometric_automaton()
+            sage: len(A.cylinder_diagrams())
+            2
+
+        We check that in H(2) prototypes coincide with cylinder diagrams made of two cylinders::
+
+            sage: from veerer.linear_family import VeeringTriangulationLinearFamilies
+            sage: for D in [5, 8, 9, 12, 13, 16]:
+            ....:     if D % 8 == 1:
+            ....:         spins = [0, 1]
+            ....:     else:
+            ....:         spins = [None]
+            ....:     for spin in spins:
+            ....:         prototypes = list(VeeringTriangulationLinearFamilies.H2_prototype_parameters(D, spin))
+            ....:         if not prototypes:
+            ....:             continue
+            ....:         a, b, c, e = prototypes[0]
+            ....:         F = VeeringTriangulationLinearFamilies.prototype_H2(a, b, c, e)
+            ....:         A = F.geometric_automaton()
+            ....:         cylsRED = A.cylinder_diagrams(RED)
+            ....:         n1RED = sum(len(next(iter(vts)).cylinders(RED)) == 1 for vts in cylsRED)
+            ....:         n2RED = sum(len(next(iter(vts)).cylinders(RED)) == 2 for vts in cylsRED)
+            ....:         cylsBLUE = A.cylinder_diagrams(BLUE)
+            ....:         n1BLUE = sum(len(next(iter(vts)).cylinders(BLUE)) == 1 for vts in cylsBLUE)
+            ....:         n2BLUE = sum(len(next(iter(vts)).cylinders(BLUE)) == 2 for vts in cylsBLUE)
+            ....:         assert n1RED == n1BLUE
+            ....:         assert n2RED == n2BLUE
+            ....:         assert n2RED == len(prototypes)
+            ....:         print(D, spin, n1RED, n2RED)
+            5 None 0 1
+            8 None 0 2
+            9 0 1 1
+            12 None 0 3
+            13 None 0 3
+            16 None 1 2
+        """
+        cylindricals = set()
+        orbits = []
+        for x in self._graph:
+            if x in cylindricals or not x.is_cylindrical(col):
+                continue
+            orbit = set()
+            todo = [x]
+            while todo:
+                x = todo.pop()
+                orbit.add(x)
+                for y, (edges, new_col) in self._graph[x]:
+                    if new_col == col and y not in orbit:
+                        assert y.is_cylindrical(col)
+                        orbit.add(y)
+                        todo.append(y)
+            orbits.append(orbit)
+            if not all(x not in cylindricals for x in orbit):
+                print("PROBLEM")
+            cylindricals.update(orbit)
+        return orbits
 
 
 class GeometricAutomatonSubspace(GeometricAutomaton):
