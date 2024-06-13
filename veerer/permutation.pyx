@@ -374,6 +374,40 @@ def str_to_cycles(s):
     return r
 
 
+def str_to_cycles_and_data(s):
+    r"""
+    Return a list of cycles and data from a string.
+
+    EXAMPLES::
+
+        sage: from veerer.permutation import str_to_cycles_and_data
+        sage: str_to_cycles_and_data('(0:1,1:2)')
+        ([[0, 1]], {0: '1', 1: '2'})
+        sage: str_to_cycles_and_data('(0:1,1:2)(3:0)')
+        ([[0, 1], [3]], {0: 1, 1: 2, 3: 0})
+    """
+    r = []
+    data = {}
+    for c_str in s[1:-1].split(')('):
+        if not c_str:
+            continue
+        cycle = []
+        for c in c_str.replace(' ', '').split(','):
+            i = c.find(':')
+            if i == -1 or c.find(':', i + 1) != -1:
+                raise ValueError('invalid input string')
+            j = c[i+1:]
+            c = c[:i]
+            if c[0] == '~':
+                i = ~int(c[1:])
+            else:
+                i = int(c)
+            cycle.append(i)
+            data[i] = int(j)
+        r.append(cycle)
+    return r, data
+
+
 def perm_random(int n):
     r"""
     Return a random permutation.
@@ -788,6 +822,31 @@ def perm_cycle_type(array.array p, int n=-1):
     return c
 
 
+def perm_cycles_to_string(list cycles, involution=None, data=None):
+    r"""
+    Return a string representing a list of cycles.
+
+    INPUT:
+
+    - ``cycles`` -- list of cycles
+
+    - ``involution`` -- optional involution (possibly with fixed points)
+
+    - ``data`` -- optional data
+    """
+    if involution:
+        if data:
+            elt = lambda e: ('%d' % e if e <= involution[e] else '~%d' % involution[e]) + (':%d' % data[e])
+        else:
+            elt = lambda e: ('%d' % e if e <= involution[e] else '~%d' % involution[e])
+    elif data:
+        elt = lambda e: ('%d' % e) + (':%d' % data[e])
+    else:
+        elt = str
+
+    return ''.join(map(lambda x: '(' + ','.join(map(elt, x)) + ')', cycles))
+
+
 def perm_cycle_string(array.array p, singletons=True, n=-1, involution=None):
     r"""
     Return a string representing the cycle decomposition of `p`
@@ -802,13 +861,7 @@ def perm_cycle_string(array.array p, singletons=True, n=-1, involution=None):
         sage: perm_cycle_string(array('i', [0,2,1]), False)
         '(1,2)'
     """
-    if involution:
-        elt = lambda e: '%d'%e if e <= involution[e] else '~%d'%involution[e]
-    else:
-        elt = str
-
-    return ''.join(map(lambda x: '('+','.join(map(elt, x))+')',
-                       perm_cycles(p, singletons, n)))
+    return perm_cycles_to_string(perm_cycles(p, singletons, n), involution)
 
 
 def perm_orbit(array.array p, int i):
