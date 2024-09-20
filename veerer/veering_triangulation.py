@@ -3100,7 +3100,7 @@ class VeeringTriangulation(Triangulation):
             ....:                 (0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, c0 - 1, c0 - 1, c0 - 1, -c0 + 1)]
             sage: F = VeeringTriangulationLinearFamily(T, deformations)
             sage: F.flat_structure_middle()
-            FlatVeeringTriangulation(Triangulation("(0,1,2)(3,4,~0)(5,6,~1)(7,8,~2)(9,~3,10)(11,~8,~4)(12,13,~5)(14,15,~6)(16,~11,~10)(17,18,~12)(19,20,~13)(~20,~15,~18)(~19,~16,~17)(~14,~7,~9)"), [(c0 - 1, -c0 - 2), (c0, 3*c0), ..., (-c0 + 1, c0 + 2)])
+            FlatVeeringTriangulation(Triangulation("(0,1,2)(3,4,~0)(5,6,~1)(7,8,~2)(9,~3,10)(11,~8,~4)(12,13,~5)(14,15,~6)(16,~11,~10)(17,18,~12)(19,20,~13)(~20,~15,~18)(~19,~16,~17)(~14,~7,~9)"), ...)
 
             sage: from surface_dynamics import *              # optional - surface_dynamics
             sage: Q = QuadraticStratum({1:4, -1:4})           # optional - surface_dynamics
