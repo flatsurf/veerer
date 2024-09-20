@@ -105,6 +105,20 @@ def pyflatsurf_surface_to_veerer_veering_triangulation(surface):
     Convert a pyflatsurf surface in a veering triangulation.
 
     Note that the flatstructure is lost in the process.
+
+    EXAMPLES::
+
+        sage: from veerer.flatsurf_conversion import pyflatsurf_surface_to_veerer_veering_triangulation
+
+        sage: from flatsurf import Polygon, similarity_surfaces  # optional - sage_flatsurf pyflatsurf
+        sage: P = Polygon(angles=(1,1,1,7), lengths=(3, 2))  # optional - sage_flatsurf pyflatsurf
+        sage: S1 = similarity_surfaces.billiard(P).minimal_cover("translation").erase_marked_points()  # optional - sage_flatsurf pyflatsurf
+        sage: S2 = S1.l_infinity_delaunay_triangulation()  # optional - sage_flatsurf pyflatsurf
+        sage: S2.is_veering_triangulated()  # optional - sage_flatsurf pyflatsurf
+        True
+        sage: S3 = S2.pyflatsurf().codomain().flat_triangulation()  # optional - sage_flatsurf pyflatsurf
+        sage: pyflatsurf_surface_to_veerer_veering_triangulation(S3)  # optional - sage_flatsurf pyflatsurf
+        (VeeringTriangulation("(0,1,2)(3,4,~0)(5,6,~1)(7,8,~2)(9,~3,10)(11,~8,~4)(12,13,~5)(14,15,~6)(16,~11,~10)(17,18,~12)(19,20,~13)(~20,~15,~18)(~19,~16,~17)(~14,~7,~9)", "BRRRRRBRBBBRBRRRRRBBR"), [-1, -1, 1, 1, ..., -1, 1, 1])
     """
     pyflatsurf_feature.require()
 
@@ -158,8 +172,9 @@ def sage_flatsurf_orbit_closure_to_veerer_linear_family(orbit_closure):
 
     EXAMPLES::
 
-        sage: from flatsurf import Polygon, similarity_surfaces, GL2ROrbitClosure  # optional - sage_flatsurf pyflatsurf
         sage: from veerer.flatsurf_conversion import sage_flatsurf_orbit_closure_to_veerer_linear_family
+
+        sage: from flatsurf import Polygon, similarity_surfaces, GL2ROrbitClosure  # optional - sage_flatsurf pyflatsurf
         sage: P = Polygon(angles=(1,1,1,7), lengths=(3, 2))  # optional - sage_flatsurf pyflatsurf
         sage: S1 = similarity_surfaces.billiard(P).minimal_cover("translation").erase_marked_points()  # optional - sage_flatsurf pyflatsurf
         sage: S2 = S1.l_infinity_delaunay_triangulation()  # optional - sage_flatsurf pyflatsurf
