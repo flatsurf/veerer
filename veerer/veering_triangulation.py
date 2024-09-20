@@ -3037,7 +3037,7 @@ class VeeringTriangulation(Triangulation):
         Return a flat structure from two vectors ``VH`` and ``VV``
         satisfying the train track equations.
         """
-        from sage.modules.free_module import VectorSpace
+        from sage.modules.free_module import FreeModule
 
         if base_ring is None:
             base_ring = self.base_ring()
@@ -3049,7 +3049,7 @@ class VeeringTriangulation(Triangulation):
         self._set_train_track_constraints(self._tt_check, VH, HORIZONTAL, False, False)
         self._set_train_track_constraints(self._tt_check, VV, VERTICAL, False, False)
 
-        V = VectorSpace(base_ring, 2)
+        V = FreeModule(base_ring, 2)
         vectors = [V((x, y if self._colouring[i] == RED else -y)) for \
                    i,(x,y) in enumerate(zip(VV, VH))]
         m = self.num_edges()
