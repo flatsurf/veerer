@@ -3040,8 +3040,7 @@ class VeeringTriangulation(Triangulation):
         from sage.modules.free_module import VectorSpace
 
         if base_ring is None:
-            from sage.rings.rational_field import QQ
-            base_ring = QQ
+            base_ring = self.base_ring()
 
         assert len(VH) == len(VV) == self.num_edges()
         assert all(x >=0 for x in VH)
@@ -3090,6 +3089,18 @@ class VeeringTriangulation(Triangulation):
             sage: T = VeeringTriangulation("(0,1,2)", "RRB")
             sage: T.flat_structure_middle()
             FlatVeeringTriangulation(Triangulation("(0,1,2)"), [(1, 2), (-2, -1), (1, -1)])
+
+            sage: x = polygen(QQ)
+            sage: K = NumberField(x^2 - x - 1, 'c0', embedding=(1+AA(5).sqrt())/2)
+            sage: c0 = K.gen()
+            sage: T = VeeringTriangulation("(0,1,2)(3,4,~0)(5,6,~1)(7,8,~2)(9,~3,10)(11,~8,~4)(12,13,~5)(14,15,~6)(16,~11,~10)(17,18,~12)(19,20,~13)(~20,~15,~18)(~19,~16,~17)(~14,~7,~9)", "BRRRRRBRBBBRBRRRRRBBR")
+            sage: deformations = [(1, 0, 1, 0, 1, c0, c0, 0, -1, -c0, -c0, 0, c0, 0, c0, 2*c0, c0, 0, c0, -c0, c0),
+            ....:                 (0, 1, 1, 0, 0, c0, c0 - 1, 0, -1, -1, -1, -1, 1, c0 - 1, 1, c0, 0, -c0 + 1, -c0 + 2, -c0 + 1, 2*c0 - 2),
+            ....:                 (0, 0, 0, 1, 1, 0, 0, 0, 0, -c0, -c0 + 1, 1, 0, 0, c0, c0, c0, c0 - 1, c0 - 1, -1, 1),
+            ....:                 (0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, c0 - 1, c0 - 1, c0 - 1, -c0 + 1)]
+            sage: F = VeeringTriangulationLinearFamily(T, deformations)
+            sage: F.flat_structure_middle()
+            FlatVeeringTriangulation(Triangulation("(0,1,2)(3,4,~0)(5,6,~1)(7,8,~2)(9,~3,10)(11,~8,~4)(12,13,~5)(14,15,~6)(16,~11,~10)(17,18,~12)(19,20,~13)(~20,~15,~18)(~19,~16,~17)(~14,~7,~9)"), [(c0 - 1, -c0 - 2), (c0, 3*c0), ..., (-c0 + 1, c0 + 2)])
 
             sage: from surface_dynamics import *              # optional - surface_dynamics
             sage: Q = QuadraticStratum({1:4, -1:4})           # optional - surface_dynamics
