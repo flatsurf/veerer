@@ -6,6 +6,7 @@ from array import array
 
 from sage.matrix.constructor import matrix
 
+from .features import sage_flatsurf_feature, pyflatsurf_feature
 from .triangulation import Triangulation
 from .veering_triangulation import VeeringTriangulation
 from .linear_family import VeeringTriangulationLinearFamily
@@ -105,6 +106,8 @@ def pyflatsurf_surface_to_veerer_veering_triangulation(surface):
 
     Note that the flatstructure is lost in the process.
     """
+    pyflatsurf_feature.require()
+
     faces = surface.faces()
     n = 3 * faces.size()
     ep = array('i', [n - i - 1 for i in range(n)])
@@ -155,22 +158,24 @@ def sage_flatsurf_orbit_closure_to_veerer_linear_family(orbit_closure):
 
     EXAMPLES::
 
-        sage: from flatsurf import Polygon, similarity_surfaces, GL2ROrbitClosure  # optional - sage_flatsurf, pyflatsurf
+        sage: from flatsurf import Polygon, similarity_surfaces, GL2ROrbitClosure  # optional - sage_flatsurf pyflatsurf
         sage: from veerer.flatsurf_conversion import sage_flatsurf_orbit_closure_to_veerer_linear_family
-        sage: P = Polygon(angles=(1,1,1,7), lengths=(3, 2))  # optional - sage_flatsurf
-        sage: S1 = similarity_surfaces.billiard(P).minimal_cover("translation").erase_marked_points()  # optional - sage_flatsurf, pyflatsurf
-        sage: S2 = S1.l_infinity_delaunay_triangulation()  # optional - sage_flatsurf, pyflatsurf
-        sage: O = GL2ROrbitClosure(S2)  # optional - sage_flatsurf, pyflatsurf
-        sage: for d in O.decompositions(4):  # optional - sage_flatsurf, pyflatsurf
+        sage: P = Polygon(angles=(1,1,1,7), lengths=(3, 2))  # optional - sage_flatsurf pyflatsurf
+        sage: S1 = similarity_surfaces.billiard(P).minimal_cover("translation").erase_marked_points()  # optional - sage_flatsurf pyflatsurf
+        sage: S2 = S1.l_infinity_delaunay_triangulation()  # optional - sage_flatsurf pyflatsurf
+        sage: O = GL2ROrbitClosure(S2)  # optional - sage_flatsurf pyflatsurf
+        sage: for d in O.decompositions(4):  # optional - sage_flatsurf pyflatsurf
         ....:     O.update_tangent_space_from_flow_decomposition(d)
         ....:     if O.dimension() == 4:
         ....:         break
-        sage: F = sage_flatsurf_orbit_closure_to_veerer_linear_family(O)  # optional - sage_flatsurf, pyflatsurf
-        sage: F.base_ring()  # optional - sage_flatsurf, pyflatsurf
+        sage: F = sage_flatsurf_orbit_closure_to_veerer_linear_family(O)  # optional - sage_flatsurf pyflatsurf
+        sage: F.base_ring()  # optional - sage_flatsurf pyflatsurf
         Number Field in c0 with defining polynomial x^2 - x - 1 with c0 = 1.618033988749895?
-        sage: F  # optional - sage_flatsurf, pyflatsurf
+        sage: F  # optional - sage_flatsurf pyflatsurf
         VeeringTriangulationLinearFamily("(0,1,2)(3,4,~0)(5,6,~1)(7,8,~2)(9,~3,10)(11,~8,~4)(12,13,~5)(14,15,~6)(16,~11,~10)(17,18,~12)(19,20,~13)(~20,~15,~18)(~19,~16,~17)(~14,~7,~9)", "BRRRRRBRBBBRBRRRRRBBR", [(1, 0, 1, 0, 1, c0, c0, 0, -1, -c0, -c0, 0, c0, 0, c0, 2*c0, c0, 0, c0, -c0, c0), (0, 1, 1, 0, 0, c0, c0 - 1, 0, -1, -1, -1, -1, 1, c0 - 1, 1, c0, 0, -c0 + 1, -c0 + 2, -c0 + 1, 2*c0 - 2), (0, 0, 0, 1, 1, 0, 0, 0, 0, -c0, -c0 + 1, 1, 0, 0, c0, c0, c0, c0 - 1, c0 - 1, -1, 1), (0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, c0 - 1, c0 - 1, c0 - 1, -c0 + 1)])
     """
+    sage_flatsurf_feature.require()
+
     vt, x_orientation = pyflatsurf_surface_to_veerer_veering_triangulation(orbit_closure._surface)
 
     # build generators for the tangent space
