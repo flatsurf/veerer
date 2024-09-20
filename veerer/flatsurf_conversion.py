@@ -165,8 +165,11 @@ def sage_flatsurf_orbit_closure_to_veerer_linear_family(orbit_closure):
         ....:     O.update_tangent_space_from_flow_decomposition(d)
         ....:     if O.dimension() == 4:
         ....:         break
-        sage: sage_flatsurf_orbit_closure_to_veerer_linear_family(O)  # optional - sage_flatsurf, pyflatsurf
-        VeeringTriangulationLinearFamily("(0,1,2)(3,4,~0)(5,6,~1)(7,8,~2)(9,~3,10)(11,~8,~4)(12,~5,13)(14,~6,15)(16,~11,~10)(17,18,~12)(19,~13,20)(~20,~17,~16)(~19,~18,~14)(~15,~7,~9)", "BRRRRRBRBBBRRBRRRBRBR", [(1, 0, 1, 0, 1, c0, c0, 0, -1, -c0, -c0, 0, 0, c0, 2*c0, c0, c0, -c0, c0, c0, 0), (0, 1, 1, 0, 0, c0, c0 - 1, 0, -1, -1, -1, -1, c0 - 1, 1, c0, 1, 0, -c0 + 1, 2*c0 - 2, -c0 + 2, -c0 + 1), (0, 0, 0, 1, 1, 0, 0, 0, 0, -c0, -c0 + 1, 1, 0, 0, c0, c0, c0, -1, 1, c0 - 1, c0 - 1), (0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, c0 - 1, -c0 + 1, c0 - 1, c0 - 1)])
+        sage: F = sage_flatsurf_orbit_closure_to_veerer_linear_family(O)  # optional - sage_flatsurf, pyflatsurf
+        sage: F.base_ring()  # optional - sage_flatsurf, pyflatsurf
+        Number Field in c0 with defining polynomial x^2 - x - 1 with c0 = 1.618033988749895?
+        sage: F  # optional - sage_flatsurf, pyflatsurf
+        VeeringTriangulationLinearFamily("(0,1,2)(3,4,~0)(5,6,~1)(7,8,~2)(9,~3,10)(11,~8,~4)(12,13,~5)(14,15,~6)(16,~11,~10)(17,18,~12)(19,20,~13)(~20,~15,~18)(~19,~16,~17)(~14,~7,~9)", "BRRRRRBRBBBRBRRRRRBBR", [(1, 0, 1, 0, 1, c0, c0, 0, -1, -c0, -c0, 0, c0, 0, c0, 2*c0, c0, 0, c0, -c0, c0), (0, 1, 1, 0, 0, c0, c0 - 1, 0, -1, -1, -1, -1, 1, c0 - 1, 1, c0, 0, -c0 + 1, -c0 + 2, -c0 + 1, 2*c0 - 2), (0, 0, 0, 1, 1, 0, 0, 0, 0, -c0, -c0 + 1, 1, 0, 0, c0, c0, c0, c0 - 1, c0 - 1, -1, 1), (0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, c0 - 1, c0 - 1, c0 - 1, -c0 + 1)])
     """
     vt, x_orientation = pyflatsurf_surface_to_veerer_veering_triangulation(orbit_closure._surface)
 
