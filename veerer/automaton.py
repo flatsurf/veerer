@@ -67,9 +67,9 @@ class Automaton(object):
 
     Exploring strata::
 
-        sage: from surface_dynamics import *                             # optional - surface_dynamics
-        sage: strata = [AbelianStratum(2), QuadraticStratum(2,-1,-1),    # optional - surface_dynamics
-        ....:           QuadraticStratum(2,2), AbelianStratum(1,1)]
+        sage: from surface_dynamics import Stratum                       # optional - surface_dynamics
+        sage: strata = [Stratum([2], 1), Stratum([2,-1,-1], 2),           # optional - surface_dynamics
+        ....:           Stratum([2,2], 2), Stratum([1,1], 1)]
         sage: for stratum in strata:                                     # optional - surface_dynamics
         ....:     print(stratum)
         ....:     vt = VeeringTriangulation.from_stratum(stratum)
@@ -466,13 +466,13 @@ class Automaton(object):
         EXAMPLES::
 
             sage: from veerer import *
-            sage: from surface_dynamics import *                 # optional - surface_dynamics
-            sage: CoreAutomaton.from_stratum(AbelianStratum(2))  # optional - surface_dynamics
+            sage: from surface_dynamics import Stratum         # optional - surface_dynamics
+            sage: CoreAutomaton.from_stratum(Stratum([2], 1))  # optional - surface_dynamics
             Core veering automaton with 86 vertices
-            sage: GeometricAutomaton.from_stratum(AbelianStratum(2))  # optional - surface_dynamics
+            sage: GeometricAutomaton.from_stratum(Stratum([2], 1))  # optional - surface_dynamics
             Geometric veering automaton with 54 vertices
 
-            sage: Q = QuadraticStratum(8)                         # optional - surface_dynamics
+            sage: Q = Stratum([8], 2)                             # optional - surface_dynamics
             sage: A = CoreAutomaton.from_stratum(Q, max_size=100) # optional - surface_dynamics
             sage: A                                               # optional - surface_dynamics
             Partial core veering automaton with 101 vertices
@@ -956,11 +956,11 @@ class GeometricAutomaton(Automaton):
         EXAMPLES::
 
             sage: from veerer import RED, BLUE, GeometricAutomaton
-            sage: from surface_dynamics import AbelianStratum                # optional - surface_dynamics
-            sage: A = GeometricAutomaton.from_stratum(AbelianStratum(2))     # optional - surface_dynamics
+            sage: from surface_dynamics import Stratum                       # optional - surface_dynamics
+            sage: A = GeometricAutomaton.from_stratum(Stratum([2], 1))       # optional - surface_dynamics
             sage: len(A.cylinder_diagrams(RED))                              # optional - surface_dynamics
             2
-            sage: A = GeometricAutomaton.from_stratum(AbelianStratum(1, 1))  # optional - surface_dynamics
+            sage: A = GeometricAutomaton.from_stratum(Stratum([1, 1], 1))    # optional - surface_dynamics
             sage: len(A.cylinder_diagrams(RED))                              # optional - surface_dynamics
             4
 

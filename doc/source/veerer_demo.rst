@@ -142,7 +142,7 @@ train-tracks.
 ::
 
     sage: # constructing veering triangulations from a component stratum
-    sage: Q = QuadraticStratum(3,3,3,3)     # optional - surface_dynamics
+    sage: Q = Stratum([3,3,3,3], 2)     # optional - surface_dynamics
     sage: Qreg = Q.regular_component()      # optional - surface_dynamics
     sage: Qirr = Q.irregular_component()    # optional - surface_dynamics
 
@@ -343,7 +343,7 @@ filtering cylindrical (single test is cheap) ~2 sec for H(4)^hyp
 
 ::
 
-    sage: H = AbelianStratum(4).hyperelliptic_component()  # optional - surface_dynamics
+    sage: H = Stratum([4], 1).hyperelliptic_component()  # optional - surface_dynamics
     sage: V = VeeringTriangulation.from_stratum(H)         # optional - surface_dynamics
     sage: AV = CoreAutomaton(V)                          # long time - ~21 secs # optional - surface_dynamics
     sage: print(AV.num_states())                         # long time - ~150 µs # optional - surface_dynamics

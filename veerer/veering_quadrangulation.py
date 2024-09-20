@@ -2011,12 +2011,12 @@ def ferenczi_zamboni_class(k, labelled=False):
         sage: len(ferenczi_zamboni_class(4, labelled=False))  # optional - surface_dynamics
         10
     """
-    from surface_dynamics import AbelianStratum
+    from surface_dynamics import Stratum
     o = one_quadrangulation(k).to_origami()
     if k % 2:
-        assert o.stratum_component() == AbelianStratum(k-1).hyperelliptic_component()
+        assert o.stratum_component() == Stratum([k-1], 1).hyperelliptic_component()
     elif k != 2:
-        assert o.stratum_component() == AbelianStratum((k-2)//2, (k-2)//2).hyperelliptic_component()
+        assert o.stratum_component() == Stratum([(k-2)//2, (k-2)//2], 1).hyperelliptic_component()
 
     if not labelled:
         ocan = o.relabel(inplace=False)
