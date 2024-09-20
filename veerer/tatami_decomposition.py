@@ -55,21 +55,21 @@ def tatami_decomposition(rectangles, base_ring=None):
         sage: from veerer.constants import LEFT, RIGHT
         sage: r0 = ((1, RIGHT, 1), (1, RIGHT, 0), (0, LEFT, 0), (0, LEFT, 1), (3, RIGHT, 2), (3, RIGHT, 1), (0, RIGHT, 2), (0, RIGHT, 1))
         sage: r1 = ((3, LEFT, 0), (3, LEFT, 2), (0, LEFT, 1), (0, LEFT, 2), (3, RIGHT, 1), (1, LEFT, 1), (0, RIGHT, 1), (0, RIGHT, 0))
-        sage: tatami_decomposition([r0, r1])  # optional: sage_flatsurf
+        sage: tatami_decomposition([r0, r1])  # optional - sage_flatsurf
         Translation Surface built from a square and a rectangle
 
     TESTS::
 
-        sage: tatami_decomposition([r0, r1], ZZ)  # optional: sage_flatsurf
+        sage: tatami_decomposition([r0, r1], ZZ)  # optional - sage_flatsurf
         Translation Surface built from a square and a rectangle
-        sage: tatami_decomposition([r0, r1], QQ)  # optional: sage_flatsurf
+        sage: tatami_decomposition([r0, r1], QQ)  # optional - sage_flatsurf
         Translation Surface built from a square and a rectangle
-        sage: tatami_decomposition([r0, r1], AA)  # optional: sage_flatsurf
+        sage: tatami_decomposition([r0, r1], AA)  # optional - sage_flatsurf
         Translation Surface built from a square and a rectangle
 
         sage: r0 = ((1, RIGHT, AA(1)), (1, RIGHT, 0), (0, LEFT, 0), (0, LEFT, 1), (3, RIGHT, 2), (3, RIGHT, 1), (0, RIGHT, 2), (0, RIGHT, 1))
         sage: r1 = ((3, LEFT, 0), (3, LEFT, 2), (0, LEFT, 1), (0, LEFT, 2), (3, RIGHT, 1), (1, LEFT, 1), (0, RIGHT, 1), (0, RIGHT, 0))
-        sage: tatami_decomposition([r0, r1])  # optional: sage_flatsurf
+        sage: tatami_decomposition([r0, r1])  # optional - sage_flatsurf
         Translation Surface built from a square and a rectangle
     """
     if base_ring is None:
