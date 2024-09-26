@@ -1150,46 +1150,60 @@ class VeeringTriangulation(Triangulation):
             sage: t = Triangulation("", "(0:1)(1:1)(~0:1,2:1,~1:1,~2:1)")
             sage: VeeringTriangulation(t, "RRR").is_abelian()
             False
+
+            sage: t = Triangulation("(0,1,2)(3,~0,~1)", "(~3:2,~2:1)")
+            sage: VeeringTriangulation(t, "RBRR").is_abelian()
+            False
+
+            sage: t = Triangulation("(0,1,2)(3,~0,~1)", "(~3:2,~2:2)")
+            sage: VeeringTriangulation(t, "RBRR").is_abelian()
+            True
         """
         ep = self._ep
         vp = self._vp
         cols = self._colouring
 
-        # Try to choose holonomy with signs for each vector. It is enough
-        # to store a boolean for each edge:
+        # The code attempt to give a coherent holonomy with signs for each half
+        # edge. For that purpose, it is enough to store a boolean for each edge:
         #   True: (+, +) or (+,-)
         #   False: (-,-) or (-,+)
-        # There is a coherence around vertices and faces
-        oris = [None] * self._n
+        # In other words, the half edge is stored with True if its x-coordinate
+        # is positive.
+        #
+        # Note that RED half edge corresponds to (+,+) or (-,-) while BLUE half
+        # edge corresponds to (+,-) or (-,+).
+        #
+        # The propagation of half-edge orientations is done by walking around
+        # vertices
+        oris = [None] * self._n  # list of orientations decided so far
         oris[0] = True
-        q = [0]
+        oris[ep[0]] = False
+        q = [0, ep[0]]  # queue of half-edges to be treated
+
         while q:
-            e = e0 = q.pop()
-            o = oris[e0]
+            e = q.pop()
+            o = oris[e]
+            assert o is not None
             f = vp[e]
-            while f != e0:
-                if self._bdry[f]:
-                    if not (cols[e] == RED and cols[f] == BLUE):
-                        o = not o
-                elif (cols[e] == RED and cols[f] == BLUE) or (cols[e] == GREEN):
+            while True:
+                # compute the orientation of f from the one of e
+                if (((cols[e] == RED or cols[e] == GREEN) and (cols[f] == BLUE or cols[f] == PURPLE)) + self._bdry[e]) % 2:
                     o = not o
 
-                oris[f] = o
-                if oris[ep[f]] is None:
-                    q.append(ep[f])
+                if oris[f] is None:
+                    # f is not oriented yet
+                    assert oris[ep[f]] is None
+                    oris[f] = o
                     oris[ep[f]] = not o
-                elif oris[ep[f]] == oris[f]:
+                    q.append(ep[f])
+                elif oris[f] != o:
+                    # f is incoherently oriented
                     return (False, None) if certificate else False
+                else:
+                    # f is correctly oriented
+                    break
+
                 e, f = f, vp[f]
-
-            if self._bdry[f]:
-                if not (cols[e] == RED and cols[f] == BLUE):
-                    o = not o
-            elif (cols[e] == RED and cols[f] == BLUE) or (cols[e] == GREEN):
-                o = not o
-
-            if oris[e0] != o:
-                return (False, None) if certificate else False
 
         return (True, oris) if certificate else True
 
@@ -1308,6 +1322,10 @@ class VeeringTriangulation(Triangulation):
             sage: t = Triangulation("", "(0:1)(~0:1)")
             sage: VeeringTriangulation(t, "R").stratum()  # optional - surface_dynamics
             H_0(0, -1^2)
+
+            sage: t = Triangulation("(0,1,2)(3,~0,~1)", "(~3:2,~2:2)")
+            sage: VeeringTriangulation(t, "RBRR").stratum()  # optional - surface_dynamics
+            H_1(2, -2)
         """
         from .features import surface_dynamics_feature
         surface_dynamics_feature.require()
