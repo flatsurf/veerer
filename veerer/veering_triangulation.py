@@ -94,9 +94,9 @@ class VeeringTriangulation(Triangulation):
     Triangulations with boundary::
 
         sage: VeeringTriangulation("(0,1,2)(~0,3,4)", "(~1:1)(~2:1)(~3:1)(~4:1)", "RBRBR")
-        VeeringTriangulation("(0,1,2)(3,4,~0)", boundary="(~4)(~3)(~2)(~1)", colouring="RBRBR")
+        VeeringTriangulation("(0,1,2)(3,4,~0)", boundary="(~4:1)(~3:1)(~2:1)(~1:1)", colouring="RBRBR")
         sage: VeeringTriangulation("(0,1,2)(~0,3,4)", boundary="(~1:1)(~2:1)(~3:1)(~4:1)", colouring="RBRBR")
-        VeeringTriangulation("(0,1,2)(3,4,~0)", boundary="(~4)(~3)(~2)(~1)", colouring="RBRBR")
+        VeeringTriangulation("(0,1,2)(3,4,~0)", boundary="(~4:1)(~3:1)(~2:1)(~1:1)", colouring="RBRBR")
     """
     __slots__ = ['_colouring']
 
@@ -869,11 +869,14 @@ class VeeringTriangulation(Triangulation):
             sage: VeeringTriangulation("(0,1,2)", [RED, RED, BLUE])
             VeeringTriangulation("(0,1,2)", "RRB")
             sage: VeeringTriangulation("(0,1,2)(3,4,~0)", "(~4:1,~3:1,~2:1,~1:1)", "RRBRB")
-            VeeringTriangulation("(0,1,2)(3,4,~0)", boundary="(~4,~3,~2,~1)", colouring="RRBRB")
+            VeeringTriangulation("(0,1,2)(3,4,~0)", boundary="(~4:1,~3:1,~2:1,~1:1)", colouring="RRBRB")
+            sage: t = Triangulation("(0,1,2)(3,~0,~1)", "(~3:2,~2:2)")
+            sage: VeeringTriangulation(t, "RBBR")
+            VeeringTriangulation("(0,1,2)(3,~0,~1)", boundary="(~3:2,~2:2)", colouring="RBBR")
         """
         cycles = perm_cycles(self._fp, n=self._n)
-        face_cycles = perm_cycles_to_string([c for c in cycles if self._bdry[c[0]] == 0], involution=self._ep)
-        bdry_cycles = perm_cycles_to_string([c for c in cycles if self._bdry[c[0]] == 1], involution=self._ep)
+        face_cycles = perm_cycles_to_string([c for c in cycles if not self._bdry[c[0]]], involution=self._ep)
+        bdry_cycles = perm_cycles_to_string([c for c in cycles if self._bdry[c[0]]], involution=self._ep, data=self._bdry)
         colouring = self._colouring_string(short=True)
         if bdry_cycles:
             return "VeeringTriangulation(\"{}\", boundary=\"{}\", colouring=\"{}\")".format(
