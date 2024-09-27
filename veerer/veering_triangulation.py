@@ -2708,6 +2708,46 @@ class VeeringTriangulation(Triangulation):
 
         return k == self.num_faces()
 
+    def is_strebel(self, slope=VERTICAL):
+        r"""
+        Return whether this veering triangulation is Strebel.
+
+        A veering triangulation is Strebel if it has no forward flippable edge.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+        We consider below the six veering triangulations of the stratum H_1(2,
+        -2) that have two triangles::
+
+            sage: t = Triangulation("(0,2,1)(3,~1,~0)", boundary="(~3:2,~2:2)")
+            sage: vtB0 = VeeringTriangulation(t, "RRBB")
+            sage: vtB1 = VeeringTriangulation(t, "RBBB")
+            sage: vtB2 = VeeringTriangulation(t, "BRBB")
+            sage: vtR0 = VeeringTriangulation(t, "BBRR")
+            sage: vtR1 = VeeringTriangulation(t, "BRRR")
+            sage: vtR2 = VeeringTriangulation(t, "RBRR")
+
+            sage: all(vt.is_strebel(VERTICAL) for vt in [vtB1, vtR2])
+            True
+            sage: any(vt.is_strebel(VERTICAL) for vt in [vtB0, vtB2, vtR0, vtR1])
+            False
+
+            sage: all(vt.is_strebel(HORIZONTAL) for vt in [vtB2, vtR1])
+            True
+            sage: any(vt.is_strebel(HORIZONTAL) for vt in [vtB0, vtB1, vtR0, vtR2])
+            False
+        """
+        ep = self._ep
+        n = self._n
+        if slope == VERTICAL:
+            return not any(self.is_forward_flippable(e, check=False) for e in range(n) if not self._bdry[e] and not self._bdry[ep[e]] and e <= ep[e])
+        elif slope == HORIZONTAL:
+            return not any(self.is_backward_flippable(e, check=False) for e in range(n) if not self._bdry[e] and not self._bdry[ep[e]] and e <= ep[e])
+        else:
+            raise ValueError('slope must either be HORIZONTAL or VERTICAL')
+
     def properties_code(self):
         r"""
         Return an integer code that gathers boolean properties of this veering
