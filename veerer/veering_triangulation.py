@@ -1544,6 +1544,30 @@ class VeeringTriangulation(Triangulation):
             sage: T.forward_flippable_edges()
             [1]
 
+        Examples with boundaries in the stratum H_1(2, -2)::
+
+            sage: t = Triangulation("(0,2,1)(3,~1,~0)", boundary="(~3:2,~2:2)")
+            sage: vtB0 = VeeringTriangulation(t, "RRBB")
+            sage: vtB1 = VeeringTriangulation(t, "RBBB")
+            sage: vtB2 = VeeringTriangulation(t, "BRBB")
+            sage: vtR0 = VeeringTriangulation(t, "BBRR")
+            sage: vtR1 = VeeringTriangulation(t, "BRRR")
+            sage: vtR2 = VeeringTriangulation(t, "RBRR")
+
+            sage: vtB0.forward_flippable_edges()
+            [0]
+            sage: vtB1.forward_flippable_edges()
+            []
+            sage: vtB2.forward_flippable_edges()
+            [0]
+
+            sage: vtR0.forward_flippable_edges()
+            [1]
+            sage: vtR1.forward_flippable_edges()
+            [1]
+            sage: vtR2.forward_flippable_edges()
+            []
+
         TESTS::
 
             sage: from veerer.permutation import perm_random
@@ -1574,6 +1598,30 @@ class VeeringTriangulation(Triangulation):
 
             sage: T = VeeringTriangulation("(0,1,2)", [RED, RED, BLUE])
             sage: T.backward_flippable_edges()
+            [0]
+
+        Examples with boundaries in the stratum H_1(2, -2)::
+
+            sage: t = Triangulation("(0,2,1)(3,~1,~0)", boundary="(~3:2,~2:2)")
+            sage: vtB0 = VeeringTriangulation(t, "RRBB")
+            sage: vtB1 = VeeringTriangulation(t, "RBBB")
+            sage: vtB2 = VeeringTriangulation(t, "BRBB")
+            sage: vtR0 = VeeringTriangulation(t, "BBRR")
+            sage: vtR1 = VeeringTriangulation(t, "BRRR")
+            sage: vtR2 = VeeringTriangulation(t, "RBRR")
+
+            sage: vtB0.backward_flippable_edges()
+            [1]
+            sage: vtB1.backward_flippable_edges()
+            [1]
+            sage: vtB2.backward_flippable_edges()
+            []
+
+            sage: vtR0.backward_flippable_edges()
+            [0]
+            sage: vtR1.backward_flippable_edges()
+            []
+            sage: vtR2.backward_flippable_edges()
             [0]
         """
         ep = self._ep
@@ -3704,6 +3752,16 @@ class VeeringTriangulation(Triangulation):
             sage: vt.as_linear_family().is_core()
             True
             sage: VeeringTriangulationLinearFamily(vt, [1, 0, -1]).is_core()
+            False
+
+        A torus with boundaries in the stratum H_1(2, -2)::
+
+            sage: t = Triangulation("(0,2,1)(3,~1,~0)", boundary="(~3:2,~2:2)")
+            sage: VeeringTriangulation(t, colouring="RRBB").is_core()
+            True
+            sage: VeeringTriangulation(t, colouring="BRBR").is_core()
+            False
+            sage: VeeringTriangulation(t, colouring="RBRB").is_core()
             False
         """
         if any(c == PURPLE or c == GREEN for c in self._colouring):
