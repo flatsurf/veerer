@@ -1301,7 +1301,7 @@ class Triangulation(object):
             if is_e0_neg and not twist:
                 m[e] *= -1
 
-    def is_flippable(self, e):
+    def is_flippable(self, e, check=True):
         r"""
         Check whether the half-edge e is flippable.
 
@@ -1318,12 +1318,25 @@ class Triangulation(object):
             False
             sage: T.is_flippable(4)
             True
+
+        A torus with boundary::
+
+            sage: t = Triangulation("(0,2,1)(3,~1,~0)", boundary="(~3:1,~2:1)")
+            sage: t.is_flippable(0)
+            True
+            sage: t.is_flippable(1)
+            True
+            sage: t.is_flippable(2)
+            False
+            sage: t.is_flippable(3)
+            False
         """
-        e = int(e)
+        if check:
+            e = self._check_half_edge(e)
         E = self._ep[e]
         a = self._fp[e]
         b = self._fp[a]
-        return a != E and b != E and self._bdry[e] == 0 and self._bdry[E] == 0
+        return not self._bdry[e] and not self._bdry[E] and a != E and b != E and self._bdry[e] == 0 and self._bdry[E] == 0
 
     def flippable_edges(self):
         r"""
@@ -1380,7 +1393,7 @@ class Triangulation(object):
             e = self._check_half_edge(e)
 
         E = self._ep[e]
-        if self._bdry[e] or self._bdry[E]:
+        if check and (self._bdry[e] or self._bdry[E]):
             raise ValueError('non internal edge')
 
         a = self._fp[e]
