@@ -382,7 +382,7 @@ def str_to_cycles_and_data(s):
 
         sage: from veerer.permutation import str_to_cycles_and_data
         sage: str_to_cycles_and_data('(0:1,1:2)')
-        ([[0, 1]], {0: '1', 1: '2'})
+        ([[0, 1]], {0: 1, 1: 2})
         sage: str_to_cycles_and_data('(0:1,1:2)(3:0)')
         ([[0, 1], [3]], {0: 1, 1: 2, 3: 0})
     """
