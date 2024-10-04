@@ -3760,6 +3760,9 @@ class VeeringTriangulation(Triangulation):
         r"""
         Test whether this coloured triangulation is core.
 
+        It is core if both the vertical and horizontal train track polytopes
+        contain positive vectors.
+
         EXAMPLES::
 
             sage: from veerer import *

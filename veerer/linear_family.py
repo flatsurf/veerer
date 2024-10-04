@@ -780,7 +780,7 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
     def geometric_automaton(self, run=True, backend=None):
         from .automaton import GeometricAutomatonSubspace
         A = GeometricAutomatonSubspace(backend=backend)
-        A.set_seed(self)
+        A.add_seed(self)
         if run:
             A.run()
         return A
