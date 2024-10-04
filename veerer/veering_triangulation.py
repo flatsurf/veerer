@@ -4016,9 +4016,9 @@ class VeeringTriangulation(Triangulation):
 
         return False
 
-    def geometric_flips(self, backend=None):
+    def delaunay_flips(self, backend=None):
         r"""
-        Return the list of geometric flips.
+        Return the list of Delaunay flips.
 
         A flip, a rather a list of flips, is geometric if it arises generically
         as a flip of L^oo-Delaunay triangulations along Teichmueller geodesics.
@@ -4134,6 +4134,92 @@ class VeeringTriangulation(Triangulation):
                     neighbours.append((edges, BLUE))
             else:
                 neighbours.append((edges, BLUE))
+
+        return neighbours
+
+    # TODO: deprecate
+    geometric_flips = delaunay_flips
+
+    # TODO: this is mostly a copy/past with variation of the forward version
+    # above. The code would better be factorized
+    def backward_delaunay_flips(self, backend=None):
+        r"""
+        Return the list of backward Delaunay flips.
+
+        A flip, a rather a list of flips, is geometric if it arises generically
+        as a flip of L^oo-Delaunay triangulations along Teichmueller geodesics.
+        Each geometric flip corresponds to a facet of the geometric polytope.
+
+        OUTPUT: a list of pairs ``(edge_number, new_colour)``
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+        An example with meromorphic differentials in H(2, -2)::
+
+            sage: fp = "(0,2,1)(~0,3,~1)"
+            sage: bdry = "(~2:2,~3:2)"
+            sage: cols0 = "BRRR"
+            sage: cols1 = "BBRR"
+            sage: cols2 = "RBRR"
+            sage: VeeringTriangulation(fp, bdry, cols0).backward_delaunay_flips()
+            []
+            sage: VeeringTriangulation(fp, bdry, cols1).backward_delaunay_flips()
+            [([0], 2)]
+            sage: sorted(VeeringTriangulation(fp, bdry, cols2).backward_delaunay_flips())
+            [([0], 1), ([0], 2)]
+        """
+        from sage.matrix.constructor import matrix
+
+        dim = self.dimension()
+        base_ring = self.base_ring()
+        ne = ambient_dim = self.num_edges()
+        L = LinearExpressions(base_ring)
+        x = [L.variable(e) for e in range(ne)]
+        y = [L.variable(ne + e) for e in range(ne)]
+        P = self.geometric_polytope(backend=backend)
+        if P.affine_dimension() != 2 * dim:
+            raise ValueError('not geometric P.dimension() = {} while 2 * dim = {}'.format(P.affine_dimension(), 2 * dim))
+
+        # compute the Delaunay flip facets and the associated
+        # subset of edges
+        eqns = matrix(base_ring, P.eqns())
+        delaunay_facets = {}
+        for e in self.backward_flippable_edges():
+            a, b, c, d = self.square_about_edge(e)
+            constraint = y[self._norm(e)] == x[self._norm(a)] + x[self._norm(d)]
+            constraint = constraint.coefficients(dim=2*ne, homogeneous=True)
+            linear_form_project(eqns, constraint)
+            vector_normalize(base_ring, constraint)
+            constraint = tuple(constraint)
+            if constraint in delaunay_facets:
+                delaunay_facets[constraint].append(e)
+            else:
+                delaunay_facets[constraint] = [e]
+
+        # determine the possible colours
+        neighbours = []
+        for ieq, edges in delaunay_facets.items():
+            # build the facet
+            F = P.add_constraint(L(ieq) == 0)
+            if not F.affine_dimension() == 2 * dim - 1:
+                continue
+
+            # test each edge colour conditions
+            # NOTE: all simultaneous flips must be of the same colour
+            assert all(self._colouring[e] == self._colouring[edges[0]] for e in edges)
+            # NOTE: the equations for the different edges are all equivalent, it
+            # is hence enough to use the first edge
+            a, b, c, d = self.square_about_edge(edges[0])
+            Fred = F.add_constraint(y[self._norm(a)] <= y[self._norm(d)])
+            if Fred.affine_dimension() == 2 * dim - 1:
+                neighbours.append((edges, BLUE))
+                Fblue = F.add_constraint(x[self._norm(a)] >= x[self._norm(d)])
+                if Fblue.affine_dimension() == 2 * dim - 1:
+                    neighbours.append((edges, RED))
+            else:
+                neighbours.append((edges, RED))
 
         return neighbours
 
