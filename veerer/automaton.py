@@ -114,7 +114,7 @@ class Automaton(object):
         self._flip_branch = []
 
         # queue of states on which we still have run backward flips from
-        # (each time an element is poped its backward flip neighbors will
+        # (each time an element is popped its backward flip neighbors will
         #  populate the _seeds list)
         self._backward_flip_queue = []
 
@@ -517,7 +517,7 @@ class Automaton(object):
         Return the list of backward flips data from ``state``.
 
         By default it return an empty tuple (ie backward flips are not
-        explored). Can be overriden in subclasses.
+        explored). Can be overridden in subclasses.
         """
         raise NotImplementedError
 
