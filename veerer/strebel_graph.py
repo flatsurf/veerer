@@ -780,7 +780,71 @@ class StrebelGraph(object):
             G._check(ValueError)
 
         return G
-        
+    
+    def relabel(self, p, check=True):
+
+        if not self._mutable:
+            raise ValueError('immutable triangulation; use a mutable copy instead')
+
+        n = self._n
+        if check and not perm_check(p, n):
+            # if the input is not a valid permutation, we assume that half-edges
+            # are not separated
+            p = perm_init(p, n, self._ep)
+            if not perm_check(p, n, self._ep):
+                raise ValueError('invalid relabeling permutation')
+
+        self._vp = perm_conjugate(self._vp, p)
+        self._ep = perm_conjugate(self._ep, p)
+        self._fp = perm_conjugate(self._fp, p)
+        perm_on_list(p, self._bdry, n)
+
+    def _relabelling_from(self, start_edge):
+
+        if start_edge < 0 or start_edge >= len(self._vp):
+            raise ValueError
+        return triangulation_relabelling_from(self._vp, self._ep, start_edge)
+    
+    def _automorphism_good_starts(self):
+
+        return range(self._n)
+
+    def best_relabelling(self, all=False):
+        n = self._n
+        fp = self._fp
+        ep = self._ep
+
+        best = None
+        if all:
+            relabellings = []
+
+        for start_edge in self._automorphism_good_starts():
+            relabelling = self._relabelling_from(start_edge)
+
+            fp_new = perm_conjugate(fp, relabelling)
+            ep_new = perm_conjugate(ep, relabelling)
+            bdry_new = self._bdry[:]
+            perm_on_list(relabelling, bdry_new, self._n)
+
+            T = (fp_new, ep_new, bdry_new)
+            if best is None or T < best:
+                best_relabelling = relabelling
+                best = T
+                if all:
+                    del relabelllings[:]
+                    relabellings.append(relabelling)
+            elif all and T == best:
+                relabellings.append(relabelling)
+
+        return (relabellings, best) if all else (best_relabelling, best)
+
+    def set_canonical_labels(self):
+
+        if not self._mutable:
+            raise ValueError('immutable triangulation; use a mutable copy instead')
+
+        r, _ = self.best_relabelling()
+        self.relabel(r, check=False)
        
         
         
