@@ -1116,11 +1116,43 @@ class GeometricAutomaton(Automaton):
     def sources(self):
         r"""
         Iterate through sources (states with no backward neighbor) in this automaton.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: fp = "(0,2,1)(~0,3,~1)"
+            sage: bdry = "(~2:2,~3:2)"
+            sage: cols = "BRRR"
+            sage: vt = VeeringTriangulation(fp, bdry, cols)
+            sage: A = GeometricAutomaton(vt, backward=True)
+            sage: list(A.sources())
+            [VeeringTriangulation("(0,~3,2)(1,3,~2)", boundary="(~1:2,~0:2)", colouring="RRBR")]
+
+        And the sources coincide with horizontal-Strebel veering triangulations::
+
+            sage: set(A.sources()) == set(vt for vt in A if vt.is_strebel(HORIZONTAL))
+            True
         """
+        return (x for x, backward_neighbors in self._backward_neighbors.items() if not backward_neighbors)
 
     def sinks(self):
         r"""
         Iterate through sinks (states with no forward neighbor) in this automaton.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: fp = "(0,2,1)(~0,3,~1)"
+            sage: bdry = "(~2:2,~3:2)"
+            sage: cols = "BRRR"
+            sage: vt = VeeringTriangulation(fp, bdry, cols)
+            sage: list(A.sinks())
+            [VeeringTriangulation("(0,~2,1)(3,~1,~0)", boundary="(2:2,~3:2)", colouring="RBRR")]
+
+        The sinks coincide with vertical-Strebel veering triangulations::
+
+            sage: set(A.sinks()) == set(vt for vt in A if vt.is_strebel(VERTICAL))
+            True
         """
         return (x for x, forward_neighbors in self._forward_neighbors.items() if not forward_neighbors)
 
