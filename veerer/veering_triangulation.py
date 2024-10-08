@@ -4540,7 +4540,7 @@ class VeeringTriangulation(Triangulation):
             sage: vt = VeeringTriangulation("(0,1,2)(~1,~2,3)(~3,~0)", boundary = {"~0":2, "~3":2}, colouring = "RBRR")
             sage: vt.stratum()
             H_1(2, -2)
-            sage: sg = self.strebel_graph(slope = VERTICAL)
+            sage: sg = vt.strebel_graph(slope = VERTICAL)
             sage: sg.vertices()
             [[0, 1, 3, 2]]
             sage: sg.faces()
@@ -4553,7 +4553,7 @@ class VeeringTriangulation(Triangulation):
             sage: vt = VeeringTriangulation("(0,1,2)(~1,~2,3)(~3,~0)", boundary = {"~0":2, "~3":2}, colouring = "BRBB")
             sage: vt.stratum()
             H_1(2, -2)
-            sage: sg = self.strebel_graph(slope = HORIZONTAL)
+            sage: sg = vt.strebel_graph(slope = HORIZONTAL)
             sage: sg.vertices()
             [[0, 1, 3, 2]]
             sage: sg.faces()
