@@ -4567,7 +4567,7 @@ class VeeringTriangulation(Triangulation):
         
         return index_strebel
     
-    def strebel_graph(self, slope=VERTICAL):
+    def strebel_graph(self, slope=VERTICAL, mutable=False):
         r"""
         Return a Vertical Strebel graph associated to this veering triangulation.
 
@@ -4677,7 +4677,7 @@ class VeeringTriangulation(Triangulation):
         
         #STEP3: bulid the Strebel graph
         from .strebel_graph import StrebelGraph
-        G = StrebelGraph.strebel_from_face_edge_perms(vertex_permutation, edge_permutation, boundary = beta)
+        G = StrebelGraph.strebel_from_face_edge_perms(vertex_permutation, edge_permutation, boundary=beta, mutable=mutable)
         
         return G
 
