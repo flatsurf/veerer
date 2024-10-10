@@ -652,7 +652,7 @@ class VeeringTriangulation(Triangulation):
         T._vp = vp
 
         T._colouring = colouring
-        
+
         if boundary is None:
             T._bdry = array('i', [0] * n)
         else:
@@ -4453,7 +4453,7 @@ class VeeringTriangulation(Triangulation):
                         # internal face but is not the edge with largest x-coordinate belongs to the Strebel graph
                         if list_boundary[e] > 0: #ep[e] is in an internal edge
                             a = fp[ep[e]]
-                            b = fp[ep[e]]
+                            b = fp[a]
                             if list_colour[ep[e]] == RED and list_colour[b] == BLUE:
                                 index_strebel[e] = j 
                                 index_strebel[ep[e]] = m-1-j 
@@ -4504,7 +4504,7 @@ class VeeringTriangulation(Triangulation):
                         # internal face but is not the edge with largest y-coordinate belongs to the Strebel graph
                         if list_boundary[e] > 0: #ep[e] is in an internal edge
                             a = fp[ep[e]]
-                            b = fp[ep[e]]
+                            b = fp[a]
                             if list_colour[ep[e]] == RED and list_colour[a] == BLUE: 
                                 index_strebel[e] = j 
                                 index_strebel[ep[e]] = m-1-j 
@@ -4528,7 +4528,7 @@ class VeeringTriangulation(Triangulation):
             raise ValueError('slope must either be HORIZONTAL or VERTICAL')
         
         if j != m/2:
-                raise ValueError('check code')
+                raise ValueError('The half-edges are not as many as expected. Check code')
         
         return index_strebel
     
