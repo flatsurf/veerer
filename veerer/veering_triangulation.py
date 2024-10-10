@@ -634,7 +634,7 @@ class VeeringTriangulation(Triangulation):
         return VeeringTriangulation(triangles, colours, mutable=mutable, check=check)
 
     @classmethod
-    def from_face_edge_perms(self, colouring, fp, ep, vp=None, mutable=False, check=True):
+    def from_face_edge_perms(self, colouring, fp, ep, vp=None, boundary=None, mutable=False, check=True):
         T = VeeringTriangulation.__new__(VeeringTriangulation)
         T._n = len(fp)
         T._fp = fp
@@ -650,7 +650,14 @@ class VeeringTriangulation(Triangulation):
 
         T._bdry = array('i', [0] * n)
         T._vp = vp
+
         T._colouring = colouring
+        
+        if boundary is None:
+            T._bdry = array('i', [0] * n)
+        else:
+            T._bdry = array('i', boundary)
+
         T._mutable = mutable
 
         if check:
