@@ -777,14 +777,6 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
         self._set_geometric_constraints(cs.insert, x, y, hw_bound=hw_bound)
         return cs.cone(backend)
 
-    def geometric_automaton(self, run=True, backend=None):
-        from .automaton import GeometricAutomatonSubspace
-        A = GeometricAutomatonSubspace(backend=backend)
-        A.add_seed(self)
-        if run:
-            A.run()
-        return A
-
     def random_forward_flip(self, repeat=1):
         r"""
         Apply a random forward flip randomly among the ones that keeps the family core.

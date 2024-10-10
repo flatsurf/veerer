@@ -1,11 +1,94 @@
 r"""
-Train-track and triangulations automata.
+Flip automata.
+
+We consider various automata related to edge flip in graphs on surfaces, namely
+- triangulations and more generally flip automaton of combinatorial maps with fixed face degrees
+- train-track splitting
+- core veering triangulations of Abelian and quadratic differentials
+- (L-infinity) Delaunay triangulations of Abelian and quadratic differentials
+- Delaunay-Strebel for meromorphic
+
+In order to avoid confusion with graph terminology (that might refer to the
+underlying triangulation), the flip graphs are considered as automata.
+
+EXAMPLES::
+
+    sage: from veerer import *
+
+    sage: vt = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
+    sage: A = CoreAutomaton()
+    sage: A.add_seed(vt)
+    1
+    sage: A.run()
+    0
+    sage: len(A)
+    2
+
+    sage: vt = VeeringTriangulation('(0,1,2)', 'BBR')
+    sage: A = CoreAutomaton()
+    sage: A.add_seed(vt)
+    1
+    sage: A.run()
+    0
+    sage: len(A)
+    2
+
+The examples below is Q(1^2, -1^2) with two folded edges::
+
+    sage: fp = '(0,1,2)(~0,~3,~8)(3,5,4)(~4,~1,~5)(6,7,8)(~6,9,~2)'
+    sage: cols = 'BRBRBBBRBR'
+    sage: vt = VeeringTriangulation(fp, cols)
+
+    sage: C = CoreAutomaton()
+    sage: C.add_seed(vt)
+    1
+    sage: C.run()
+    0
+    sage: C
+    Core veering automaton with 1074 vertices
+
+    sage: R = ReducedCoreAutomaton()
+    sage: R.add_seed(vt)
+    1
+    sage: R.run()
+    0
+    sage: R
+    Reduced core veering automaton with 356 vertices
+
+Exploring strata::
+
+    sage: from surface_dynamics import Stratum                       # optional - surface_dynamics
+    sage: strata = [Stratum([2], 1), Stratum([2,-1,-1], 2),          # optional - surface_dynamics
+    ....:           Stratum([2,2], 2), Stratum([1,1], 1)]
+    sage: for stratum in strata:                                     # optional - surface_dynamics
+    ....:     print(stratum)
+    ....:     vt = VeeringTriangulation.from_stratum(stratum)
+    ....:     C = CoreAutomaton()
+    ....:     _ = C.add_seed(vt)
+    ....:     _ = C.run()
+    ....:     R = ReducedCoreAutomaton()
+    ....:     _ = R.add_seed(vt)
+    ....:     _ = R.run()
+    ....:     print(C)
+    ....:     print(R)
+    H_2(2)
+    Core veering automaton with 86 vertices
+    Reduced core veering automaton with 28 vertices
+    Q_1(2, -1^2)
+    Core veering automaton with 160 vertices
+    Reduced core veering automaton with 68 vertices
+    Q_2(2^2)
+    Core veering automaton with 846 vertices
+    Reduced core veering automaton with 305 vertices
+    H_2(1^2)
+    Core veering automaton with 876 vertices
+    Reduced core veering automaton with 234 vertices
 """
 # ****************************************************************************
 #  This file is part of veerer
 #
 #       Copyright (C) 2018 Mark Bell
-#                     2018-2023 Vincent Delecroix
+#                     2018-2024 Vincent Delecroix
 #                     2018 Saul Schleimer
 #
 # This program is free software; you can redistribute it and/or
@@ -23,114 +106,92 @@ Train-track and triangulations automata.
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 # ****************************************************************************
 
+import collections
 import os
 import sys
 from time import time
 
 from .triangulation import Triangulation
 from .veering_triangulation import VeeringTriangulation
+from .strebel_graph import StrebelGraph
 from .linear_family import VeeringTriangulationLinearFamily
-from .constants import RED, BLUE, PURPLE, PROPERTIES_COLOURS, colour_to_char, colour_to_string
+from .constants import RED, BLUE, PURPLE, VERTICAL, HORIZONTAL, PROPERTIES_COLOURS, colour_to_char, colour_to_string
 from .permutation import perm_invert
 
 # TODO: when set to True a lot of intermediate checks are performed
 CHECK = False
 
 
-class Automaton(object):
+class Automaton:
     r"""
-    Automaton of veering triangulations.
+    Abstract class for automaton.
 
-    EXAMPLES::
+    INPUT:
 
-        sage: from veerer import *  # random output due to deprecation warnings from realalg
+    - ``backward`` -- whether to explore backward (only useful if the automaton
+      is not strongly connected)
 
-        sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE])
-        sage: A = CoreAutomaton(T)
-        sage: len(A)
-        2
+    - ``verbosity`` -- the level of verbosity (the higher the more messages
+      you get while the automaton is being computed)
 
-        sage: T = VeeringTriangulation('(0,1,2)', 'BBR')
-        sage: A = CoreAutomaton(T)
-        sage: len(A)
-        2
+    - ``algorithm`` -- either ``'DFS'`` (depths first search) or ``'BFS'``
+      (breadth first search)
 
-    The examples below is Q(1^2, -1^2) with two folded edges::
-
-        sage: fp = '(0,1,2)(~0,~3,~8)(3,5,4)(~4,~1,~5)(6,7,8)(~6,9,~2)'
-        sage: cols = 'BRBRBBBRBR'
-        sage: T = VeeringTriangulation(fp, cols)
-        sage: CoreAutomaton(T)
-        Core veering automaton with 1074 vertices
-        sage: ReducedCoreAutomaton(T)
-        Reduced core veering automaton with 356 vertices
-
-    Exploring strata::
-
-        sage: from surface_dynamics import Stratum                       # optional - surface_dynamics
-        sage: strata = [Stratum([2], 1), Stratum([2,-1,-1], 2),           # optional - surface_dynamics
-        ....:           Stratum([2,2], 2), Stratum([1,1], 1)]
-        sage: for stratum in strata:                                     # optional - surface_dynamics
-        ....:     print(stratum)
-        ....:     vt = VeeringTriangulation.from_stratum(stratum)
-        ....:     print(CoreAutomaton(vt))
-        ....:     print(ReducedCoreAutomaton(vt))
-        H_2(2)
-        Core veering automaton with 86 vertices
-        Reduced core veering automaton with 28 vertices
-        Q_1(2, -1^2)
-        Core veering automaton with 160 vertices
-        Reduced core veering automaton with 68 vertices
-        Q_2(2^2)
-        Core veering automaton with 846 vertices
-        Reduced core veering automaton with 305 vertices
-        H_2(1^2)
-        Core veering automaton with 876 vertices
-        Reduced core veering automaton with 234 vertices
+    - ``extra_kwds`` -- additional argument that are forwarded to the method `_setup`
+      that could be overriden in subclasses
     """
     _name = ''
 
-    def __init__(self, seed=None, verbosity=0, backward=False, **extra_kwds):
+    def __init__(self, backward=False, method='BFS', verbosity=0, **extra_kwds):
         # verbosity level
         self._verbosity = int(verbosity)
 
         # whether to explore backward flips
+        if backward is not True and backward is not False:
+            raise TypeError('the argument backward must be a boolean')
         self._backward = backward
 
-        # we encode the graph in two dictionaries where the keys are the states
-        # and the values are respectively the outgoing or incoming edges
-        # In both cases, the neighbors are encoded by pairs (neighbor, flip_data)
+        # the automaton is encoded in two dictionaries where the keys are the states
+        # and the values are respectively the outgoing or incoming edges.
+        # In both cases, the neighbors are encoded by pairs (neighbor, label)
         self._forward_neighbors = {}
         self._backward_neighbors = {}
 
-        # list of seeds to be considered
+        # list of seeds to be considered to explore the automaton from
         self._seeds = []
 
-        # current state (mutable triangulations)
-        self._state = None
-
-        # current branches for running the DFS
-        self._state_branch = []
-        self._flip_branch = []
+        # the current list of states whose neighbors are still to be explored
+        self._branch = []
 
         # queue of states on which we still have run backward flips from
         # (each time an element is popped its backward flip neighbors will
         #  populate the _seeds list)
         self._backward_flip_queue = []
 
-        # the flips and relabelling performed along the branch
-        self._flips = []
-        self._relabellings = []
+        if method not in ['BFS', 'DFS']:
+            raise ValueError('method should either be \'BFS\' or \'DFS\'')
+        self._method = method
 
         self._setup(**extra_kwds)
 
-        if seed is not None:
-            self.add_seed(seed)
-            self.run()
+    def _check(self):
+        r"""
+        Some consistency checks.
+        """
+        if set(self._forward_neighbors) != set(self._backward_neighbors):
+            raise ValueError('inconsistent list of states')
+
+        num_incoming_edges = sum(len(v) for v in self._backward_neighbors.values())
+        num_outgoing_edges = sum(len(v) for v in self._forward_neighbors.values())
+        if num_outgoing_edges != num_incoming_edges:
+            print('inconsistent number of edges: {} incoming and {} outgoing'.format(num_incoming_edges, num_outgoing_edges))
 
     def __str__(self):
+        r"""
+        Return a string representing this automaton
+        """
         status = None
-        if self._backward_flip_queue or len(self._flip_branch) != 1 or self._flip_branch[-1]:
+        if self._branch or self._backward_flip_queue or self._seeds:
             status = 'partial '
         else:
             status = ''
@@ -140,32 +201,149 @@ class Automaton(object):
         return str(self)
 
     def __len__(self):
-        return len(self._forward_neighbors)
-
-    def one_triangulation(self):
-        return next(iter(self))
-
-    def __iter__(self):
         r"""
+        Return the number of states in this automaton.
+
         EXAMPLES::
 
             sage: from veerer import *
 
-            sage: T = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
-            sage: A = CoreAutomaton(T)
+            sage: vt = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
+            sage: A = CoreAutomaton()
+            sage: A.number_of_states()
+            0
+            sage: A.add_seed(vt)
+            1
+            sage: A.number_of_states()
+            0
+            sage: A.run()
+            0
+            sage: A.number_of_states()
+            86
+        """
+        return len(self._forward_neighbors)
+
+    number_of_states = __len__
+
+    def number_of_transitions(self):
+        r"""
+        Return the number of transitions of this automaton.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: vt = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
+            sage: A = CoreAutomaton()
+            sage: A.number_of_transitions()
+            0
+            sage: A.add_seed(vt)
+            1
+            sage: A.number_of_transitions()
+            0
+            sage: A.run()
+            0
+            sage: A.number_of_transitions()
+            300
+        """
+        return sum(len(v) for v in self._forward_neighbors.values())
+
+    def __iter__(self):
+        r"""
+        Run through the states of this automaton.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: vt = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
+            sage: A = CoreAutomaton()
+            sage: A.add_seed(vt)
+            1
+            sage: A.run()
+            0
             sage: sum(T.is_geometric() for T in A)
             54
             sage: sum(T.is_cylindrical() for T in A)
             24
+
+            sage: vt = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
+            sage: A = CoreAutomaton()
+            sage: A.add_seed(vt)
+            1
+            sage: A.run()
+            0
+            sage: assert all(t.angles() == [6] for t in A)
         """
         return iter(self._forward_neighbors)
 
-    def __contains__(self, item):
-        if not isinstance(item, Triangulation):
-            return False
-        if item._mutable:
-            item = item.copy(mutable=False)
-        return item in self._forward_neighbors
+    states = __iter__
+
+    def sources(self):
+        r"""
+        Iterate through sources (states with no backward neighbor) in this automaton.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: fp = "(0,2,1)(~0,3,~1)"
+            sage: bdry = "(~2:2,~3:2)"
+            sage: cols = "BRRR"
+            sage: vt = VeeringTriangulation(fp, bdry, cols)
+            sage: A = DelaunayAutomaton(backward=True)
+            sage: A.add_seed(vt)
+            1
+            sage: A.run()
+            0
+            sage: list(A.sources())
+            [VeeringTriangulation("(0,~3,2)(1,3,~2)", boundary="(~1:2,~0:2)", colouring="RRBR")]
+
+        And the sources coincide with horizontal-Strebel veering triangulations::
+
+            sage: set(A.sources()) == set(vt for vt in A if vt.is_strebel(HORIZONTAL))
+            True
+        """
+        return (x for x, backward_neighbors in self._backward_neighbors.items() if not backward_neighbors)
+
+    def sinks(self):
+        r"""
+        Iterate through sinks (states with no forward neighbor) in this automaton.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: fp = "(0,2,1)(~0,3,~1)"
+            sage: bdry = "(~2:2,~3:2)"
+            sage: cols = "BRRR"
+            sage: vt = VeeringTriangulation(fp, bdry, cols)
+            sage: A = DelaunayAutomaton(backward=True)
+            sage: A.add_seed(vt)
+            1
+            sage: A.run()
+            0
+            sage: list(A.sinks())
+            [VeeringTriangulation("(0,~2,1)(3,~1,~0)", boundary="(2:2,~3:2)", colouring="RBRR")]
+
+        The sinks coincide with vertical-Strebel veering triangulations::
+
+            sage: set(A.sinks()) == set(vt for vt in A if vt.is_strebel(VERTICAL))
+            True
+        """
+        return (x for x, forward_neighbors in self._forward_neighbors.items() if not forward_neighbors)
+
+    def transitions(self):
+        r"""
+        Run through the transitions of this automaton.
+        """
+        for s, out_neighbors in self._forward_neighbors.items():
+            for t, label in out_neighbors:
+                yield (s, t, label)
+
+    def __contains__(self, state):
+        r"""
+        Return whether ``state`` is contained in the automaton.
+        """
+        return state.copy(mutable=False) in self._forward_neighbors
 
     # TODO: provide vertex_map and edge_map functions
     def to_graph(self, directed=True, multiedges=True, loops=True):
@@ -186,8 +364,12 @@ class Automaton(object):
 
             sage: fp = "(0,~7,6)(1,~8,~2)(2,~6,~3)(3,5,~4)(4,8,~5)(7,~1,~0)"
             sage: cols = 'RBRBRBBBB'
-            sage: T = VeeringTriangulation(fp, cols)
-            sage: A = CoreAutomaton(T)
+            sage: vt = VeeringTriangulation(fp, cols)
+            sage: A = CoreAutomaton()
+            sage: A.add_seed(vt)
+            1
+            sage: A.run()
+            0
             sage: A
             Core veering automaton with 86 vertices
 
@@ -205,11 +387,12 @@ class Automaton(object):
             G = Graph(loops=loops, multiedges=multiedges)
 
         for g, neighb in self._forward_neighbors.items():
-            for gg, flip_data in neighb:
-                G.add_edge(g, gg, flip_data)
+            for gg, label in neighb:
+                G.add_edge(g, gg, label)
 
         return G
 
+    # TODO: move or deprecate (not a generic method)
     def rotation_automorphism(self):
         r"""
         Return the automorphism of the vertices that corresponds to rotation.
@@ -220,8 +403,12 @@ class Automaton(object):
 
             sage: from veerer import *
 
-            sage: T = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
-            sage: A = CoreAutomaton(T)
+            sage: vt = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
+            sage: A = CoreAutomaton()
+            sage: A.add_seed(vt)
+            1
+            sage: A.run()
+            0
             sage: rot = A.rotation_automorphism()
 
             sage: G = A.to_graph()
@@ -237,6 +424,7 @@ class Automaton(object):
             aut[vt] = vt2
         return aut
 
+    # TODO: move or deprecate (not a generic method)
     def conjugation_automorphism(self):
         """
         Return the automorphism of the vertices that corresponds to complex conjugation.
@@ -245,8 +433,12 @@ class Automaton(object):
 
             sage: from veerer import *
 
-            sage: T = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
-            sage: A = CoreAutomaton(T)
+            sage: vt = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
+            sage: A = CoreAutomaton()
+            sage: A.add_seed(vt)
+            1
+            sage: A.run()
+            0
             sage: conj = A.conjugation_automorphism()
 
             sage: G = A.to_graph()
@@ -297,8 +489,12 @@ class Automaton(object):
             sage: from veerer import *
 
             sage: filename = tmp_filename() + '.dot'
-            sage: T = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
-            sage: A = CoreAutomaton(T)
+            sage: vt = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
+            sage: A = CoreAutomaton()
+            sage: A.add_seed(vt)
+            1
+            sage: A.run()
+            0
             sage: A.export_dot(filename)
         """
         if filename is not None:
@@ -359,53 +555,7 @@ class Automaton(object):
         if filename is not None:
             f.close()
 
-    def triangulations(self):
-        r"""
-        Return an iterator over the veering triangulations in this automaton.
-
-        EXAMPLES::
-
-            sage: from veerer import *
-
-            sage: T = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
-            sage: A = CoreAutomaton(T)
-            sage: for t in A.triangulations():
-            ....:     assert t.angles() == [6]
-        """
-        return iter(self)
-
-    def num_triangulations(self):
-        r"""
-        Return the number of triangulations (= states of the automaton).
-
-        EXAMPLES::
-
-            sage: from veerer import *
-
-            sage: T = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
-            sage: A = CoreAutomaton(T)
-            sage: A.num_triangulations()
-            86
-        """
-        return len(self._forward_neighbors)
-
-    num_states = num_triangulations
-
-    def num_transitions(self):
-        r"""
-        Return the number of transitions of this automaton.
-
-        EXAMPLES::
-
-            sage: from veerer import *
-
-            sage: T = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
-            sage: A = CoreAutomaton(T)
-            sage: A.num_transitions()
-            300
-        """
-        return sum(len(flips) for flips in self._forward_neighbors.values())
-
+    # TODO: move or deprecate (not a generic method)
     def statistics(self):
         r"""
         Return detailed statistics about the properties of the veering
@@ -419,8 +569,12 @@ class Automaton(object):
 
             sage: from veerer import *
 
-            sage: T = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
-            sage: A = CoreAutomaton(T)
+            sage: vt = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
+            sage: A = CoreAutomaton()
+            sage: A.add_seed(vt)
+            1
+            sage: A.run()
+            0
             sage: st = A.statistics()
             sage: st
             {0: 24, 1: 4, 2: 4, 16: 28, 17: 5, 18: 5, 24: 10, 29: 3, 30: 3}
@@ -431,14 +585,19 @@ class Automaton(object):
             d[vt.properties_code()] += 1
         return dict(d)
 
+    # TODO: move or deprecate (not a generic method)
     def print_statistics(self, f=None):
         r"""
         EXAMPLES::
 
             sage: from veerer import *
 
-            sage: T = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
-            sage: A = CoreAutomaton(T)
+            sage: vt = VeeringTriangulation("(0,6,~5)(1,8,~7)(2,7,~6)(3,~1,~8)(4,~2,~3)(5,~0,~4)", "RRRBBBBBB")
+            sage: A = CoreAutomaton()
+            sage: A.add_seed(vt)
+            1
+            sage: A.run()
+            0
             sage: A.print_statistics()
                     red square-tiled 3
                    blue square-tiled 3
@@ -468,7 +627,7 @@ class Automaton(object):
 
     # TODO: it is a bit absurd to have this in the generic class since this does not make
     # sense for triangulations
-    # TODO: this is broken for GeometricAutomaton with QuadraticStratum(8)
+    # TODO: this is broken for DelaunayAutomaton with QuadraticStratum(8)
     # TODO: one should be more careful whether one wants the poles to be half edges or vertices
     @classmethod
     def from_stratum(self, stratum, **kwds):
@@ -479,70 +638,26 @@ class Automaton(object):
             sage: from surface_dynamics import Stratum         # optional - surface_dynamics
             sage: CoreAutomaton.from_stratum(Stratum([2], 1))  # optional - surface_dynamics
             Core veering automaton with 86 vertices
-            sage: GeometricAutomaton.from_stratum(Stratum([2], 1))  # optional - surface_dynamics
-            Geometric veering automaton with 54 vertices
+            sage: DelaunayAutomaton.from_stratum(Stratum([2], 1))  # optional - surface_dynamics
+            Delaunay automaton with 54 vertices
 
             sage: Q = Stratum([8], 2)                             # optional - surface_dynamics
             sage: A = CoreAutomaton.from_stratum(Q, max_size=100) # optional - surface_dynamics
             sage: A                                               # optional - surface_dynamics
-            Partial core veering automaton with 101 vertices
+            Partial core veering automaton with 103 vertices
         """
         return self.from_triangulation(VeeringTriangulation.from_stratum(stratum), **kwds)
 
+    def out_neighbors(self, state):
+        state = state.copy(mutable=False)
+        neighbors = self._forward_neighbors.get(state, None)
+        if neighbors is None:
+            raise ValueError('state not in the automaton')
+        return neighbors
+
     ######################
-    # DFS implementation #
+    # search implementation #
     ######################
-
-    def _setup(self):
-        pass
-
-    def _seed_setup(self, state):
-        r"""
-        Transform ``state`` into a canonical triangulation for the automaton.
-
-        To be implemented in subclasses.
-        """
-        raise NotImplementedError
-
-    def _forward_flips(self, state):
-        r"""
-        Return the list of forward flip_data from ``state``.
-
-        To be implemented in subclasses.
-        """
-        raise NotImplementedError
-
-    def _backward_flips(self, state):
-        r"""
-        Return the list of backward flips data from ``state``.
-
-        By default it return an empty tuple (ie backward flips are not
-        explored). Can be overridden in subclasses.
-        """
-        raise NotImplementedError
-
-    def _flip(self, state, flip_data, status=False):
-        r"""
-        Perform the flips to ``state`` given by ``flip_data``.
-
-        If ``status`` is ``False`` the method return ``flip_back_data``
-        that can be used to flip back ``state`` to its previous form
-        using :meth:`_flip_back`. If it is ``True`` the method return
-        a pair ``(is_valid, flip_back_data)`` where ``flip_back_data``
-        is as before and ``is_valid`` test whether the obtained triangulation
-        is valid.
-
-        To be implemented in subclasses
-        """
-        raise NotImplementedError
-
-    def _flip_back(self, flip_back_data, status=False):
-        r"""
-        Perform back the flips on ``state`` given by ``flip_back_data``.
-
-        To be implemented in subclasses
-        """
-        raise NotImplementedError
 
     def add_seed(self, state, setup=True):
         r"""
@@ -553,13 +668,6 @@ class Automaton(object):
         """
         if setup:
             state = self._seed_setup(state)
-
-            # TODO: check to be removed
-            if CHECK:
-                state._check()
-            state = state.copy(mutable=False)
-
-        assert not state._mutable
 
         if state in self._forward_neighbors:
             if self._verbosity >= 2:
@@ -572,29 +680,6 @@ class Automaton(object):
         self._seeds.append(state)
         return 1
 
-    def reset_current_state(self, state):
-        """
-        The method assumes that ``state`` is immutable and is not present in the graph.
-        """
-        if not state._mutable:
-            immutable_state = state
-            state = immutable_state.copy(mutable=True)
-        else:
-            immutable_state = state.copy(mutable=False)
-
-        if immutable_state in self._forward_neighbors:
-            raise ValueError('state already in the graph')
-
-        self._forward_neighbors[immutable_state] = []
-        self._backward_neighbors[immutable_state] = []
-        self._state = state
-        self._state_branch.clear()
-        self._state_branch.append(immutable_state)
-        self._flip_branch.clear()
-        self._flip_branch.append(self._forward_flips(state))
-        if self._backward:
-            self._backward_flip_queue.append(immutable_state)
-
     def next_seed(self):
         r"""
         Return the next seed or ``None`` if there is none.
@@ -604,36 +689,25 @@ class Automaton(object):
         while self._seeds or self._backward_flip_queue:
             while self._seeds:
                 seed = self._seeds.pop()
-                assert not seed._mutable
                 if seed not in self._forward_neighbors:
                     # not explored forward yet
                     return seed
-                elif self._verbosity >= 2:
-                    print('[next_seed] seed already in the graph')
 
             if not self._backward_flip_queue:
                 return
 
-            state = self._backward_flip_queue.pop().copy(mutable=True)
-            for flip_data in self._backward_flips(state):
-                is_target_valid, flip_back_data = self._flip_back(state, flip_data, True)
-                if is_target_valid:
-                    if self._verbosity >= 2:
-                        print('[next_seed] explore backward flip')
-                    r, _ = state.best_relabelling()
-                    new_state = state.copy(mutable=True)
-                    new_state.relabel(r, check=False)
-                    new_state.set_immutable()
-                    self.add_seed(new_state, setup=False)
-                self._flip(state, flip_back_data, False)
+            state = self._backward_flip_queue.pop()
+            for back_neighbor, label in self._in_neighbors(state):
+                self.add_seed(back_neighbor)
 
     def run(self, max_size=None):
         r"""
-        Discover the automaton via depth first search.
+        Discover new states and transitions in the automaton.
 
         INPUT:
 
-        - ``max_size`` -- an optional bound on the number of new states to compute
+        - ``max_size`` -- an optional bound on the number of new states to
+          compute
 
         EXAMPLES::
 
@@ -646,6 +720,7 @@ class Automaton(object):
             sage: A.add_seed(T)
             1
             sage: A.run()
+            0
             sage: A
             Core veering automaton with 2 vertices
 
@@ -653,6 +728,7 @@ class Automaton(object):
             sage: A.add_seed(T)
             1
             sage: A.run()
+            0
             sage: A
             Reduced core veering automaton with 1 vertex
 
@@ -666,9 +742,11 @@ class Automaton(object):
             sage: C.add_seed(T)
             1
             sage: C.run(10)
+            1
             sage: C
             Partial core veering automaton with 10 vertices
             sage: C.run()
+            0
             sage: C
             Core veering automaton with 1074 vertices
 
@@ -676,9 +754,11 @@ class Automaton(object):
             sage: C.add_seed(T)
             1
             sage: C.run(10)
+            1
             sage: C
             Partial reduced core veering automaton with 10 vertices
             sage: C.run()
+            0
             sage: C
             Reduced core veering automaton with 356 vertices
 
@@ -687,210 +767,169 @@ class Automaton(object):
             sage: from veerer import VeeringTriangulation, CoreAutomaton
             sage: T = VeeringTriangulation("(0,2,~1)(1,~0,~2)", "RBB")
             sage: A = CoreAutomaton()
-            sage: A
-            Partial core veering automaton with 0 vertex
             sage: A.add_seed(T)
             1
+            sage: A
+            Partial core veering automaton with 0 vertex
             sage: A.run(1)
+            1
             sage: A
             Partial core veering automaton with 1 vertex
             sage: A.run(1)
+            1
             sage: A
             Partial core veering automaton with 2 vertices
             sage: A.run(1)
+            0
             sage: A
             Core veering automaton with 2 vertices
-
-            sage: A0 = CoreAutomaton()
-            sage: A0.add_seed(T)
-            1
-            sage: A0.run()
-            sage: A0._flip_branch
-            [[]]
-            sage: A1 = CoreAutomaton()
-            sage: A1.add_seed(T)
-            1
-            sage: A1.run(1)
-            sage: A1.run(1)
-            sage: A1.run(1)
-            sage: A1._flip_branch
-            [[]]
         """
+        forward_neighbors = self._forward_neighbors
+        backward_neighbors = self._backward_neighbors
         backward_flip_queue = self._backward_flip_queue
-        T = self._state
-        state_branch = self._state_branch
-        flip_branch = self._flip_branch
-        flips = self._flips
-        relabellings = self._relabellings
-        fgraph = self._forward_neighbors
-        bgraph = self._backward_neighbors
-        recol = None
+        branch = collections.deque(self._branch)
 
         count = 0
-        old_size = len(fgraph)
+        old_size = len(self._forward_neighbors)
         while max_size is None or count < max_size:
             if self._verbosity >= 2:
                 print('[automaton] NEW LOOP')
+                sys.stdout.flush()
 
-            while not flip_branch or (len(flip_branch) == 1 and not flip_branch[0]):
-                # forward search is over... find a new start
-                seed = self.next_seed()
-                if seed is None:
+            while not branch:
+                # forward search is over... find a new seed
+                state = self.next_seed()
+                if state is None:
                     # no seed available anymore
                     if self._verbosity >= 2:
                         print('[automaton] done')
-                    return
+                        sys.stdout.flush()
+                    self._branch = []
+                    return 0
+
                 if self._verbosity >= 2:
                     print('[automaton] seed %s' % seed)
-                sys.stdout.flush()
-                self.reset_current_state(seed)
-                T = self._state
+                    sys.stdout.flush()
+
+                forward_neighbors[state] = []
+                backward_neighbors[state] = []
+                if self._backward:
+                    self._backward_flip_queue.append(state)
+                branch.clear()
+                branch.append(state)
                 count += 1
+
                 if max_size is not None and count >= max_size:
-                    return
+                    self._branch = list(branch)
+                    return 1
 
             # next step of forward search
-            assert T == state_branch[-1]
-            immutable_state = state_branch[-1]
-            assert not immutable_state._mutable
-            new_flip = flip_branch[-1].pop()
-
-            # TODO: check to be removed
-            if CHECK:
-                T._check()
-            if self._verbosity >= 2:
-                print('[automaton] at %s' % T)
-                print('[automaton] exploring flip %s' % str(new_flip))
-                sys.stdout.flush()
-            elif self._verbosity:
-                if len(fgraph) > old_size + 500:
-                    print('\r[automaton] %8d      %8d      %.3f      ' % (len(fgraph), len(branch), time() - t0), end='')
-                    sys.stdout.flush()
-                    old_size = len(fgraph)
-
-            # perform a flip on self._state
-            is_target_valid, flip_back_data = self._flip(T, new_flip, True)
+            if self._method == 'DFS':
+                state = branch.pop()
+            elif self._method == 'BFS':
+                state = branch.popleft()
+            else:
+                raise RuntimeError
 
             if self._verbosity >= 2:
-                print('[automaton] ... landed at %s' % T)
+                print('[automaton] at %s' % state)
                 sys.stdout.flush()
 
-            if is_target_valid: # = T is a valid vertex
-                r, _ = T.best_relabelling()
-                rinv = perm_invert(r)
-                T.relabel(r, check=False)
-                new_state = T.copy(mutable=False)
-                new_state.set_immutable()
-                fgraph[state_branch[-1]].append((new_state, new_flip))
-
-                if self._verbosity >= 2:
-                    print('[automaton] valid new state')
-                    sys.stdout.flush()
-
-                if new_state not in fgraph:
-                    # new target vertex
-                    if self._verbosity >= 2:
-                        print('[automaton] new vertex')
-                        sys.stdout.flush()
-
-                    fgraph[new_state] = []
-                    bgraph[new_state] = [(state_branch[-1], new_flip)]
+            for out_neighbor, label in self._out_neighbors(state):
+                if out_neighbor not in forward_neighbors:
+                    assert out_neighbor not in backward_neighbors
+                    forward_neighbors[out_neighbor] = []
+                    backward_neighbors[out_neighbor] = []
+                    branch.append(out_neighbor)
 
                     if self._backward:
-                        if self._verbosity >= 2:
-                            print('[automaton] adding it to backward_flip_queue')
-                        self._backward_flip_queue.append(new_state)
+                        self._backward_flip_queue.append(out_neighbor)
 
-                    # TODO: one can optimize the computation of forward flippable edges knowing
-                    # how the current state was built
-                    forward_flips = self._forward_flips(T)
-                    if forward_flips:
-                        flips.append(flip_back_data)
-                        relabellings.append(rinv)
-                        state_branch.append(new_state)
-                        flip_branch.append(forward_flips)
-                        count += 1
-                        continue
-                else:
-                    bgraph[new_state].append((state_branch[-1], new_flip))
+                    count += 1
 
-                # dead end or existing target vertex: backtrack the DFS search
-                if self._verbosity >= 2:
-                    print('[automaton] dead end or known state')
-                    sys.stdout.flush()
-                T.relabel(rinv, check=False)
+                forward_neighbors[state].append((out_neighbor, label))
+                backward_neighbors[out_neighbor].append((state, label))
 
+        self._branch = list(branch)
+        return 1
 
-            else:  # = T is not a valid vertex
-                if self._verbosity >= 2:
-                    print('[automaton] invalid vertex')
-                    sys.stdout.flush()
+    ############################################################
+    # Custom methods that have to be implemented in subclasses #
+    ############################################################
 
-            # not core or already visited
-            self._flip_back(self._state, flip_back_data, False)
+    def _setup(self, **extra_kwds):
+        r"""
+        Handling of extra setup arguments (called once during ``__init__``).
+        """
+        pass
 
-            # TODO: check to be removed
-            if CHECK:
-                T._check()
-            assert T == state_branch[-1], (T, state_branch[-1])
+    def _seed_setup(self, state):
+        return state
 
-            while flips and not flip_branch[-1]:
-                rinv = relabellings.pop()
-                T.relabel(rinv, check=False)
-                flip_back_data = flips.pop()
-                self._flip_back(self._state, flip_back_data, False)
-                state_branch.pop()
-                flip_branch.pop()
-                assert T == state_branch[-1]
+    def _out_neighbors(self, state):
+        r"""
+        Return an iterable of out-neighbors of ``state``.
 
-        if self._verbosity == 1:
-            print('\r[automaton] %8d      %8d      %.3f      ' % (len(fgraph), len(flip_branch), time() - t0))
-            sys.stdout.flush()
+        Each element consists of a pair ``(new_state, edge_label)``.
+        """
+        raise NotImplementedError
 
-        assert self._state is T
+    def _in_neighbors(self, state):
+        r"""
+        Return an iterable of in-neighbors of ``state``.
+
+        Each element consists of a pair ``(new_state, edge_label)``.
+        """
+        raise NotImplementedError
 
 
+# TODO: add the examples of the triangulations of the n-gon. To match with
+# the literature, one would need to consider canonical labels where we do
+# not modify edge names on the boundary.
 class FlipGraph(Automaton):
     r"""
-    The flip graph
+    The flip graph of triangulations.
 
     EXAMPLES::
 
             sage: from veerer import *
 
             sage: T = Triangulation([(0,1,2),(-1,-2,-3)])
-            sage: FlipGraph(T)
+            sage: A = FlipGraph()
+            sage: A.add_seed(T)
+            1
+            sage: A.run()
+            0
+            sage: A
             Triangulation automaton with 1 vertex
 
             sage: fp = '(0,1,2)(~0,~3,~8)(3,5,4)(~4,~1,~5)(6,7,8)(~6,9,~2)'
             sage: T = Triangulation(fp)
-            sage: FlipGraph(T)
+            sage: A = FlipGraph()
+            sage: A.add_seed(T)
+            1
+            sage: A.run()
+            0
+            sage: A
             Triangulation automaton with 236 vertices
     """
     _name = 'triangulation'
 
     def _seed_setup(self, state):
-        if not isinstance(state, Triangulation):
-            raise ValueError('invalid seed')
         state = state.copy(mutable=True)
         state.set_canonical_labels()
+        state.set_immutable()
         return state
 
-    def _forward_flips(self, state):
-        r"""
-        Return the list of forward flippable edges from ``state``
-        """
-        return state.flippable_edges()
+    def _out_neighbors(self, state):
+        for e in state.flippable_edges():
+            new_state = state.copy(mutable=True)
+            new_state.flip(e)
+            new_state.set_canonical_labels()
+            new_state.set_immutable()
+            yield (new_state, e)
 
-    def _flip(self, state, flip_data, status=False):
-        e = flip_data
-        state.flip(e, check=CHECK)
-        return (True, e) if status else e
-
-    def _flip_back(self, state, flip_back_data, status=False):
-        e = flip_back_data
-        state.flip_back(e, check=CHECK)
-        return (True, e) if status else e
+    _in_neighbors = _out_neighbors
 
 
 class CoreAutomaton(Automaton):
@@ -900,69 +939,109 @@ class CoreAutomaton(Automaton):
     _name = 'core veering'
 
     def _seed_setup(self, state):
-        if not isinstance(state, VeeringTriangulation) or not state.is_core():
-            raise ValueError('invalid seed')
         state = state.copy(mutable=True)
         state.set_canonical_labels()
+        state.set_immutable()
         return state
 
-    def _forward_flips(self, state):
-        r"""
-        Return the list of forward flippable edges from ``state``
-        """
-        ffe = state.forward_flippable_edges()
-        return [(x, col) for x in ffe for col in (BLUE, RED)]
+    def _out_neighbors(self, state):
+        state = state.copy(mutable=True)
+        for e in state.forward_flippable_edges():
+            for col in (BLUE, RED):
+                old_col = state.colour(e)
+                state.flip(e, col, check=CHECK)
+                if state.edge_has_curve(e):
+                    new_state = state.copy(mutable=True)
+                    new_state.set_canonical_labels()
+                    new_state.set_immutable()
+                    yield (new_state, (e, col))
+                state.flip_back(e, old_col, check=CHECK)
 
-    def _flip(self, state, flip_data, status=False):
-        e, col = flip_data
-        old_col = state.colour(e)
-        state.flip(e, col, check=CHECK)
-        flip_back_data = (e, old_col)
-        return (state.edge_has_curve(e), flip_back_data) if status else flip_back_data
+    def _in_neighbors(self, state):
+        state = state.copy(mutable=True)
+        for e in state.backward_flippable_edges():
+            for col in (BLUE, RED):
+                old_col = state.colour(e)
+                state.flip_back(e, col, check=CHECK)
+                if state.edge_has_curve(e):
+                    new_state = state.copy(mutable=True)
+                    new_state.set_canonical_labels()
+                    new_state.set_immutable()
+                    yield (new_state, (e, col))
+                state.flip(e, col, check=CHECK)
 
-    def _flip_back(self, state, flip_back_data, status=False):
-        e, old_col = flip_back_data
-        col = state.colour(e)
-        state.flip_back(e, old_col, check=CHECK)
-        flip_data = (e, col)
-        return (state.edge_has_curve(e), flip_data) if status else flip_data
 
 class ReducedCoreAutomaton(Automaton):
+    r"""
+    Automaton of reduced core veering triangulations.
+
+    This automaton can equivalently be thought as the (birecurrent) train track
+    automaton in a fixed stratum.
+
+    EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: T = VeeringTriangulation("(0,2,~1)(1,~0,~2)", "RBB")
+            sage: A = ReducedCoreAutomaton()
+            sage: A.add_seed(T)
+            1
+            sage: A.run()
+            0
+            sage: A
+            Reduced core veering automaton with 1 vertex
+
+        A more complicated surface in Q_1(1^2, -1^2)::
+
+            sage: fp = '(0,1,2)(~0,~3,~8)(3,5,4)(~4,~1,~5)(6,7,8)(~6,9,~2)'
+            sage: cols = 'BRBRBBBRBR'
+            sage: T = VeeringTriangulation(fp, cols)
+
+            sage: C_BFS = ReducedCoreAutomaton(method='BFS')
+            sage: C_BFS.add_seed(T)
+            1
+            sage: C_BFS.run()
+            0
+            sage: C_BFS
+            Reduced core veering automaton with 356 vertices
+
+            sage: C_DFS = ReducedCoreAutomaton(method='DFS')
+            sage: C_DFS.add_seed(T)
+            1
+            sage: C_DFS.run()
+            0
+            sage: C_DFS
+            Reduced core veering automaton with 356 vertices
+    """
     _name = 'reduced core veering'
 
     def _seed_setup(self, state):
-        if not isinstance(state, VeeringTriangulation) or not state.is_core():
-            raise ValueError('invalid seed')
-
+        if not isinstance(state, VeeringTriangulation):
+            raise TypeError
         state = state.copy(mutable=True)
         state.forgot_forward_flippable_colour()
         state.set_canonical_labels()
+        state.set_immutable()
         return state
 
-    def _forward_flips(self, state):
+    # TODO: move this method to VeeringTriangulation
+    def _flip(self, state, e, col, check=CHECK):
         r"""
-        Return the list of forward flippable edges from ``state``
+        Implement the edge flip for reduced veering triangulations.
+
+        The flip is the same as for veering triangulation but one additional
+        step is needed to turn some of the edges into purple edges.
         """
-        ffe = state.purple_edges()
-        # TODO: check to be removed
         if CHECK:
-            assert ffe == state.forward_flippable_edges()
-        return [(x, col) for x in ffe for col in (BLUE, RED)]
-
-    def _flip(self, state, flip_data, status=False):
-        e, col = flip_data
-
-        # TODO: check to be removed
-        if CHECK:
+            assert state._mutable
             assert state.is_forward_flippable(e)
-        old_col = state.colour(e)
+
         state.flip(e, col, reduced=False, check=CHECK)
 
-        if not self._state.edge_has_curve(e):
-            return False, (e, old_col, ())
+        if not state.edge_has_curve(e):
+            return (False, ())
 
         recolorings = []
-        # only two edges are succeptible to become forward flippable
         a, b, c, d = state.square_about_edge(e)
 
         # assertions to be removed
@@ -970,6 +1049,7 @@ class ReducedCoreAutomaton(Automaton):
         assert state._colouring[b] == BLUE, (b, colour_to_string(state._colouring[b]))
         assert state._colouring[c] == RED, (c, colour_to_string(state._colouring[c]))
         assert state._colouring[d] == BLUE, (d, colour_to_string(state._colouring[d]))
+
         if col == BLUE:
             if state.is_forward_flippable(b):
                 recolorings.append((b, BLUE))
@@ -996,42 +1076,65 @@ class ReducedCoreAutomaton(Automaton):
                 state._colouring[c] = PURPLE
                 state._colouring[state._ep[c]] = PURPLE
 
-            # assertions to be removed
             if CHECK:
                 assert not state.is_forward_flippable(e)
                 assert not state.is_forward_flippable(b)
                 assert not state.is_forward_flippable(d)
 
-        return True, (e, old_col, recolorings)
+        return (True, recolorings)
 
-    def _flip_back(self, state, flip_back_data, status=False):
-        e, old_col, recolorings = flip_back_data
+    def _flip_back(self, state, e, recolorings, check=CHECK):
         for ee, ccol in recolorings:
             state._colouring[ee] = ccol
-            state._colouring[self._state._ep[ee]] = ccol
-        state.flip_back(e, old_col, check=CHECK)
+            state._colouring[state._ep[ee]] = ccol
+        state.flip_back(e, PURPLE, check=CHECK)
+
+    def _out_neighbors(self, state):
+        state = state.copy(mutable=True)
+        for e in state.purple_edges():
+            for col in (BLUE, RED):
+                status, recolorings = self._flip(state, e, col, check=CHECK)
+                if state.edge_has_curve(e):
+                    new_state = state.copy(mutable=True)
+                    new_state.set_canonical_labels()
+                    new_state.set_immutable()
+                    yield (new_state, (e, col))
+                self._flip_back(state, e, recolorings, check=CHECK)
+
+    # TODO: implement in_neighbors
 
 
-class GeometricAutomaton(Automaton):
+# TODO: this should be renamed DelaunayAutomaton
+class DelaunayAutomaton(Automaton):
     r"""
-    Automaton of geometric veering triangulations.
+    Automaton of Delaunay (veering) triangulations.
 
-    A veering triangulation is called geometric, if the set of
-    associated L^oo-vector data is full dimensional in the
-    ambient stratum.
+    A veering triangulation is Delaunay (for the L-infinity metric), if the set
+    of associated L^oo-vector data is full dimensional in the ambient stratum.
 
     EXAMPLES::
 
         sage: from veerer import *
+
         sage: fp = "(0,~7,6)(1,~8,~2)(2,~6,~3)(3,5,~4)(4,8,~5)(7,~1,~0)"
         sage: cols = "RBRBRBBBB"
         sage: vt = VeeringTriangulation(fp, cols)
-        sage: GeometricAutomaton(vt)
-        Geometric veering automaton with 54 vertices
+        sage: A = DelaunayAutomaton()
+        sage: A.add_seed(vt)
+        1
+        sage: A.run()
+        0
+        sage: A
+        Delaunay automaton with 54 vertices
 
     One can check that the cardinality is indeed correct::
 
-        sage: sum(x.is_geometric() for x in CoreAutomaton(vt))
+        sage: C = CoreAutomaton()
+        sage: C.add_seed(vt)
+        1
+        sage: C.run()
+        0
+        sage: sum(x.is_delaunay() for x in C)
         54
 
     A meromorphic example in H(2,-2) that consists of three veering
@@ -1048,113 +1151,132 @@ class GeometricAutomaton(Automaton):
         sage: vt1 = VeeringTriangulation(fp, bdry, cols1)
         sage: vt2 = VeeringTriangulation(fp, bdry, cols2)
 
-        sage: GeometricAutomaton(vt0)
-        Geometric veering automaton with 3 vertices
-        sage: GeometricAutomaton(vt1)
-        Geometric veering automaton with 2 vertices
-        sage: GeometricAutomaton(vt2)
-        Geometric veering automaton with 1 vertex
+        sage: A0 = DelaunayAutomaton()
+        sage: A0.add_seed(vt0)
+        1
+        sage: A0.run()
+        0
+        sage: A0
+        Delaunay automaton with 3 vertices
 
-        sage: GeometricAutomaton(vt0, backward=True)
-        Geometric veering automaton with 3 vertices
-        sage: GeometricAutomaton(vt1, backward=True)
-        Geometric veering automaton with 3 vertices
-        sage: GeometricAutomaton(vt2, backward=True)
-        Geometric veering automaton with 3 vertices
+        sage: A1 = DelaunayAutomaton()
+        sage: A1.add_seed(vt1)
+        1
+        sage: A1.run()
+        0
+        sage: A1
+        Delaunay automaton with 2 vertices
+
+        sage: A2 = DelaunayAutomaton()
+        sage: A2.add_seed(vt2)
+        1
+        sage: A2.run()
+        0
+        sage: A2
+        Delaunay automaton with 1 vertex
+
+        sage: B0 = DelaunayAutomaton(backward=True)
+        sage: B0.add_seed(vt0)
+        1
+        sage: B0.run()
+        0
+        sage: B0
+        Delaunay automaton with 3 vertices
+
+        sage: B1 = DelaunayAutomaton(backward=True)
+        sage: B1.add_seed(vt1)
+        1
+        sage: B1.run()
+        0
+        sage: B1
+        Delaunay automaton with 3 vertices
+
+        sage: B2 = DelaunayAutomaton(backward=True)
+        sage: B2.add_seed(vt2)
+        1
+        sage: B2.run()
+        0
+        sage: B2
+        Delaunay automaton with 3 vertices
+
+    An example with linear constraint : the L-shape surface in the stratum H(2)
+    made of three squares::
+
+        sage: vt, s, t = VeeringTriangulations.L_shaped_surface(1, 1, 1, 1)
+        sage: f = VeeringTriangulationLinearFamily(vt, [s, t])
+        sage: A = DelaunayAutomaton()
+        sage: A.add_seed(f)
+        1
+        sage: A.run()
+        0
+        sage: A
+        Delaunay automaton with 6 vertices
+
+    Some more L-shape surfaces::
+
+        sage: for n in range(3, 7):
+        ....:     vt, s, t = VeeringTriangulations.L_shaped_surface(1, n-2, 1, 1)
+        ....:     f = VeeringTriangulationLinearFamily(vt, [s, t])
+        ....:     A = DelaunayAutomaton()
+        ....:     _ = A.add_seed(f)
+        ....:     _ = A.run()
+        ....:     print('n={}: {}'.format(n, A))
+        n=3: Delaunay automaton with 6 vertices
+        n=4: Delaunay automaton with 86 vertices
+        n=5: Delaunay automaton with 276 vertices
+        n=6: Delaunay automaton with 800 vertices
     """
-    _name = 'geometric veering'
+    _name = 'Delaunay'
 
     def _setup(self, backend=None):
         self._backend = backend
 
     def _seed_setup(self, state):
-        if not isinstance(state, VeeringTriangulation) or not state.is_geometric(backend=self._backend):
-            raise ValueError('invalid seed')
+        if not isinstance(state, VeeringTriangulation):
+            raise TypeError('invalid seed of type {}'.format(type(state).__name__))
         if self._backend is None:
             from .polyhedron.cone import default_backend
             self._backend = default_backend(state.base_ring())
+        if not state.is_delaunay(backend=self._backend):
+            raise ValueError('seed is not Delaunay')
         state = state.copy(mutable=True)
         state.set_canonical_labels()
+        state.set_immutable()
         return state
 
-    def _forward_flips(self, state):
+    def _out_neighbors(self, state, check=CHECK):
         r"""
-        Return the list of Delaunay forward flippable edges from ``state``.
+        Run through the list of out neighbors.
         """
-        return state.delaunay_flips(backend=self._backend)
+        for edges, col in state.delaunay_flips(backend=self._backend):
+            assert all(state.colour(e) == state.colour(edges[0]) for e in edges)
+            out_neighbor = state.copy(mutable=True)
+            for e in edges:
+                out_neighbor.flip(e, col, check=CHECK)
+            if CHECK:
+                out_neighbor._check(RuntimeError)
+                if not out_neighbor.is_delaunay(backend=self._backend):
+                    raise RuntimeError
+            out_neighbor.set_canonical_labels()
+            out_neighbor.set_immutable()
+            yield (out_neighbor, (edges, col))
 
-    def _backward_flips(self, state):
+    def _in_neighbors(self, state, check=CHECK):
         """
-        Return the list of Delaunay backward flippable edges from ``state``.
+        Run through the list of in neighbors.
         """
-        return state.backward_delaunay_flips(backend=self._backend)
-
-    def _flip(self, state, flip_data, status=False):
-        edges, col = flip_data
-        assert all(state.colour(e) == state.colour(edges[0]) for e in edges)
-        flip_back_data = (edges, state.colour(edges[0]))
-        for e in edges:
-            state.flip(e, col, check=CHECK)
-        if CHECK:
-            state._check(RuntimeError)
-            if not state.is_geometric(backend=self._backend):
-                raise RuntimeError
-        return (True, flip_back_data) if status else flip_back_data
-
-    def _flip_back(self, state, flip_back_data, status=False):
-        edges, old_col = flip_back_data
-        assert all(state.colour(e) == state.colour(edges[0]) for e in edges)
-        flip_data = (edges, state.colour(edges[0]))
-        for e in edges:
-            state.flip_back(e, old_col, check=CHECK)
-        if CHECK:
-            state._check(RuntimeError)
-            if not state.is_geometric(backend=self._backend):
-                raise RuntimeError
-        return (True, flip_data) if status else flip_data
-
-    def sources(self):
-        r"""
-        Iterate through sources (states with no backward neighbor) in this automaton.
-
-        EXAMPLES::
-
-            sage: from veerer import *
-            sage: fp = "(0,2,1)(~0,3,~1)"
-            sage: bdry = "(~2:2,~3:2)"
-            sage: cols = "BRRR"
-            sage: vt = VeeringTriangulation(fp, bdry, cols)
-            sage: A = GeometricAutomaton(vt, backward=True)
-            sage: list(A.sources())
-            [VeeringTriangulation("(0,~3,2)(1,3,~2)", boundary="(~1:2,~0:2)", colouring="RRBR")]
-
-        And the sources coincide with horizontal-Strebel veering triangulations::
-
-            sage: set(A.sources()) == set(vt for vt in A if vt.is_strebel(HORIZONTAL))
-            True
-        """
-        return (x for x, backward_neighbors in self._backward_neighbors.items() if not backward_neighbors)
-
-    def sinks(self):
-        r"""
-        Iterate through sinks (states with no forward neighbor) in this automaton.
-
-        EXAMPLES::
-
-            sage: from veerer import *
-            sage: fp = "(0,2,1)(~0,3,~1)"
-            sage: bdry = "(~2:2,~3:2)"
-            sage: cols = "BRRR"
-            sage: vt = VeeringTriangulation(fp, bdry, cols)
-            sage: list(A.sinks())
-            [VeeringTriangulation("(0,~2,1)(3,~1,~0)", boundary="(2:2,~3:2)", colouring="RBRR")]
-
-        The sinks coincide with vertical-Strebel veering triangulations::
-
-            sage: set(A.sinks()) == set(vt for vt in A if vt.is_strebel(VERTICAL))
-            True
-        """
-        return (x for x, forward_neighbors in self._forward_neighbors.items() if not forward_neighbors)
+        for edges, col in state.backward_delaunay_flips(backend=self._backend):
+            assert all(state.colour(e) == state.colour(edges[0]) for e in edges)
+            in_neighbor = state.copy(mutable=True)
+            for e in edges:
+                in_neighbor.flip(e, col, check=CHECK)
+                if CHECK:
+                    in_neighbor._check(RuntimeError)
+                    if not in_neighbor.is_delaunay(backend=self._backend):
+                        raise RuntimeError
+            in_neighbor.set_canonical_labels()
+            in_neighbor.set_immutable()
+            yield (in_neighbor, (edges, col))
 
     def cylinder_diagrams(self, col=RED):
         r"""
@@ -1162,12 +1284,12 @@ class GeometricAutomaton(Automaton):
 
         EXAMPLES::
 
-            sage: from veerer import RED, BLUE, GeometricAutomaton
+            sage: from veerer import RED, BLUE, DelaunayAutomaton
             sage: from surface_dynamics import Stratum                       # optional - surface_dynamics
-            sage: A = GeometricAutomaton.from_stratum(Stratum([2], 1))       # optional - surface_dynamics
+            sage: A = DelaunayAutomaton.from_stratum(Stratum([2], 1))        # optional - surface_dynamics
             sage: len(A.cylinder_diagrams(RED))                              # optional - surface_dynamics
             2
-            sage: A = GeometricAutomaton.from_stratum(Stratum([1, 1], 1))    # optional - surface_dynamics
+            sage: A = DelaunayAutomaton.from_stratum(Stratum([1, 1], 1))     # optional - surface_dynamics
             sage: len(A.cylinder_diagrams(RED))                              # optional - surface_dynamics
             4
 
@@ -1176,7 +1298,7 @@ class GeometricAutomaton(Automaton):
             sage: from veerer import VeeringTriangulations, VeeringTriangulationLinearFamily
             sage: t, x, y = VeeringTriangulations.L_shaped_surface(1, 1, 1, 1)
             sage: f = VeeringTriangulationLinearFamily(t, [x, y])
-            sage: A = f.geometric_automaton()
+            sage: A = f.delaunay_automaton()
             sage: len(A.cylinder_diagrams())
             2
 
@@ -1234,47 +1356,151 @@ class GeometricAutomaton(Automaton):
         return orbits
 
 
-class GeometricAutomatonSubspace(GeometricAutomaton):
+# TODO: for now the implementation is only partial since we are missing the
+# transitions from Strebel graphs to Delauany triangulations
+class DelaunayStrebelAutomaton(Automaton):
     r"""
-    Automaton of geometric veering triangulations with a linear subspace constraint.
+    Delaunay-Strebel automaton.
 
-    A veering triangulation is called geometric, if the set of
-    associated L^oo-vector data is full dimensional in the
-    ambient stratum.
+    The states of the Delaunay-Strebel automaton are Delaunay triangulations,
+    vertical Strebel graphs and horizontal Strebel graphs. They are stored
+    as pairs ``(kind, state)`` where
 
-    EXAMPLES::
+    - ``kind`` is either one of the strings ``'delaunay'``,
+      ``'vertical-strebel'`` or ``'horizontal-strebel'``
+    - ``state`` is either a :class:`VeeringTriangulation` or
+      :class:`StrebelGraph`
+
+    EXAMPLES:
+
+    A meromorphic example in H(2,-2) that consists of three veering
+    triangulations.
 
         sage: from veerer import *
 
-        sage: vt, s, t = VeeringTriangulations.L_shaped_surface(1, 1, 1, 1)
-        sage: f = VeeringTriangulationLinearFamily(vt, [s, t])
-        sage: GeometricAutomatonSubspace(f)
-        Geometric veering linear constraint automaton with 6 vertices
-
-    One can check that the cardinality is indeed correct::
-
-        sage: sum(x.is_geometric() for x in CoreAutomaton(vt))
-        54
-
-    Some L-shape surfaces::
-
-        sage: for n in range(3, 7):
-        ....:     vt, s, t = VeeringTriangulations.L_shaped_surface(1, n-2, 1, 1)
-        ....:     f = VeeringTriangulationLinearFamily(vt, [s, t])
-        ....:     print('n={}: {}'.format(n, GeometricAutomatonSubspace(f)))
-        n=3: Geometric veering linear constraint automaton with 6 vertices
-        n=4: Geometric veering linear constraint automaton with 86 vertices
-        n=5: Geometric veering linear constraint automaton with 276 vertices
-        n=6: Geometric veering linear constraint automaton with 800 vertices
+        sage: fp = "(0,2,1)(~0,3,~1)"
+        sage: bdry = "(~2:2,~3:2)"
+        sage: cols0 = "BBRR"
+        sage: cols1 = "RRBB"
+        sage: vt0 = VeeringTriangulation(fp, bdry, cols0)
+        sage: vt1 = VeeringTriangulation(fp, bdry, cols1)
+        sage: DS = DelaunayStrebelAutomaton(backward=True)
+        sage: DS.add_seed(vt0)
+        1
+        sage: DS.add_seed(vt1)
+        1
+        sage: DS.run()
+        0
+        sage: DS
+        sage: sum(kind == 'vertical-strebel' for kind, state in DS)
+        2
+        sage: sum(kind == 'horizontal-strebel' for kind, state in DS)
+        2
+        sage: sum(kind == 'delaunay' for kind, state in DS)
+        6
     """
-    _name = 'geometric veering linear constraint'
+    _name = 'Delaunay-Strebel'
+
+    def _setup(self, backend=None):
+        self._backend = backend
 
     def _seed_setup(self, state):
-        if not isinstance(state, VeeringTriangulationLinearFamily) or not state.is_geometric(backend=self._backend):
-            raise ValueError('invalid seed')
-        if self._backend is None:
-            from .polyhedron.cone import default_backend
-            self._backend = default_backend(state.base_ring())
+        if isinstance(state, tuple) and len(state) == 2:
+            kind, state = state
+        elif isinstance(state, VeeringTriangulation):
+            kind = 'delaunay'
+        elif isinstance(state, StrebelGraph):
+            kind = 'vertical-strebel'
+        else:
+            raise TypeError('invalid state')
+
+        # TODO: we should also allow Strebel graphs as seeds
+        if kind == 'delaunay':
+            if self._backend is None:
+                from .polyhedron.cone import default_backend
+                self._backend = default_backend(state.base_ring())
+            if not state.is_geometric(backend=self._backend):
+                raise ValueError('invalid seed')
+
         state = state.copy(mutable=True)
         state.set_canonical_labels()
-        return state
+        state.set_immutable()
+        return (kind, state)
+
+    def _out_neighbors(self, state, check=CHECK):
+        r"""
+        Return the list of out-neighbors.
+        """
+        kind, state = state
+        if kind == 'delaunay':
+            flips = state.delaunay_flips(backend=self._backend)
+            if not flips:
+                if CHECK:
+                    assert state.is_strebel(VERTICAL)
+                out_neighbor = state.strebel_graph(VERTICAL, mutable=True)
+                out_neighbor.set_canonical_labels()
+                out_neighbor.set_immutable()
+                yield (('vertical-strebel', out_neighbor), 'strebel')
+                return
+
+            for edges, col in flips:
+                assert all(state.colour(e) == state.colour(edges[0]) for e in edges)
+                out_neighbor = state.copy(mutable=True)
+                for e in edges:
+                    out_neighbor.flip(e, col, check=CHECK)
+                if CHECK:
+                    out_neighbor._check(RuntimeError)
+                    if not out_neighbor.is_delaunay(backend=self._backend):
+                        raise RuntimeError
+                out_neighbor.set_canonical_labels()
+                out_neighbor.set_immutable()
+                yield ((kind, out_neighbor), (edges, col))
+
+        elif kind == 'vertical-strebel':
+            return
+
+        elif kind == 'horizontal-strebel':
+            # TODO: a horizontal Strebel does have outgoing neighbors
+            return
+
+        else:
+            raise RuntimeError
+
+    def _in_neighbors(self, state):
+        """
+        Return the list of Delaunay backward flippable edges from ``state``.
+        """
+        kind, state = state
+        if kind == 'delaunay':
+            flips = state.backward_delaunay_flips(backend=self._backend)
+            if not flips:
+                if CHECK:
+                    assert state.is_strebel(HORIZONTAL)
+                in_neighbor = state.strebel_graph(HORIZONTAL, mutable=True)
+                in_neighbor.set_canonical_labels()
+                in_neighbor.set_immutable()
+                yield (('horizontal-strebel', in_neighbor), 'strebel')
+                return
+
+            for edges, col in flips:
+                assert all(state.colour(e) == state.colour(edges[0]) for e in edges)
+                in_neighbor = state.copy(mutable=True)
+                for e in edges:
+                    in_neighbor.flip(e, col, check=CHECK)
+                    if CHECK:
+                        in_neighbor._check(RuntimeError)
+                        if not in_neighbor.is_delaunay(backend=self._backend):
+                            raise RuntimeError
+                in_neighbor.set_canonical_labels()
+                in_neighbor.set_immutable()
+                yield ((kind, in_neighbor), (edges, col))
+
+        elif kind == 'vertical-strebel':
+            # TODO: a vertical Strebel does have incoming neighbors
+            return
+
+        elif kind == 'horizontal-strebel':
+            return
+
+        else:
+            raise RuntimeError

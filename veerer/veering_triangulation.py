@@ -295,6 +295,7 @@ class VeeringTriangulation(Triangulation):
         x = ((x ^ hash(self._vp.tobytes())) * 2147483693) + 82520 + self._n + self._n
         x = ((x ^ hash(self._ep.tobytes())) * 2147483693) + 82520 + self._n + self._n
         x = ((x ^ hash(self._fp.tobytes())) * 2147483693) + 82520 + self._n + self._n
+        x = ((x ^ hash(self._bdry.tobytes())) * 2147483693) + 82520 + self._n + self._n
         x = ((x ^ hash(self._colouring.tobytes())) * 2147483693) + 82520 + self._n + self._n
 
         return x
@@ -3265,7 +3266,7 @@ class VeeringTriangulation(Triangulation):
         self._set_train_track_constraints(M.add_constraint, x, slope, 1, allow_degenerations)
         return M.optimizing_point()
 
-    def geometric_polytope(self, x_low_bound=0, y_low_bound=0, hw_bound=0, backend=None):
+    def delaunay_polytope(self, x_low_bound=0, y_low_bound=0, hw_bound=0, backend=None):
         r"""
         Return the geometric polytope of this veering triangulation.
 
@@ -3277,11 +3278,11 @@ class VeeringTriangulation(Triangulation):
             sage: from veerer import *
 
             sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
-            sage: T.geometric_polytope()
+            sage: T.delaunay_polytope()
             Cone of dimension 4 in ambient dimension 6 made of 6 facets (backend=ppl)
-            sage: T.geometric_polytope(x_low_bound=1, y_low_bound=1, hw_bound=1)  # not tested
+            sage: T.delaunay_polytope(x_low_bound=1, y_low_bound=1, hw_bound=1)  # not tested
 
-            sage: T.geometric_polytope(backend='sage')
+            sage: T.delaunay_polytope(backend='sage')
             Cone of dimension 4 in ambient dimension 6 made of 6 facets (backend=sage)
         """
         from sage.rings.integer_ring import ZZ
@@ -3294,6 +3295,37 @@ class VeeringTriangulation(Triangulation):
         self._set_train_track_constraints(cs.insert, y, HORIZONTAL, y_low_bound, False)
         self._set_geometric_constraints(cs.insert, x, y, hw_bound=hw_bound)
         return cs.cone(backend)
+
+    # TODO: deprecate
+    geometric_polytope = delaunay_polytope
+
+    def delaunay_automaton(self, run=True, backward=None, backend=None):
+        r"""
+        Return the Delaunay automaton containing this veering triangulation.
+        """
+        from .automaton import DelaunayAutomaton
+        if backward is None:
+            backward = any(self._bdry)
+        A = DelaunayAutomaton(backward=backward, backend=backend)
+        A.add_seed(self)
+        if run:
+            A.run()
+        return A
+
+    geometric_automaton = delaunay_automaton
+
+    def delaunay_strebel_automaton(self, run=True, backward=None, backend=None):
+        r"""
+        Return the Delaunay-Strebel automaton containing this veering triangulation.
+        """
+        from .automaton import DelaunayStrebelAutomaton
+        if backward is None:
+            backward = any(self._bdry)
+        A = DelaunayStrebelAutomaton(backward=backward, backend=backend)
+        A.add_seed(self)
+        if run:
+            A.run()
+        return A
 
     def _complexify_generators(self, Gx):
         r"""
@@ -3824,7 +3856,7 @@ class VeeringTriangulation(Triangulation):
         return self.train_track_polytope(HORIZONTAL, backend=backend).affine_dimension() == d and \
                self.train_track_polytope(VERTICAL, backend=backend).affine_dimension() == d
 
-    def is_geometric(self, backend=None):
+    def is_delaunay(self, backend=None):
         r"""
         Test whether this coloured triangulation is geometric.
 
@@ -3852,6 +3884,9 @@ class VeeringTriangulation(Triangulation):
         Pdim = P.affine_dimension()
         assert Pdim <= 2 * dim
         return Pdim == 2 * dim
+
+    # TODO: deprecate
+    is_geometric = is_delaunay
 
     def balanced_polytope(self, slope=VERTICAL, homogeneous=False, backend=None):
         r"""

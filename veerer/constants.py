@@ -133,6 +133,13 @@ DOWN = VERTICAL | 8
 
 SLOPES = [HORIZONTAL, VERTICAL]
 
+sHORINZONTAL = 'horizontal'
+sVERTICAL = 'vertical'
+sRIGHT = 'right'
+sLEFT = 'left'
+sUP = 'up'
+sDOWN = 'down'
+
 
 def colour_from_char(c):
     r"""
@@ -206,3 +213,32 @@ def colour_to_string(col):
         return sGREEN
     else:
         raise ValueError("unknown color %s" % col)
+
+
+def slope_to_string(slope):
+    r"""
+    EXAMPLES::
+
+        sage: from veerer.constants import slope_to_string, HORIZONTAL, VERTICAL, RIGHT, LEFT, UP, DOWN
+
+        sage: assert colour_to_string(HORIZONTAL) == 'horizontal'
+        sage: assert colour_to_string(VERTICAL) == 'vertical'
+        sage: assert colour_to_string(RIGHT) == 'right'
+        sage: assert colour_to_string(LEFT) == 'left'
+        sage: assert colour_to_string(UP) == 'up'
+        sage: assert colour_to_string(DOWN) == 'down'
+    """
+    if slope == HORIZONTAL:
+        return sHORIZONTAL
+    elif slope == VERTICAL:
+        return sVERTICAL
+    elif slope == RIGHT:
+        return sRIGHT
+    elif slope == LEFT:
+        return sLEFT
+    elif slope == UP:
+        return sUP
+    elif slope == DOWN:
+        return sDOWN
+    else:
+        raise ValueError('invalid slope')

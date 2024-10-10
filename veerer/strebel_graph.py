@@ -195,6 +195,21 @@ class StrebelGraph(object):
         if e < 0 or e >= self._n:
             raise ValueError('half-edge number out of range e={}'.format(e))
         return e
+
+    def set_immutable(self):
+        self._mutable = False
+
+    def __hash__(self):
+        if self._mutable:
+            raise ValueError('mutable veering triangulation not hashable')
+
+        x = 140737488617563
+        x = ((x ^ hash(self._vp.tobytes())) * 2147483693) + 82520 + self._n + self._n
+        x = ((x ^ hash(self._ep.tobytes())) * 2147483693) + 82520 + self._n + self._n
+        x = ((x ^ hash(self._fp.tobytes())) * 2147483693) + 82520 + self._n + self._n
+        x = ((x ^ hash(self._bdry.tobytes())) * 2147483693) + 82520 + self._n + self._n
+
+        return x
     
     def copy(self, mutable=None):
         
