@@ -858,7 +858,7 @@ class VeeringTriangulation(Triangulation):
             sage: T.triangulation()
             Triangulation("(0,1,2)(~2,~0,~1)")
         """
-        return Triangulation.copy(self, mutable)
+        return Triangulation.copy(self, mutable, Triangulation)
 
     def _colouring_string(self, short=False):
         n = self.num_half_edges()
@@ -2921,7 +2921,7 @@ class VeeringTriangulation(Triangulation):
         else:
             raise ValueError('bad slope parameter')
 
-        for (i,j,k) in self.faces():
+        for (i,j,k) in self.triangles():
             i = self._norm(i)
             ci = self._colouring[i]
             j = self._norm(j)
@@ -4442,22 +4442,24 @@ class VeeringTriangulation(Triangulation):
         The half-edge belongs to the Strebel graph if and only if the index is not -1.
         The index of the half-edge in the Strebel graph is the corresponding label of the half-edge in the Strebel graph
         """
-        
         n = self._n # the number of half-edges
         ep = self._ep #edge permutation
         fp = self._fp
         vp = self._vp
         list_boundary = self._bdry
         list_colour = [self.colour(e) for e in range(n)]
-        
+
         s = self.stratum()
-        g = s.genus()
+        try:
+            g = s.surface_genus()
+        except AttributeError:
+            g = s.genus()
         sing = len(s.signature())
         num_dim = 2*g + sing - 2 #complex dimension of the associated stratum
         m = 2*(num_dim)
-        
+
         index_strebel = [-1]*n #index of the half-edge of self in the strebel graph
-        
+
         if slope == VERTICAL: #construct vertical strebel graph
             j = 0 #index of the half-edge in the strebel graph, j[e] is the label of the edge of e in Strebel graph
             for e in range(n):
@@ -4472,16 +4474,16 @@ class VeeringTriangulation(Triangulation):
                         #Accoding to the result, an internal edge which is diagonal of an
                         # monochromatic quadrilateral belongs to the Strebel graph
                         elif self.colours_about_edge(e) == [RED,RED,RED,RED] or self.colours_about_edge(e) == [BLUE,BLUE,BLUE,BLUE]:
-                            index_strebel[e] = j 
-                            index_strebel[ep[e]] = m - 1 - j 
-                            j = j + 1 
+                            index_strebel[e] = j
+                            index_strebel[ep[e]] = m - 1 - j
+                            j = j + 1
                     #Accoding to the result, a boundary edge which is not adjacent to any
-                    # internal face belongs to the Strebel graph        
+                    # internal face belongs to the Strebel graph
                     elif (list_boundary[e] > 0) and (list_boundary[ep[e]] > 0):
-                        index_strebel[e] = j 
-                        index_strebel[ep[e]] = m-1-j 
-                        j = j + 1 
-                    else: 
+                        index_strebel[e] = j
+                        index_strebel[ep[e]] = m-1-j
+                        j = j + 1
+                    else:
                         #RED = 1
                         #BLUE = 2
                         #Accoding to the result, a boundary edge which is adjacent to an
@@ -4490,47 +4492,47 @@ class VeeringTriangulation(Triangulation):
                             a = fp[ep[e]]
                             b = fp[a]
                             if list_colour[ep[e]] == RED and list_colour[b] == BLUE:
-                                index_strebel[e] = j 
-                                index_strebel[ep[e]] = m-1-j 
-                                j = j + 1 
+                                index_strebel[e] = j
+                                index_strebel[ep[e]] = m-1-j
+                                j = j + 1
                             elif list_colour[ep[e]] == BLUE and list_colour[a] == RED:
-                                index_strebel[e] = j 
-                                index_strebel[ep[e]] = m-1-j 
-                                j = j + 1 
+                                index_strebel[e] = j
+                                index_strebel[ep[e]] = m-1-j
+                                j = j + 1
                         elif list_boundary[ep[e]] > 0: #e is in an internal edge
                             a = fp[e]
                             b = fp[a]
                             if list_colour[e] == RED and list_colour[b] == BLUE:
-                                index_strebel[e] = j 
-                                index_strebel[ep[e]] = m-1-j 
-                                j = j + 1 
+                                index_strebel[e] = j
+                                index_strebel[ep[e]] = m-1-j
+                                j = j + 1
                             elif list_colour[e] == BLUE and list_colour[a] == RED:
-                                index_strebel[e] = j 
-                                index_strebel[ep[e]] = m-1-j 
-                                j = j + 1 
-                                    
+                                index_strebel[e] = j
+                                index_strebel[ep[e]] = m-1-j
+                                j = j + 1
+
         elif slope == HORIZONTAL:
-            j = 0 
+            j = 0
             for e in range(n):
                 if e <= ep[e]:
                     if (not list_boundary[e]) and not (list_boundary[ep[e]]):
-                        #Accoding to the result, an internal edge which is forward flippable 
+                        #Accoding to the result, an internal edge which is forward flippable
                         # belongs to the Strebel graph
                         if self.is_forward_flippable(e, check=False):
-                            index_strebel[e] = j 
-                            index_strebel[ep[e]] = m - 1 - j 
+                            index_strebel[e] = j
+                            index_strebel[ep[e]] = m - 1 - j
                             j = j + 1
-                        #Accoding to the result, an internal edge which is diagonal of an 
+                        #Accoding to the result, an internal edge which is diagonal of an
                         #monochromatic quadrilateral belongs to the Strebel graph
                         elif self.colours_about_edge(e) == [RED,RED,RED,RED] or self.colours_about_edge(e) == [BLUE,BLUE,BLUE,BLUE]:
                             index_strebel[e] = j
                             index_strebel[ep[e]] = m - 1 - j
                             j = j + 1
-                    #Accoding to the result, a boundary edge which is not adjacent to any 
+                    #Accoding to the result, a boundary edge which is not adjacent to any
                     # internal face belongs to the Strebel graph
                     elif (list_boundary[e] > 0) and (list_boundary[ep[e]] > 0):
-                        index_strebel[e] = j 
-                        index_strebel[ep[e]] = m-1-j 
+                        index_strebel[e] = j
+                        index_strebel[ep[e]] = m-1-j
                         j = j + 1
                     else:
                         #RED = 1
@@ -4540,95 +4542,91 @@ class VeeringTriangulation(Triangulation):
                         if list_boundary[e] > 0: #ep[e] is in an internal edge
                             a = fp[ep[e]]
                             b = fp[a]
-                            if list_colour[ep[e]] == RED and list_colour[a] == BLUE: 
-                                index_strebel[e] = j 
-                                index_strebel[ep[e]] = m-1-j 
-                                j = j + 1 
+                            if list_colour[ep[e]] == RED and list_colour[a] == BLUE:
+                                index_strebel[e] = j
+                                index_strebel[ep[e]] = m-1-j
+                                j = j + 1
                             elif list_colour[ep[e]] == BLUE and list_colour[b] == RED:
-                                index_strebel[e] = j 
-                                index_strebel[ep[e]] = m-1-j 
-                                j = j + 1 
+                                index_strebel[e] = j
+                                index_strebel[ep[e]] = m-1-j
+                                j = j + 1
                         elif list_boundary[ep[e]] > 0: #e is in an internal edge
                             a = fp[e]
                             b = fp[a]
                             if list_colour[e] == RED and list_colour[a] == BLUE:
-                                index_strebel[e] = j 
-                                index_strebel[ep[e]] = m-1-j 
-                                j = j + 1 
+                                index_strebel[e] = j
+                                index_strebel[ep[e]] = m-1-j
+                                j = j + 1
                             elif list_colour[e] == BLUE and list_colour[b] == RED:
-                                index_strebel[e] = j 
-                                index_strebel[ep[e]] = m-1-j 
-                                j = j + 1 
+                                index_strebel[e] = j
+                                index_strebel[ep[e]] = m-1-j
+                                j = j + 1
         else:
             raise ValueError('slope must either be HORIZONTAL or VERTICAL')
-        
+
         if j != m/2:
                 raise ValueError('The half-edges are not as many as expected. Check code')
-        
+
         return index_strebel
-    
+
     def strebel_graph(self, slope=VERTICAL, mutable=False):
         r"""
-        Return a Vertical Strebel graph associated to this veering triangulation.
+        Return the Strebel graph associated to this veering triangulation.
 
-        Input: slope
-        
+        INPUT:
+
+        - ``slope`` (optional, default ``VERTICAL``) -- either ``VERTICAL`` or ``HORIZONTAL``
+
+        - ``mutable`` (optional, default ``False``) -- whether the output Strebel graph is mutable
+
         EXAMPLES::
 
             sage: from veerer import *
-            
-        Vertical veering triangulation::
 
-            sage: vt = VeeringTriangulation("(0,1,2)(~1,~2,3)(~3,~0)", boundary = {"~0":2, "~3":2}, colouring = "RBRR")
+        Strebel-veering triangulation in the stratum H(2, -2)::
+
+            sage: t = Triangulation("(0,2,1)(3,~1,~0)", boundary="(~3:2,~2:2)")
+            sage: vt = VeeringTriangulation(t, colouring="RBBB")
             sage: vt.stratum()
             H_1(2, -2)
-            sage: sg = vt.strebel_graph(slope = VERTICAL)
-            sage: sg.vertices()
-            [[0, 1, 3, 2]]
-            sage: sg.faces()
-            [[0, 1, 3, 2]]
-            sage: sg._bdry
-            array('i', [1, 0, 0, 1])
-            
-        Horizontal veering triangulation::
-        
-            sage: vt = VeeringTriangulation("(0,1,2)(~1,~2,3)(~3,~0)", boundary = {"~0":2, "~3":2}, colouring = "BRBB")
-            sage: vt.stratum()
+            sage: sg = vt.strebel_graph(slope=VERTICAL)
+            sage: sg
+            StrebelGraph("(0:0,~1:1,~0:0,1:1)")
+            sage: sg.stratum()
             H_1(2, -2)
-            sage: sg = vt.strebel_graph(slope = HORIZONTAL)
-            sage: sg.vertices()
-            [[0, 1, 3, 2]]
-            sage: sg.faces()
-            [[0, 1, 3, 2]]
-            sage: sg._bdry
-            array('i', [1, 0, 0, 1])
+
+            sage: vt = VeeringTriangulation(t, colouring="BRBB")
+            sage: sg = vt.strebel_graph(slope=HORIZONTAL)
+            sage: sg
+            StrebelGraph("(0:0,~1:1,~0:0,1:1)")
+            sage: sg.stratum()
+            H_1(2, -2)
         """
-        #STEP 0: check strebel
-        if not self.is_strebel(slope = slope):
+        if not self.is_strebel(slope=slope):
             raise ValueError('triangulation is not Strebel')
-        
-        n = self._n # the number of half-edges
-        ep = self._ep #edge permutation
+
+        n = self._n
+        ep = self._ep
         fp = self._fp
         vp = self._vp
         alpha = self._bdry
         list_colour = [self.colour(e) for e in range(n)]
-        
+
+        # TODO: clean this in surface-dynamics
+        # see https://github.com/flatsurf/surface-dynamics/issues/99
         s = self.stratum()
-        g = s.genus()
+        try:
+            g = s.surface_genus()
+        except AttributeError:
+            g = s.genus()
         sing = len(s.signature())
         num_dim = 2*g + sing - 2 #complex dimension of the associated stratum
         m = 2*(num_dim) #the number of the !!half!!-edgs of the stratum, so we have the factor "2" !
-        
-        
-        #STEP 1: find the list of half-edges in the strebel graph
-        
+
+        # STEP 1: get the list of half-edges in the strebel graph
         index_strebel = self.strebel_edges(slope=slope)
-         #return index_strebel
-        
-        #STEP 2: find vertex permutation, edge permutation, and boundary array
-        
-        #vertices permutation and boundary array
+
+        # STEP 2: build vertex permutation, edge permutation, and boundary array
         list_vertex_permutation = []
         list_beta = []
         for i in range(m):
@@ -4636,7 +4634,7 @@ class VeeringTriangulation(Triangulation):
             e = e0
             sum_alpha_e = alpha[e]
             while True:
-                if alpha[e] != 0: #make sure that the last edge (with label_e!= -1) does not counted 
+                if alpha[e] != 0: #make sure that the last edge (with label_e!= -1) does not counted
                     e_mark_0 = e
                     e_mark_1 = vp[e]
                 e = vp[e]
@@ -4665,21 +4663,21 @@ class VeeringTriangulation(Triangulation):
                     else:
                         list_beta_e = sum_alpha_e - 1
                         list_beta.append(list_beta_e)
-        
+
         vertex_permutation = array('i', list_vertex_permutation)
         beta = array('i', list_beta)
-        
+
         #edge permutation
         edge_permutation = array('i', [-1] * m)
         for i in range(m):
             edge_permutation[i] = m-1-i
-        
-        
+
         #STEP3: bulid the Strebel graph
         from .strebel_graph import StrebelGraph
-        G = StrebelGraph.strebel_from_face_edge_perms(vertex_permutation, edge_permutation, boundary=beta, mutable=mutable)
-        
+        G = StrebelGraph.from_face_edge_perms(vertex_permutation, edge_permutation, boundary=beta, mutable=mutable)
+
         return G
+
 
 class VeeringTriangulations:
     @staticmethod
