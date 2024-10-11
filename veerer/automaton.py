@@ -192,10 +192,12 @@ class Automaton:
         """
         status = None
         if self._branch or self._backward_flip_queue or self._seeds:
-            status = 'partial '
+            status = 'Partial '
+            name = self._name
         else:
             status = ''
-        return ("%s%s automaton with %s %s" % (status, self._name, len(self._forward_neighbors), 'vertex' if len(self._forward_neighbors) <= 1 else 'vertices')).capitalize()
+            name = self._name[0].upper() + self._name[1:]
+        return ("%s%s automaton with %s %s" % (status, name, len(self._forward_neighbors), 'vertex' if len(self._forward_neighbors) <= 1 else 'vertices'))
 
     def __repr__(self):
         return str(self)
@@ -1392,10 +1394,11 @@ class DelaunayStrebelAutomaton(Automaton):
         sage: DS.run()
         0
         sage: DS
+        Delaunay-Strebel automaton with 8 vertices
         sage: sum(kind == 'vertical-strebel' for kind, state in DS)
-        2
+        1
         sage: sum(kind == 'horizontal-strebel' for kind, state in DS)
-        2
+        1
         sage: sum(kind == 'delaunay' for kind, state in DS)
         6
     """
