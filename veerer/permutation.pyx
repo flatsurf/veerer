@@ -385,6 +385,8 @@ def str_to_cycles_and_data(s):
         ([[0, 1]], {0: 1, 1: 2})
         sage: str_to_cycles_and_data('(0:1,1:2)(3:0)')
         ([[0, 1], [3]], {0: 1, 1: 2, 3: 0})
+        sage: str_to_cycles_and_data('(0,1:1)')
+        ([[0, 1]], {0: 1, 1: 0})
     """
     r = []
     data = {}
@@ -392,14 +394,27 @@ def str_to_cycles_and_data(s):
         if not c_str:
             continue
         cycle = []
-        for c in c_str.replace(' ', '').split(','):
-            i = c.find(':')
-            if i == -1 or c.find(':', i + 1) != -1:
+        for c_dat in c_str.replace(' ', '').split(','):
+            if not c_dat:
                 raise ValueError('invalid input string')
-            j = c[i+1:]
-            c = c[:i]
+
+            pos = c_dat.find(':')
+            if pos == -1:
+                j = 0
+                c = c_dat
+            elif c_dat.find(':', pos + 1) != -1:
+                raise ValueError('invalid input string: two colons in a row in %s' % repr(c_dat))
+            else:
+                j = c_dat[pos + 1:]
+                c = c_dat[:pos]
+
+            if not c:
+                raise ValueError('invalid input string: missing value in %s' % repr(c_dat))
             if c[0] == '~':
-                i = ~int(c[1:])
+                c = c[1:]
+                if not c:
+                    raise ValueError('invalid input string: missing value in %s' % repr(c_dat))
+                i = ~int(c)
             else:
                 i = int(c)
             cycle.append(i)
@@ -840,7 +855,7 @@ def perm_cycles_to_string(list cycles, involution=None, data=None):
         else:
             elt = lambda e: ('%d' % e if e <= involution[e] else '~%d' % involution[e])
     elif data:
-        elt = lambda e: ('%d' % e) + (':%d' % data[e])
+        elt = lambda e: (('%d' % e) + (':%d' % data[e])) if data[e] else ('%d' % e)
     else:
         elt = str
 
