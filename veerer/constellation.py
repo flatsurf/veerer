@@ -865,6 +865,13 @@ class Constellation:
             ....:     T.set_canonical_labels()
             ....:     assert T == S
 
+        Veering triangulation with boundary::
+
+            sage: vt = VeeringTriangulation("", boundary="(0:2,1:1,~1:2,~0:1)", colouring="RR", mutable=True)
+            sage: vt.set_canonical_labels()
+            sage: vt
+            VeeringTriangulation("", boundary="(0:2,1:1,~1:2,~0:1)", colouring="RR")
+
         Veering triangulation with a linear subspace constraint::
 
             sage: T, s, t = VeeringTriangulations.L_shaped_surface(2, 3, 4, 5, 1, 2)
