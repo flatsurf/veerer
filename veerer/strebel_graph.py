@@ -41,31 +41,24 @@ class StrebelGraph(Constellation):
     EXAMPLES::
 
         sage: from veerer import StrebelGraph
+
         sage: StrebelGraph("(0,~0:1)")
-        StrebelGraph("(0:0,~0:1)")
+        StrebelGraph("(0,~0:1)")
     """
     def __init__(self, faces, mutable=False, check=True):
         if isinstance(faces, StrebelGraph):
-            self._fp = faces.face_permutation(copy=True)
-            self._ep = faces.edge_permutation(copy=True)
-            self._bdry = faces.boundary_vector(copy=True)
+            fp = faces.face_permutation(copy=True)
+            ep = faces.edge_permutation(copy=True)
+            bdry = faces.boundary_vector(copy=True)
         else:
             faces, boundary = str_to_cycles_and_data(faces)
-            self._fp, self._ep = face_edge_perms_init(faces)
-            self._bdry = boundary_init(self._fp, self._ep, boundary)
+            fp, ep = face_edge_perms_init(faces)
+            bdry = boundary_init(fp, ep, boundary)
 
-        self._mutable = mutable
+        Constellation.__init__(self, len(fp), None, ep, fp, (bdry,), mutable, check)
 
-        fp = self._fp
-        ep = self._ep
-        n = self._n = len(fp)
-
-        vp = self._vp = array('i', [-1] * n)
-        for i in range(n):
-            vp[fp[ep[i]]] = i
-
-        if check:
-            self._check(ValueError)
+    def _set_data_pointers(self):
+        self._bdry = self._data[0]
 
     def __str__(self):
         r"""
@@ -74,7 +67,7 @@ class StrebelGraph(Constellation):
             sage: from veerer import StrebelGraph
             sage: T = StrebelGraph("(0,1,2)(~0,~1:1,~2:2)")
             sage: str(T)
-            'StrebelGraph("(0:0,1:0,2:0)(~2:2,~0:0,~1:1)")'
+            'StrebelGraph("(0,1,2)(~2:2,~0,~1:1)")'
         """
         bdry_cycles = perm_cycles_to_string(perm_cycles(self._fp, n=self._n), involution=self._ep, data=self._bdry)
         return 'StrebelGraph("%s")' % bdry_cycles
@@ -526,6 +519,7 @@ class StrebelGraph(Constellation):
         from surface_dynamics import Stratum
         return Stratum(hol + mer, k)
 
+    # TODO: deprecate
     @staticmethod
     def from_face_edge_perms(vp, ep, fp=None, boundary=None, mutable=False, check=True):
         r"""
@@ -543,29 +537,24 @@ class StrebelGraph(Constellation):
             sage: vp = array('i', [1, 3, 0, 2])
             sage: ep = array('i', [3, 2, 1, 0])
             sage: StrebelGraph.from_face_edge_perms(vp, ep, boundary = array('i', [1, 0, 0, 1]))
-            StrebelGraph("(0:1,1:0,~0:1,~1:0)")
+            doctest:warning
+            ...
+            UserWarning: the StrebelGraph.from_face_edge_perms is deprecated; use the classmethod from_permutations instead
+            StrebelGraph("(0:1,1,~0:1,~1)")
         """
-        G = StrebelGraph.__new__(StrebelGraph)
-        n = G._n = len(vp)
+        import warnings
+        warnings.warn('the StrebelGraph.from_face_edge_perms is deprecated; use the classmethod from_permutations instead')
 
-        G._vp = vp
-        G._ep = ep
+        n = len(vp)
 
         if fp is None:
-            vp = G._vp
-            ep = G._ep
             fp = array('i', [-1] * n)
             for i in range(n):
                 fp[ep[vp[i]]] = i
-        G._fp = fp
+
         if boundary is None:
-            G._bdry = array('i', [0] * n)
+            bdry = array('i', [0] * n)
         else:
-            G._bdry = array('i', boundary)
+            bdry = array('i', boundary)
 
-        G._mutable = mutable
-
-        if check:
-            G._check(ValueError)
-
-        return G
+        return StrebelGraph.from_permutations(vp, ep, fp, (bdry,), mutable, check)
