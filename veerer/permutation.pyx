@@ -851,11 +851,11 @@ def perm_cycles_to_string(list cycles, involution=None, data=None):
     """
     if involution:
         if data:
-            elt = lambda e: ('%d' % e if e <= involution[e] else '~%d' % involution[e]) + (':%d' % data[e])
+            elt = lambda e: ('%d' % e if e <= involution[e] else '~%d' % involution[e]) + ((':%d' % data[e]) if data[e] else '')
         else:
             elt = lambda e: ('%d' % e if e <= involution[e] else '~%d' % involution[e])
     elif data:
-        elt = lambda e: (('%d' % e) + (':%d' % data[e])) if data[e] else ('%d' % e)
+        elt = lambda e: ('%d' % e) + ((':%d' % data[e]) if data[e] else '')
     else:
         elt = str
 
