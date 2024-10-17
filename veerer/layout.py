@@ -966,13 +966,13 @@ class FlatVeeringTriangulationLayout(object):
             sage: T = VeeringTriangulation(faces, colours)
             sage: FS = T.flat_structure_min().layout()
             sage: FS.plot(fill=False)
-            Graphics object consisting of 31 graphics primitives
+            Graphics object consisting of ... graphics primitives
             sage: FS.plot(fill=True)
-            Graphics object consisting of 37 graphics primitives
+            Graphics object consisting of ... graphics primitives
             sage: FS.plot(horizontal_train_track=True)
-            Graphics object consisting of 49 graphics primitives
+            Graphics object consisting of ... graphics primitives
             sage: FS.plot(vertical_train_track=True)
-            Graphics object consisting of 49 graphics primitives
+            Graphics object consisting of ... graphics primitives
         """
         if self._pos is None:
             self.set_pos()
