@@ -87,8 +87,8 @@ def face_edge_perms_init(faces):
     for i in range(len(pos) - 1):
         if pos[i] == pos[i+1]:
             raise ValueError("repeated edge label {}".format(pos[i]))
-        elif pos[i+1] != pos[i] + 1:
-            raise ValueError("missing edge label {}".format(pos[i] + 1))
+        elif pos[i + 1] != pos[i] + 1:
+            raise ValueError("missing edge label {} (pos={})".format(pos[i] + 1, pos))
     for i in range(len(neg) - 1):
         if neg[i] == neg[i+1]:
             raise ValueError("repeated edge label ~{}".format(~neg[i]))
@@ -282,13 +282,13 @@ class Triangulation(Constellation):
         ...
         ValueError: invalid boundary data
     """
-    __slots__ = ['_mutable', '_n', '_fp', '_ep', '_vp', '_bdry']
+    __slots__ = ['_bdry']
 
     def __init__(self, triangles, boundary=None, mutable=False, check=True):
         if isinstance(triangles, Triangulation):
-            self._fp = triangles.face_permutation(copy=True)
-            self._ep = triangles.edge_permutation(copy=True)
-            self._bdry = triangles.boundary_vector(copy=True)
+            fp = triangles.face_permutation(copy=True)
+            ep = triangles.edge_permutation(copy=True)
+            bdry = triangles.boundary_vector(copy=True)
         else:
             if boundary is not None and isinstance(boundary, str):
                 boundary_cycles, boundary = str_to_cycles_and_data(boundary)
@@ -297,21 +297,13 @@ class Triangulation(Constellation):
                 else:
                     triangles = list(triangles)
                 triangles.extend(boundary_cycles)
-            self._fp, self._ep = face_edge_perms_init(triangles)
-            self._bdry = boundary_init(self._fp, self._ep, boundary)
+            fp, ep = face_edge_perms_init(triangles)
+            bdry = boundary_init(fp, ep, boundary)
 
-        self._mutable = mutable
+        Constellation.__init__(self, len(fp), None, ep, fp, (bdry,), mutable, check)
 
-        fp = self._fp
-        ep = self._ep
-        n = self._n = len(fp)
-
-        vp = self._vp = array('i', [-1] * n)
-        for i in range(n):
-            vp[fp[ep[i]]] = i
-
-        if check:
-            self._check(ValueError)
+    def _set_data_pointers(self):
+        self._bdry = self._data[0]
 
     @staticmethod
     def from_face_edge_perms(fp, ep, vp=None, boundary=None, mutable=False, check=True):
@@ -332,47 +324,25 @@ class Triangulation(Constellation):
             sage: ep = array('i', [8, 7, 2, 3, 4, 5, 6, 1, 0])
             sage: vp = array('i', [2, 8, 7, 0, 3, 1, 5, 6, 4])
             sage: Triangulation.from_face_edge_perms(fp, ep, vp)
+            doctest:warning
+            ...
+            UserWarning: the method Triangulation.from_face_edge_perms is deprecated; use the classmethod from_permutations instead
             Triangulation("(0,1,2)(3,4,~0)(5,6,~1)")
         """
-        T = Triangulation.__new__(Triangulation)
-        n = T._n = len(fp)
-        T._fp = fp
-        T._ep = ep
+        import warnings
+        warnings.warn('the method Triangulation.from_face_edge_perms is deprecated; use the classmethod from_permutations instead')
+
+        n = len(fp)
         if vp is None:
-            fp = T._fp
-            ep = T._ep
             vp = array('i', [-1] * n)
             for i in range(n):
                 vp[fp[ep[i]]] = i
-        T._vp = vp
         if boundary is None:
-            T._bdry = array('i', [0] * n)
+            bdry = array('i', [0] * n)
         else:
-            T._bdry = array('i', boundary)
+            bdry = array('i', boundary)
 
-        T._mutable = mutable
-
-        if check:
-            T._check(ValueError)
-
-        return T
-
-    @staticmethod
-    def from_string(s, mutable=False, check=True):
-        r"""
-        EXAMPLES::
-
-            sage: from veerer import Triangulation
-
-            sage: T = Triangulation("(~11,4,~3)(~10,~0,11)(~9,0,10)(~8,9,1)(~7,8,~1)(~6,7,2)(~5,6,~2)(~4,5,3)")
-            sage: Triangulation.from_string(T.to_string()) == T
-            True
-        """
-        n, fp, ep = s.split('_')
-        n = uint_from_base64_str(n)
-        fp = perm_from_base64_str(fp, n)
-        ep = perm_from_base64_str(ep, n)
-        return Triangulation.from_face_edge_perms(fp, ep, mutable=mutable, check=check)
+        return Triangulation.from_permutations(vp, ep, fp, (bdry,), mutable, check)
 
     def _check(self, error=RuntimeError):
         r"""
@@ -383,7 +353,7 @@ class Triangulation(Constellation):
             sage: Triangulation("(0,1,3)")
             Traceback (most recent call last):
             ...
-            ValueError: missing edge label 2
+            ValueError: missing edge label 2 (pos=[0, 1, 3])
 
             sage: Triangulation("(0,1,~2)")
             Traceback (most recent call last):
@@ -410,7 +380,7 @@ class Triangulation(Constellation):
             sage: Triangulation.from_face_edge_perms(fp, ep, vp)
             Traceback (most recent call last):
             ...
-            ValueError: invalid edge permutation at half-edge i=0
+            ValueError: invalid edge permutation at half-edge i=0 (vp=array('i', [1, 2, 0]) ep=array('i', [1, 2, 0]) fp=array('i', [1, 2, 0]))
         """
         Constellation._check(self, error)
         n = self._n
@@ -447,7 +417,7 @@ class Triangulation(Constellation):
         from .features import flipper_feature
         flipper_feature.require()
 
-        if any(self._bdry):
+        if any(self._data[0]):
             raise ValueError('triangulation has boundary')
 
         import flipper
@@ -507,7 +477,7 @@ class Triangulation(Constellation):
         r"""
         Return the number of triangles.
         """
-        return sum(self._bdry[c[0]] == 0 for c in perm_cycles(self._fp))
+        return sum(self._data[0][c[0]] == 0 for c in perm_cycles(self._fp))
 
     def triangles(self):
         r"""
@@ -521,7 +491,7 @@ class Triangulation(Constellation):
             sage: T.faces()
             [[0, 1, 2], [3, 4, 5], [6, 8, 7]]
         """
-        return [c for c in perm_cycles(self._fp, True, self._n) if self._bdry[c[0]] == 0]
+        return [c for c in perm_cycles(self._fp, True, self._n) if self._data[0][c[0]] == 0]
 
 
     def boundary_faces(self):
@@ -539,7 +509,7 @@ class Triangulation(Constellation):
             sage: T.boundary_faces()
             [[3, 4], [5]]
         """
-        return [c for c in perm_cycles(self._fp, True, self._n) if self._bdry[c[0]]]
+        return [c for c in perm_cycles(self._fp, True, self._n) if self._data[0][c[0]]]
 
     def num_boundary_faces(self):
         r"""
@@ -556,7 +526,7 @@ class Triangulation(Constellation):
             sage: T.num_boundary_faces()
             2
         """
-        return sum(self._bdry[c[0]] == 1 for c in perm_cycles(self._fp))
+        return sum(self._data[0][c[0]] == 1 for c in perm_cycles(self._fp))
 
     def euler_characteristic(self):
         r"""
@@ -639,8 +609,8 @@ class Triangulation(Constellation):
             'Triangulation("(0,1,2)(~2,~0,~1)")'
         """
         cycles = perm_cycles(self._fp, n=self._n)
-        face_cycles = perm_cycles_to_string([c for c in cycles if not self._bdry[c[0]]], involution=self._ep)
-        bdry_cycles = perm_cycles_to_string([c for c in cycles if self._bdry[c[0]]], involution=self._ep, data=self._bdry)
+        face_cycles = perm_cycles_to_string([c for c in cycles if not self._data[0][c[0]]], involution=self._ep)
+        bdry_cycles = perm_cycles_to_string([c for c in cycles if self._data[0][c[0]]], involution=self._ep, data=self._data[0])
         if bdry_cycles:
             return 'Triangulation("%s", boundary="%s")' % (face_cycles, bdry_cycles)
         else:
@@ -966,7 +936,7 @@ class Triangulation(Constellation):
         E = self._ep[e]
         a = self._fp[e]
         b = self._fp[a]
-        return not self._bdry[e] and not self._bdry[E] and a != E and b != E and self._bdry[e] == 0 and self._bdry[E] == 0
+        return not self._data[0][e] and not self._data[0][E] and a != E and b != E and self._data[0][e] == 0 and self._data[0][E] == 0
 
     def flippable_edges(self):
         r"""
@@ -1023,7 +993,7 @@ class Triangulation(Constellation):
             e = self._check_half_edge(e)
 
         E = self._ep[e]
-        if check and (self._bdry[e] or self._bdry[E]):
+        if check and (self._data[0][e] or self._data[0][E]):
             raise ValueError('non internal edge')
 
         a = self._fp[e]
@@ -1088,7 +1058,7 @@ class Triangulation(Constellation):
             e = self._check_half_edge(e)
 
         E = self._ep[e]
-        if self._bdry[e] or self._bdry[E]:
+        if self._data[0][e] or self._data[0][E]:
             raise ValueError('can not flip non internal edge %s' % self._norm(e))
 
         a = self._fp[e]
@@ -1184,7 +1154,7 @@ class Triangulation(Constellation):
 
         E = self._ep[e]
 
-        if self._bdry[e] or self._bdry[E]:
+        if self._data[0][e] or self._data[0][E]:
             raise ValueError('can not flip non internal edge %s' % self._norm(e))
 
         a = self._fp[e]
@@ -1232,20 +1202,6 @@ class Triangulation(Constellation):
         # self._vl[e] = x
         # self._vl[E] = v
 
-    def to_string(self):
-        r"""
-        Serialize this triangulation as a string.
-
-        EXAMPLES::
-
-            sage: from veerer import *
-
-            sage: T = Triangulation("(0,1,2)(~0,~1,~2)")
-            sage: T.to_string()
-            '6_120534_543210'
-        """
-        return uint_base64_str(self._n) + '_' + perm_base64_str(self._fp) + '_' + perm_base64_str(self._ep)
-
     def conjugate(self):
         r"""
         Conjugate this triangulation.
@@ -1292,75 +1248,6 @@ class Triangulation(Constellation):
 
         self._fp = perm_conjugate(perm_invert(self._fp), self._ep)
         self._vp = perm_invert(self._vp)
-
-    def iso_sig(self):
-        r"""
-        Return a canonical signature.
-
-        EXAMPLES::
-
-            sage: from veerer import *
-            sage: T = Triangulation("(0,3,1)(~0,4,2)(~1,~2,~4)")
-            sage: T.iso_sig()
-            '9_345876210_087654321'
-            sage: TT = Triangulation.from_string(T.iso_sig())
-            sage: TT
-            Triangulation("(0,3,~1)(1,4,~2)(2,~4,~3)")
-            sage: TT.iso_sig() == T.iso_sig()
-            True
-
-            sage: T = Triangulation("(0,10,~6)(1,12,~2)(2,14,~3)(3,16,~4)(4,~13,~5)(5,~1,~0)(6,~17,~7)(7,~14,~8)(8,13,~9)(9,~11,~10)(11,~15,~12)(15,17,~16)")
-            sage: T.iso_sig()
-            'A_lkp9ijfmcvegq0osnyutxdrbaw87654321zh_zyxwvutsrqponmlkjihgfedcba9876543210'
-            sage: Triangulation.from_string(T.iso_sig())
-            Triangulation("(0,~14,13)(1,~15,~2)(2,~10,~3)(3,9,~4)(4,~17,~5)(5,~16,~6)(6,15,~7)(7,~13,~8)(8,12,~9)(10,14,~11)(11,16,~12)(17,~1,~0)")
-
-            sage: t = [(-12, 4, -4), (-11, -1, 11), (-10, 0, 10), (-9, 9, 1),
-            ....:      (-8, 8, -2), (-7, 7, 2), (-6, 6, -3), (-5, 5, 3)]
-            sage: cols = [RED, RED, RED, RED, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE]
-            sage: T = VeeringTriangulation(t, cols, mutable=True)
-            sage: T.iso_sig()
-            'RBRBRBBBRBBBBBBRBBBRBRBR_7ad9e8fbhjl0mkig654321nc_nmlkjihgfedcba9876543210'
-
-        If we relabel the triangulation, the isomorphic signature does not change::
-
-            sage: from veerer.permutation import perm_random
-            sage: p = perm_random(24)
-            sage: T.relabel(p)
-            sage: T.iso_sig()
-            'RBRBRBBBRBBBBBBRBBBRBRBR_7ad9e8fbhjl0mkig654321nc_nmlkjihgfedcba9876543210'
-
-        An isomorphic triangulation can be reconstructed from the isomorphic
-        signature via::
-
-            sage: s = T.iso_sig()
-            sage: T2 = VeeringTriangulation.from_string(s)
-            sage: T == T2
-            False
-            sage: T.is_isomorphic_to(T2)
-            True
-
-        TESTS::
-
-            sage: from veerer.veering_triangulation import VeeringTriangulation
-            sage: from veerer.permutation import perm_random
-
-            sage: t = [(-12, 4, -4), (-11, -1, 11), (-10, 0, 10), (-9, 9, 1),
-            ....:      (-8, 8, -2), (-7, 7, 2), (-6, 6, -3), (-5, 5, 3)]
-            sage: cols = [RED, RED, RED, RED, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE]
-            sage: T = VeeringTriangulation(t, cols, mutable=True)
-            sage: iso_sig = T.iso_sig()
-            sage: for _ in range(10):
-            ....:     p = perm_random(24)
-            ....:     T.relabel(p)
-            ....:     assert T.iso_sig() == iso_sig
-
-            sage: VeeringTriangulation("(0,1,2)(3,4,~1)(5,6,~4)", "RBGGRBG").iso_sig()
-            'GBRGRGBRB_731264580_082375641'
-        """
-        T = self.copy(mutable=True)
-        T.set_canonical_labels()
-        return T.to_string()
 
     def _non_isom_easy(self, other):
         return self._n != other._n or self.num_folded_edges() != other.num_folded_edges()
