@@ -170,11 +170,11 @@ class StrebelGraph(Constellation):
             sage: StrebelGraph.from_face_edge_perms(vp, ep, boundary = array('i', [1, 0, 0, 1]))
             doctest:warning
             ...
-            UserWarning: the StrebelGraph.from_face_edge_perms is deprecated; use the classmethod from_permutations instead
+            UserWarning: the method StrebelGraph.from_face_edge_perms is deprecated; use the classmethod from_permutations instead
             StrebelGraph("(0:1,1,~0:1,~1)")
         """
         import warnings
-        warnings.warn('the StrebelGraph.from_face_edge_perms is deprecated; use the classmethod from_permutations instead')
+        warnings.warn('the method StrebelGraph.from_face_edge_perms is deprecated; use the classmethod from_permutations instead')
 
         n = len(vp)
 
