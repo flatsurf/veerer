@@ -386,7 +386,11 @@ def str_to_cycles_and_data(s):
         sage: str_to_cycles_and_data('(0:1,1:2)(3:0)')
         ([[0, 1], [3]], {0: 1, 1: 2, 3: 0})
         sage: str_to_cycles_and_data('(0,1:1)')
+        ([[0, 1]], {0: 0, 1: 1})
+        sage: str_to_cycles_and_data('(0:1,1)')
         ([[0, 1]], {0: 1, 1: 0})
+        sage: str_to_cycles_and_data('(0:1,1:1)')
+        ([[0, 1]], {0: 1, 1: 1})
     """
     r = []
     data = {}
