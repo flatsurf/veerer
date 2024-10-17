@@ -412,13 +412,18 @@ class Constellation:
             False
             sage: StrebelGraph("(0,1,2,~0,~1,~2)") != StrebelGraph("(0,1:1,2,~0,~1,~2)")
             True
-
         """
         if type(self) != type(other):
             raise TypeError
         return self._n != other._n or self._fp != other._fp or self._ep != other._ep or self._data != other._data
 
     def _richcmp_(self, other, op):
+        r"""
+        Compare ``self`` and ``other`` according to the operator ``op``.
+        """
+        if type(self) != type(other):
+            raise TypeError
+
         c = (self._n > other._n) - (self._n < other._n)
         if c:
             return rich_to_bool(op, c)
@@ -1059,30 +1064,7 @@ class Constellation:
             sage: len(t.automorphisms())
             1
         """
-        fp = self._fp
-        ep = self._ep
-
-        best = None
-        best_relabellings = []
-
-        for start_edge in self._automorphism_good_starts():
-            relabelling = self._relabelling_from(start_edge)
-
-            fp_new = perm_conjugate(fp, relabelling)
-            ep_new = perm_conjugate(ep, relabelling)
-            data_new = [l[:] for l in self._data]
-            for l in data_new:
-                perm_on_list(relabelling, l, self._n)
-
-            T = (fp_new, ep_new, data_new)
-            if best is None or T == best:
-                best_relabellings.append(relabelling)
-                best = T
-            elif T < best:
-                del best_relabellings[:]
-                best_relabellings.append(relabelling)
-                best = T
-
+        best_relabellings = self.best_relabelling(all=True)[0]
         p0 = perm_invert(best_relabellings[0])
         return [perm_compose(p, p0) for p in best_relabellings]
 
@@ -1142,7 +1124,7 @@ class Constellation:
                 best_relabelling = relabelling
                 best = T
                 if all:
-                    del relabelllings[:]
+                    del relabellings[:]
                     relabellings.append(relabelling)
             elif all and T == best:
                 relabellings.append(relabelling)
