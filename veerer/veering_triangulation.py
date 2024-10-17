@@ -2694,7 +2694,7 @@ class VeeringTriangulation(Triangulation):
             else:
                 insert(x[e] >= low_bound)
 
-    def _set_geometric_constraints(self, insert, x, y, hw_bound=0):
+    def _set_delaunay_constraints(self, insert, x, y, hw_bound=0):
         r"""
         Set the geometric constraints.
 
@@ -2715,7 +2715,7 @@ class VeeringTriangulation(Triangulation):
             sage: l = []
             sage: x = [SR.var("x0"), SR.var("x1"), SR.var("x2")]
             sage: y = [SR.var("y0"), SR.var("y1"), SR.var("y2")]
-            sage: T._set_geometric_constraints(l.append, x, y)
+            sage: T._set_delaunay_constraints(l.append, x, y)
             sage: l
             [x1 <= y0 + y2, y0 <= x1 + x2]
         """
@@ -2879,7 +2879,8 @@ class VeeringTriangulation(Triangulation):
         self._set_train_track_constraints(M.add_constraint, x, slope, 1, allow_degenerations)
         return M.optimizing_point()
 
-    def delaunay_polytope(self, x_low_bound=0, y_low_bound=0, hw_bound=0, backend=None):
+    # TODO: this is not a polytope but a cone
+    def delaunay_cone(self, x_low_bound=0, y_low_bound=0, hw_bound=0, backend=None):
         r"""
         Return the geometric polytope of this veering triangulation.
 
@@ -2891,11 +2892,11 @@ class VeeringTriangulation(Triangulation):
             sage: from veerer import *
 
             sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
-            sage: T.delaunay_polytope()
+            sage: T.delaunay_cone()
             Cone of dimension 4 in ambient dimension 6 made of 6 facets (backend=ppl)
-            sage: T.delaunay_polytope(x_low_bound=1, y_low_bound=1, hw_bound=1)  # not tested
+            sage: T.delaunay_cone(x_low_bound=1, y_low_bound=1, hw_bound=1)  # not tested
 
-            sage: T.delaunay_polytope(backend='sage')
+            sage: T.delaunay_cone(backend='sage')
             Cone of dimension 4 in ambient dimension 6 made of 6 facets (backend=sage)
         """
         from sage.rings.integer_ring import ZZ
@@ -2906,11 +2907,13 @@ class VeeringTriangulation(Triangulation):
         cs = ConstraintSystem()
         self._set_train_track_constraints(cs.insert, x, VERTICAL, x_low_bound, False)
         self._set_train_track_constraints(cs.insert, y, HORIZONTAL, y_low_bound, False)
-        self._set_geometric_constraints(cs.insert, x, y, hw_bound=hw_bound)
+        self._set_delaunay_constraints(cs.insert, x, y, hw_bound=hw_bound)
         return cs.cone(backend)
 
-    # TODO: deprecate
-    geometric_polytope = delaunay_polytope
+    def geometric_polytope(self, *args, **kwds):
+        from warnings import warn
+        warn('geometric_polytope is deprecated; use delaunay_cone instead')
+        return self.delaunay_cone(*args, **kwds)
 
     def delaunay_automaton(self, run=True, backward=None, backend=None):
         r"""
@@ -2925,7 +2928,10 @@ class VeeringTriangulation(Triangulation):
             A.run()
         return A
 
-    geometric_automaton = delaunay_automaton
+    def geometric_automaton(self, *args, **kwds):
+        from warnings import warn
+        warn('geometric_automaton is deprecated; use delaunay_automaton instead')
+        return self.delaunay_automaton(self, *args, **kwds)
 
     def delaunay_strebel_automaton(self, run=True, backward=None, backend=None):
         r"""
@@ -3167,7 +3173,7 @@ class VeeringTriangulation(Triangulation):
             FlatVeeringTriangulation(Triangulation("(0,1,2)(~2,~0,~1)"), [(4, 9), (-9, -4), (5, -5), (-5, 5), (9, 4), (-4, -9)])
         """
         ne = self.num_edges()
-        r = self.geometric_polytope(backend=backend).rays()
+        r = self.delaunay_cone(backend=backend).rays()
         VV = [sum(v[i] for v in r) for i in range(ne)]
         VH = [sum(v[ne + i] for v in r) for i in range(ne)]
 
@@ -3493,7 +3499,7 @@ class VeeringTriangulation(Triangulation):
             True
         """
         dim = self.dimension()
-        P = self.geometric_polytope(backend=backend)
+        P = self.delaunay_cone(backend=backend)
         Pdim = P.affine_dimension()
         assert Pdim <= 2 * dim
         return Pdim == 2 * dim
@@ -3750,7 +3756,7 @@ class VeeringTriangulation(Triangulation):
         L = LinearExpressions(base_ring)
         x = [L.variable(e) for e in range(ne)]
         y = [L.variable(ne + e) for e in range(ne)]
-        P = self.geometric_polytope(backend=backend)
+        P = self.delaunay_cone(backend=backend)
         if P.affine_dimension() != 2 * dim:
             raise ValueError('not geometric P.dimension() = {} while 2 * dim = {}'.format(P.affine_dimension(), 2 * dim))
 
@@ -3836,7 +3842,7 @@ class VeeringTriangulation(Triangulation):
         L = LinearExpressions(base_ring)
         x = [L.variable(e) for e in range(ne)]
         y = [L.variable(ne + e) for e in range(ne)]
-        P = self.geometric_polytope(backend=backend)
+        P = self.delaunay_cone(backend=backend)
         if P.affine_dimension() != 2 * dim:
             raise ValueError('not geometric P.dimension() = {} while 2 * dim = {}'.format(P.affine_dimension(), 2 * dim))
 
