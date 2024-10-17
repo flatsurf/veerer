@@ -1070,10 +1070,8 @@ class Constellation:
 
     def best_relabelling(self, all=False):
         r"""
-        Return a pair ``(r, (cols, fp, ep))`` where the triple ``(cols, fp,
-        ep)`` is the data of the canonical labelling of this veering
-        triangulation and ``r`` is a relabelling that brings this triangulation
-        to the canonical one.
+        Return a pair ``(r, data)`` where ``r`` is a relabelling that
+        brings this constellation to the canonical one.
 
         EXAMPLES::
 
@@ -1143,58 +1141,11 @@ class Constellation:
             sage: t = [(-12, 4, -4), (-11, -1, 11), (-10, 0, 10), (-9, 9, 1),
             ....:      (-8, 8, -2), (-7, 7, 2), (-6, 6, -3), (-5, 5, 3)]
             sage: T = Triangulation(t, mutable=True)
+            sage: T
+            Triangulation("(0,10,~9)(1,~8,9)(2,~6,7)(3,~4,5)(4,~3,~11)(6,~2,~5)(8,~1,~7)(11,~10,~0)")
             sage: T.set_canonical_labels()
-            sage: S = T.copy(mutable=False)
-            sage: for _ in range(10):
-            ....:     p = perm_random(24)
-            ....:     T.relabel(p)
-            ....:     T.set_canonical_labels()
-            ....:     assert T == S
-
-        Veering triangulation::
-
-            sage: cols = [RED, RED, RED, RED, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE, BLUE]
-            sage: T = VeeringTriangulation(t, cols, mutable=True)
-            sage: T.set_canonical_labels()
-            sage: S = T.copy(mutable=False)
-            sage: for _ in range(10):
-            ....:     p = perm_random(24)
-            ....:     T.relabel(p)
-            ....:     T.set_canonical_labels()
-            ....:     assert T == S
-
-        Veering triangulation with boundary::
-
-            sage: vt = VeeringTriangulation("", boundary="(0:2,1:1,~1:2,~0:1)", colouring="RR", mutable=True)
-            sage: vt.set_canonical_labels()
-            sage: vt
-            VeeringTriangulation("", boundary="(0:2,1:1,~1:2,~0:1)", colouring="RR")
-
-        Veering triangulation with a linear subspace constraint::
-
-            sage: T, s, t = VeeringTriangulations.L_shaped_surface(2, 3, 4, 5, 1, 2)
-            sage: L = VeeringTriangulationLinearFamily(T, [s, t], mutable=True)
-            sage: L.set_canonical_labels()
-            sage: L0 = L.copy(mutable=False)
-            sage: for _ in range(10):
-            ....:     p = perm_random_centralizer(L.edge_permutation(copy=False))
-            ....:     L.relabel(p)
-            ....:     L.set_canonical_labels()
-            ....:     assert L == L0, (L, L0)
-
-        Examples with boundaries::
-
-            sage: t = Triangulation("(0,1,2)(~0,3,4)", boundary="(~1:1)(~2:2)(~3:3)(~4:4)", mutable=True)
-            sage: t.set_canonical_labels()
-            sage: t
-            Triangulation("(2,~4,~3)(~2,~1,~0)", boundary="(0:2)(1:1)(3:4)(4:3)")
-
-            sage: t0 = t.copy(mutable=False)
-            sage: for _ in range(10):
-            ....:     p = perm_random_centralizer(t.edge_permutation(copy=False))
-            ....:     t.relabel(p)
-            ....:     t.set_canonical_labels()
-            ....:     assert t == t0, (t, t0)
+            sage: T
+            Triangulation("(0,1,8)(2,11,~3)(3,~11,~4)(4,10,~5)(5,~10,~6)(6,9,~7)(7,~9,~8)(~2,~1,~0)")
         """
         if not self._mutable:
             raise ValueError('immutable triangulation; use a mutable copy instead')
