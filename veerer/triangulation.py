@@ -1249,9 +1249,6 @@ class Triangulation(Constellation):
         self._fp = perm_conjugate(perm_invert(self._fp), self._ep)
         self._vp = perm_invert(self._vp)
 
-    def _non_isom_easy(self, other):
-        return self._n != other._n or self.num_folded_edges() != other.num_folded_edges()
-
     # TODO: deprecate
     is_isomorphic_to = Constellation.is_isomorphic
 

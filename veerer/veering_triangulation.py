@@ -1719,13 +1719,6 @@ class VeeringTriangulation(Triangulation):
         ep = perm_base64_str(self._ep)
         return colours + '_' + fp + '_' + ep
 
-    def _non_isom_easy(self, other):
-        return (Triangulation._non_isom_easy(self, other) or
-                self.num_folded_edges() != other.num_folded_edges() or
-                self._colouring.count(RED) != other._colouring.count(RED) or
-                self._colouring.count(BLUE) != other._colouring.count(BLUE) or
-                self._colouring.count(PURPLE) != other._colouring.count(PURPLE))
-
     def flip(self, e, col, Lx=None, Gx=None, reduced=None, check=True):
         r"""
         Flip an edge inplace.

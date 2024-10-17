@@ -33,7 +33,7 @@ from sage.structure.richcmp import op_LT, op_LE, op_EQ, op_NE, op_GT, op_GE, ric
 
 from .permutation import (perm_init, perm_check, perm_cycles, perm_dense_cycles,
                           perm_invert, perm_conjugate, perm_cycle_string, perm_cycles_lengths,
-                          perm_cycles_to_string, perm_on_list,
+                          perm_cycles_to_string, perm_on_list, perm_cycle_type,
                           perm_num_cycles, str_to_cycles, str_to_cycles_and_data, perm_compose, perm_from_base64_str,
                           uint_base64_str, uint_from_base64_str, perm_base64_str,
                           perms_are_transitive, triangulation_relabelling_from)
@@ -1270,6 +1270,15 @@ class Constellation:
         T = self.copy(mutable=True)
         T.set_canonical_labels()
         return T.to_string()
+
+    def _non_isom_easy(self, other):
+        r"""
+        A quick certificate of non-isomorphism that does not require relabellings.
+        """
+        return (perm_cycle_type(self._vp) != perm_cycle_type(other._vp) or
+            perm_cycle_type(self._ep) != perm_cycle_type(other._ep) or
+            perm_cycle_type(self._fp) != perm_cycle_type(other._fp) or
+            any(sorted(l_self) != sorted(l_other) for l_self, l_other in zip(self._data, other._data)))
 
     def is_isomorphic(self, other, certificate=False):
         r"""
