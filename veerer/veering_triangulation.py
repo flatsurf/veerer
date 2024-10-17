@@ -133,8 +133,14 @@ class VeeringTriangulation(Triangulation):
             fp, ep = face_edge_perms_init(triangulation)
             bdry = boundary_init(fp, ep, boundary)
 
-        if isinstance(colouring, str):
+        if colouring is None:
+            if isinstance(triangulation, VeeringTriangulation):
+                colouring = triangulation._colouring
+            else:
+                raise ValueError('no colouring given')
+        elif isinstance(colouring, str):
             colouring = [colour_from_char(c) for c in colouring]
+
 
         # set _colouring: half edge index --> {RED, BLUE}
         n = len(fp)
