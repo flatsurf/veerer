@@ -39,9 +39,10 @@ from sage.modules.free_module import FreeModule
 from sage.matrix.constructor import matrix
 
 from .constants import *
+from .constellation import Constellation
 from .permutation import *
 from .misc import det2
-from .triangulation import Triangulation
+from .triangulation import face_edge_perms_init, boundary_init, Triangulation
 from .polyhedron import LinearExpressions, ConstraintSystem
 from .polyhedron.linear_algebra import linear_form_project, vector_normalize
 
@@ -117,24 +118,41 @@ class VeeringTriangulation(Triangulation):
                 raise ValueError('invalid data in constructor')
             triangulation, = args
 
-        Triangulation.__init__(self, triangulation, boundary=boundary, mutable=mutable, check=False)
-        n = self._n  # number of half edges (get initialized by the triangulation)
+        if isinstance(triangulation, Triangulation):
+            fp = triangulation.face_permutation(copy=True)
+            ep = triangulation.edge_permutation(copy=True)
+            bdry = triangulation.boundary_vector(copy=True)
+        else:
+            if boundary is not None and isinstance(boundary, str):
+                boundary_cycles, boundary = str_to_cycles_and_data(boundary)
+                if isinstance(triangulation, str):
+                    triangulation = str_to_cycles(triangulation)
+                else:
+                    triangulation = list(triangulation)
+                triangulation.extend(boundary_cycles)
+            fp, ep = face_edge_perms_init(triangulation)
+            bdry = boundary_init(fp, ep, boundary)
 
         if isinstance(colouring, str):
             colouring = [colour_from_char(c) for c in colouring]
 
         # set _colouring: half edge index --> {RED, BLUE}
-        if len(colouring) == self.num_edges():
-            colouring = [colouring[self._norm(i)] for i in range(n)]
+        n = len(fp)
+        num_edges = perm_num_cycles(ep, n)
+        if len(colouring) == num_edges:
+            colouring = [colouring[i] if i <= ep[i] else colouring[ep[i]] for i in range(n)]
         elif len(colouring) == n:
             colouring = colouring
         else:
             raise ValueError("'colouring' argument of invalid length")
 
-        self._colouring = array('i', colouring)
+        colouring = array('i', colouring)
 
-        if check:
-            self._check(ValueError)
+        Constellation.__init__(self, n, None, ep, fp, (bdry, colouring), mutable, check)
+
+    def _set_data_pointers(self):
+        Triangulation._set_data_pointers(self)
+        self._colouring = self._data[1]
 
     def _check(self, error=RuntimeError):
         """
@@ -151,11 +169,19 @@ class VeeringTriangulation(Triangulation):
         ep = self._ep
         ev = self._vp
         cols = self._colouring
+        bdry = self._bdry
         if not isinstance(cols, array) or \
+           not isinstance(bdry, array) or \
            len(cols) != n or \
            any(col not in COLOURS for col in cols) or \
            any(cols[e] != cols[ep[e]] for e in range(self._n)):
             raise error('bad colouring attribute')
+
+        if bdry is not self._data[0] or \
+           cols is not self._data[1]:
+            raise error('wrong pointers: id(bdry)={} id(self._data[0])={} id(cols)={} id(self._data[1])={}'.format(
+                id(bdry), id(self._data[0]), id(cols), id(self._data[1])))
+
 
         # faces must be of one of the following type (up to cyclic ordering)
         # non-dgenerate: BBR (BLUE), RRB (RED)
@@ -192,60 +218,6 @@ class VeeringTriangulation(Triangulation):
                 i += 1
             if i == len(v):
                 raise error('monochromatic vertex {} of colour {}'.format(v, colour_to_string(cols[v[0]])))
-
-    def __getstate__(self):
-        r"""
-        TESTS::
-
-            sage: from veerer import VeeringTriangulation
-            sage: t = VeeringTriangulation("(0,1,2)", "BBR")
-            sage: dumps(t)  # indirect doctest
-            b'x\x9ck`J.KM-J-\xd2\x03Q\x99y\xe9\xf1%E\x99\x89y\xe9\xa59\x89%\x99\xf9y\\a\x10\xd1\x10\x14\xc1B\x06\xcd\xc6B\xc6\xd8B&\roFo&o\x06 \x84\xd1\x0c@\x9a\xc9\x9b\xb135I\x0f\x00\xd8*\x1cD'
-            sage: t = VeeringTriangulation("(0,1,2)(~0,3,4)", "(~1:1)(~2:1)(~3:1)(~4:1)", "RBRBR")
-            sage: dumps(t)  # indirect doctest
-            b'x\x9ck`J.KM-J-\xd2\x03Q\x99y\xe9\xf1%E\x99\x89y\xe9\xa59\x89%\x99\xf9y\\a\x10\xd1\x10\x14\xc1B\x06\xcd\xc6B\xc6\xd8B&\roFo&o\x06o\x16oNoVo6ovo\x0eof \x9b\x03\xc8b\x03\x8a\xb0\x00yL@5\x0cH\x90\x11\n\x19\xc0z!\x18\xce\xeaLM\xd2\x03\x00\xd7\x88$\xd9'
-        """
-        a = list(self._fp)
-        a.extend(self._ep)
-        a.extend(self._bdry)
-        a.extend(self._colouring)
-        a.append(self._mutable)
-        return a
-
-    def __setstate__(self, arg):
-        r"""
-        TESTS::
-
-            sage: from veerer import VeeringTriangulation
-            sage: t0 = VeeringTriangulation("(0,1,2)", "BBR", mutable=False)
-            sage: t1 = VeeringTriangulation("(0,1,2)", "BBR", mutable=True)
-            sage: t2 = VeeringTriangulation("(0,1,2)(~0,3,4)", "(~1:1)(~2:1)(~3:1)(~4:1)", "RBRBR")
-
-            sage: s0 = loads(dumps(t0))  # indirect doctest
-            sage: assert s0 == t0
-            sage: s0._mutable
-            False
-            sage: s0._check()
-
-            sage: s1 = loads(dumps(t1))  # indirect doctest
-            sage: assert s1 == t1
-            sage: s1._mutable
-            True
-            sage: s1._check()
-
-            sage: s2 = loads(dumps(t2))
-            sage: assert s2 == t2
-        """
-        n = (len(arg) - 1) // 4
-        self._n = n
-        self._fp = array('i', arg[:n])
-        self._ep = array('i', arg[n:2*n])
-        self._bdry = array('i', arg[2*n:3*n])
-        self._colouring = array('i', arg[3*n:4*n])
-        self._mutable = arg[-1]
-        self._vp = array('i', [-1] * n)
-        for i in range(n):
-            self._vp[self._fp[self._ep[i]]] = i
 
     def base_ring(self):
         from sage.rings.integer_ring import ZZ
@@ -636,66 +608,22 @@ class VeeringTriangulation(Triangulation):
 
     @classmethod
     def from_face_edge_perms(self, colouring, fp, ep, vp=None, boundary=None, mutable=False, check=True):
-        T = VeeringTriangulation.__new__(VeeringTriangulation)
-        T._n = len(fp)
-        T._fp = fp
-        T._ep = ep
+        import warnings
+        warnings.warn('the method StrebelGraph.from_face_edge_perms is deprecated; use the classmethod from_permutations instead')
 
+        n = len(fp)
         if vp is None:
-            n = T._n
-            fp = T._fp
-            ep = T._ep
             vp = array('i', [-1] * n)
             for i in range(n):
                 vp[fp[ep[i]]] = i
 
-        T._bdry = array('i', [0] * n)
-        T._vp = vp
-
-        T._colouring = colouring
-
         if boundary is None:
-            T._bdry = array('i', [0] * n)
+            bdry = array('i', [0] * n)
         else:
-            T._bdry = array('i', boundary)
+            bdry = array('i', boundary)
+        colouring = array('i', colouring)
 
-        T._mutable = mutable
-
-        if check:
-            T._check(ValueError)
-
-        return T
-
-    @classmethod
-    def from_string(cls, s, mutable=False, check=True):
-        r"""
-        Deserialization from the string ``s``.
-
-        Such string is typically obtained from :meth:`to_string` or
-        :meth:`iso_sig`. Not by calling ``str(triangulation)``.
-
-        EXAMPLES::
-
-            sage: from veerer import *
-
-            sage: T = VeeringTriangulation.from_string('RRB_120_012')
-            sage: T.to_string()
-            'RRB_120_012'
-
-            sage: T = VeeringTriangulation.from_string('RRBBRR_120534_543210')
-            sage: T.to_string()
-            'RRBBRR_120534_543210'
-            sage: VeeringTriangulation.from_string(T.to_string()) == T
-            True
-        """
-        cols, fps, eps,  = s.split('_')
-        n = len(cols)
-        fp = perm_from_base64_str(fps, n)
-        assert perm_base64_str(fp) == fps
-        ep = perm_from_base64_str(eps, n)
-        assert perm_base64_str(ep) == eps
-        cols = array('i', [colour_from_char(c) for c in cols])
-        return VeeringTriangulation.from_face_edge_perms(cols, fp, ep, mutable=mutable, check=check)
+        return VeeringTriangulation.from_permutations(vp, ep, fp, (bdry, colouring), mutable, check)
 
     def forgot_forward_flippable_colour(self, folded=True):
         r"""
@@ -790,62 +718,6 @@ class VeeringTriangulation(Triangulation):
 
         c = (self._ep > other._ep) - (self._ep < other._ep)
         return rich_to_bool(op, c)
-
-    def copy(self, mutable=None):
-        r"""
-        Return a copy of this coloured triangulation.
-
-        EXAMPLES::
-
-            sage: from veerer import *
-
-            sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], "RRB", mutable=True)
-            sage: S1 = T.copy()
-            sage: S2 = T.copy()
-            sage: T == S1 == S2
-            True
-            sage: S1.flip(1,BLUE)
-            sage: T == S1
-            False
-            sage: T == S2
-            True
-
-        TESTS::
-
-            sage: from veerer import VeeringTriangulation
-            sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB", mutable=True)
-            sage: U = T.copy(mutable=False)
-            sage: _ = hash(U)
-        """
-        if mutable is None:
-            mutable = self._mutable
-
-        if not self._mutable and not mutable:
-            # avoid copies of immutable objects
-            if type(self) is VeeringTriangulation:
-                return self
-            else:
-                T = VeeringTriangulation.__new__(VeeringTriangulation)
-                T._n = self._n
-                T._vp = self._vp
-                T._ep = self._ep
-                T._fp = self._fp
-                T._bdry = self._bdry
-                T._colouring = self._colouring
-                T._mutable = mutable
-
-                return T
-        else:
-            T = VeeringTriangulation.__new__(VeeringTriangulation)
-            T._n = self._n
-            T._vp = self._vp[:]
-            T._ep = self._ep[:]
-            T._fp = self._fp[:]
-            T._bdry = self._bdry[:]
-            T._colouring = self._colouring[:]
-            T._mutable = mutable
-
-            return T
 
     def triangulation(self, mutable=False):
         r"""
@@ -1287,9 +1159,11 @@ class VeeringTriangulation(Triangulation):
             fp_cov[a1] = b1; fp_cov[b1] = c1; fp_cov[c1] = a1
             fp_cov[a2] = b2; fp_cov[b2] = c2; fp_cov[c2] = a2
 
-        colouring_cov = self._colouring * 2
+        colouring_cov = array('i', self._colouring * 2)
+        bdry_cov = array('i', self._bdry * 2)
+
         # TODO: remove the check argument
-        vt = self.from_face_edge_perms(colouring_cov, array('i', fp_cov), array('i', ep_cov), mutable=True, check=True)
+        vt = self.from_permutations(None, array('i', ep_cov), array('i', fp_cov), (bdry_cov, colouring_cov), mutable=True, check=True)
         vt.relabel(vt._relabelling_from(0), check=False)
         if not mutable:
             vt.set_immutable()
@@ -1402,8 +1276,8 @@ class VeeringTriangulation(Triangulation):
 
         EXAMPLES::
 
-            sage: from veerer import *
-            sage: vt = VeeringTriangulation.from_string('RBBBBRBRBRBBBBRBRBRBBBBR_k509clabdjgfie876m4321nh_nmlkjihgfedcba9876543210')
+            sage: from veerer import VeeringTriangulation, HORIZONTAL
+            sage: vt = VeeringTriangulation("(0,~3,2)(1,5,~2)(3,9,~4)(4,~11,~5)(6,10,~7)(7,11,~8)(8,~10,~9)(~6,~1,~0)", "RBBBBRBRBRBB")
             sage: vt.branches()
             ([0, 1, 5, 7, 9, 10], [2, 3, 8, 11], [4, 6])
             sage: vt.branches(HORIZONTAL)
@@ -1661,89 +1535,8 @@ class VeeringTriangulation(Triangulation):
         else:
             raise ValueError
 
-    def relabel(self, p, check=True):
-        r"""
-        Relabel inplace this veering triangulation according to the permutation ``p``.
-
-        EXAMPLES::
-
-            sage: from veerer import *
-
-            sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RBB", mutable=True)
-            sage: T.relabel([0,1,3,2,5,4])
-            sage: T
-            VeeringTriangulation("(0,1,~2)(2,~0,~1)", "RBB")
-            sage: T._check()
-
-        Composing relabellings and permutation composition::
-
-            sage: from veerer.permutation import perm_compose, perm_random_centralizer
-            sage: fp = "(0,16,~15)(1,19,~18)(2,22,~21)(3,21,~20)(4,20,~19)(5,23,~22)(6,18,~17)(7,17,~16)(8,~1,~23)(9,~2,~8)(10,~3,~9)(11,~4,~10)(12,~5,~11)(13,~6,~12)(14,~7,~13)(15,~0,~14)"
-            sage: cols = "RRRRRRRRBBBBBBBBBBBBBBBB"
-            sage: T0 = VeeringTriangulation(fp, cols)
-            sage: for _ in range(10):
-            ....:     p1 = perm_random_centralizer(T0.edge_permutation(copy=False))
-            ....:     p2 = perm_random_centralizer(T0.edge_permutation(copy=False))
-            ....:     T1 = T0.copy(mutable=True)
-            ....:     T1.relabel(p1)
-            ....:     T1.relabel(p2)
-            ....:     T2 = T0.copy(mutable=True)
-            ....:     T2.relabel(perm_compose(p1, p2))
-            ....:     assert T1  == T2
-
-        TESTS:
-
-        This example used to be wrong::
-
-            sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE], mutable=True)
-            sage: T.relabel([1,5,0,2,4,3])
-            sage: T.edge_colour(0) == BLUE
-            True
-            sage: T.edge_colour(1) == RED
-            True
-            sage: T._check()
-
-            sage: T = VeeringTriangulation([(0,1,2), (-1,-2,-3)], [RED, RED, BLUE], mutable=True)
-            sage: from veerer.permutation import perm_random
-            sage: for _ in range(10):
-            ....:     r = perm_random(6)
-            ....:     T.relabel(r)
-            ....:     T._check()
-        """
-        if not self._mutable:
-            raise ValueError('immutable veering triangulation; use a mutable copy instead')
-
-        n = self._n
-        ep = self._ep
-        if check and not perm_check(p, n):
-            p = perm_init(p, n, ep)
-            if not perm_check(p, n):
-                raise ValueError('invalid relabelling permutation')
-
         Triangulation.relabel(self, p, check=False)
         perm_on_list(p, self._colouring)
-
-    def _automorphism_good_starts(self, has_purple=None, has_green=None):
-        r"""
-        Start at a RED before a BLUE.
-
-        EXAMPLES::
-
-            sage: from veerer import *
-
-            sage: T = VeeringTriangulation("(0,1,2)", "RRB")
-            sage: len(T._automorphism_good_starts())
-            1
-            sage: t = VeeringTriangulation("(0,~6,~3)(1,7,~2)(2,~1,~0)(3,5,~4)(4,8,~5)(6,~8,~7)", "RBPBRBPRB")
-            sage: len(t._automorphism_good_starts())
-            2
-
-            sage: T = VeeringTriangulation("(0,1,2)(3,4,~1)(5,6,~4)", "RBGGRBG")
-            sage: T._automorphism_good_starts()
-            [2, 3, 6]
-        """
-        # TODO: do something smarter?
-        return range(self._n)
 
     # TODO: check the argument!!!
     def edge_colour(self, e):
@@ -1798,52 +1591,6 @@ class VeeringTriangulation(Triangulation):
         for e in range(self._n):
             if self._colouring[e] == GREEN or self._colouring[e] == PURPLE:
                 self._colouring[e] = col
-
-    def best_relabelling(self, all=False):
-        r"""
-        Return a pair ``(r, (cols, fp, ep))`` where the triple ``(cols, fp,
-        ep)`` is the data of the canonical labelling of this veering
-        triangulation and ``r`` is a relabelling that brings this triangulation
-        to the canonical one.
-
-        EXAMPLES::
-
-            sage: from veerer import *
-            sage: from veerer.permutation import perm_random_centralizer
-            sage: fp = "(0,~1,2)(~0,1,~3)(4,~5,3)(~4,6,~2)(7,~6,8)(~7,5,~9)(10,~11,9)(~10,11,~8)"
-            sage: cols = "BRBBBRRBBBBR"
-            sage: V = VeeringTriangulation(fp, cols, mutable=True)
-            sage: r, (cols, fp, ep) = V.best_relabelling()
-            sage: for _ in range(10):
-            ....:     p = perm_random_centralizer(V.edge_permutation(copy=False))
-            ....:     V.relabel(p)
-            ....:     r2, (cols2, fp2, ep2) = V.best_relabelling()
-            ....:     assert cols2 == cols and fp2 == fp and ep2 == ep
-        """
-        best = None
-        if all:
-            relabellings = []
-
-        for start_edge in self._automorphism_good_starts():
-            relabelling = self._relabelling_from(start_edge)
-
-            # relabelled data
-            fp = perm_conjugate(self._fp, relabelling)
-            ep = perm_conjugate(self._ep, relabelling)
-            cols = self._colouring[:]
-            perm_on_list(relabelling, cols)
-
-            T = (cols, fp, ep)
-            if best is None or T < best:
-                best = T
-                best_relabelling = relabelling
-                if all:
-                    del relabellings[:]
-                    relabellings.append(relabelling)
-            elif all and T == best:
-                relabellings.append(relabelling)
-
-        return (relabellings, best) if all else (best_relabelling, best)
 
     def rotate(self):
         r"""
@@ -1921,7 +1668,8 @@ class VeeringTriangulation(Triangulation):
 
         Triangulation.conjugate(self)
         transp = {RED: BLUE, BLUE: RED, GREEN: GREEN, PURPLE: PURPLE}
-        self._colouring = array('i', [transp[col] for col in self._colouring])
+        for i in range(self._n):
+            self._colouring[i] = transp[self._colouring[i]]
 
     # TODO: finish this!!
     def automorphism_quotient(self, aut):
@@ -1966,25 +1714,6 @@ class VeeringTriangulation(Triangulation):
 
         return (nb_verts, nb_edges, nb_faces)
 
-    def to_string(self):
-        r"""
-        Serialization to string.
-
-        EXAMPLES::
-
-            sage: from veerer import *
-
-            sage: T = VeeringTriangulation("(0,1,2)", "RRB")
-            sage: T.to_string()
-            'RRB_120_012'
-
-            sage: from surface_dynamics import *  # optional - surface_dynamics
-            sage: T = VeeringTriangulation.from_stratum(Stratum({1:20}, 2))  # optional - surface_dynamics
-            sage: s = T.to_string()  # optional - surface_dynamics
-            sage: TT = VeeringTriangulation.from_string(s)  # optional - surface_dynamics
-            sage: T == TT  # optional - surface_dynamics
-            True
-        """
         colours = self._colouring_string(short=False)
         fp = perm_base64_str(self._fp)
         ep = perm_base64_str(self._ep)
@@ -2218,8 +1947,7 @@ class VeeringTriangulation(Triangulation):
             [([2, 1, 6], [11], [9], True)]
             sage: T.cylinders(RED)
             []
-
-            sage: T = VeeringTriangulation.from_string("RBRBBBRRBRBR_908274a531b6_ba9385764210")
+            sage: T = VeeringTriangulation("(0,~2,1)(2,~4,3)(4,~6,5)(6,~1,~0)", "RBRBBBR")
             sage: T.cylinders(BLUE)
             [([5, 4, 3], [], [7, 2], True)]
 
@@ -4477,14 +4205,14 @@ class VeeringTriangulation(Triangulation):
             H_1(2, -2)
             sage: sg = vt.strebel_graph(slope=VERTICAL)
             sage: sg
-            StrebelGraph("(0:0,~1:1,~0:0,1:1)")
+            StrebelGraph("(0,~1:1,~0,1:1)")
             sage: sg.stratum()
             H_1(2, -2)
 
             sage: vt = VeeringTriangulation(t, colouring="BRBB")
             sage: sg = vt.strebel_graph(slope=HORIZONTAL)
             sage: sg
-            StrebelGraph("(0:0,~1:1,~0:0,1:1)")
+            StrebelGraph("(0,~1:1,~0,1:1)")
             sage: sg.stratum()
             H_1(2, -2)
         """
@@ -4560,9 +4288,7 @@ class VeeringTriangulation(Triangulation):
 
         #STEP3: bulid the Strebel graph
         from .strebel_graph import StrebelGraph
-        G = StrebelGraph.from_face_edge_perms(vertex_permutation, edge_permutation, boundary=beta, mutable=mutable)
-
-        return G
+        return StrebelGraph.from_permutations(vertex_permutation, edge_permutation, None, (beta,), mutable=mutable, check=True)
 
 
 class VeeringTriangulations:
