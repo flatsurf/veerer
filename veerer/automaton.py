@@ -324,7 +324,7 @@ class Automaton:
             sage: A.run()
             0
             sage: list(A.sinks())
-            [VeeringTriangulation("(0,~2,1)(3,~1,~0)", boundary="(2:2,~3:2)", colouring="RBRR")]
+            [VeeringTriangulation("(0,~3,2)(1,3,~2)", boundary="(~1:2,~0:2)", colouring="RRRB")]
 
         The sinks coincide with vertical-Strebel veering triangulations::
 
