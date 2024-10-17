@@ -212,11 +212,6 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
 
     def __getstate__(self):
         R = self.base_ring()
-        a = list(self._fp[:])
-        a.extend(self._ep)
-        a.extend(self._bdry)
-        a.extend(self._colouring)
-        a.append(self._mutable)
         # NOTE: here we know that all entries have the same parent
         if R is ZZ:
             entries = list(map(int, self._subspace.list()))
@@ -234,7 +229,7 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
                 entries.append(int(d))
         else:
             entries = self._subspace.list()
-        return a, R, entries
+        return VeeringTriangulation.__getstate__(self), R, entries
 
     def __setstate__(self, arg):
         r"""
@@ -258,14 +253,8 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
             sage: lf2._check()
         """
         a, R, raw_entries = arg
-        n = (len(a) - 1) // 4
-        self._n = n
-        self._fp = array('i', a[:n])
-        self._ep = array('i', a[n:2*n])
-        self._bdry = array('i', a[2*n:3*n])
-        self._colouring = array('i', a[3*n:4*n])
-        self._mutable = a[-1]
-        self._vp = array('i', [-1] * n)
+        VeeringTriangulation.__setstate__(self, a)
+        n = self._n
         for i in range(n):
             self._vp[self._fp[self._ep[i]]] = i
 
@@ -296,7 +285,7 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
             sage: from veerer import VeeringTriangulation
             sage: vt = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
             sage: vt.as_linear_family().veering_triangulation()
-            VeeringTriangulation("(0,1,2)(~2,~0,~1)", "RRB")
+            VeeringTriangulationLinearFamily("(0,1,2)(~2,~0,~1)", "RRB", [(1, 0, -1), (0, 1, 1)])
         """
         return VeeringTriangulation.copy(self, mutable)
 
@@ -400,6 +389,7 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
         L._fp = self._fp[:]
         L._bdry = self._bdry[:]
         L._colouring = self._colouring[:]
+        L._data = (L._bdry, L._colouring)
         L._subspace = copy(self._subspace)
         L._mutable = mutable
         if not mutable:
@@ -899,36 +889,55 @@ class VeeringTriangulationLinearFamilies:
         EXAMPLES::
 
             sage: from veerer.linear_family import VeeringTriangulationLinearFamilies
-            sage: from veerer.automaton import GeometricAutomatonSubspace
+            sage: from veerer.automaton import DelaunayAutomaton
 
             sage: X9 = VeeringTriangulationLinearFamilies.prototype_H2(0, 2, 1, -1)
             sage: X9.base_ring()
             Rational Field
             sage: X9.is_geometric()
             True
-            sage: GeometricAutomatonSubspace(X9)
-            Geometric veering linear constraint automaton with 6 vertices
+            sage: A = DelaunayAutomaton()
+            sage: A.add_seed(X9)
+            1
+            sage: A.run()
+            0
+            sage: A
+            Delaunay automaton with 6 vertices
 
             sage: X17 = VeeringTriangulationLinearFamilies.prototype_H2(0, 2, 2, -1)
             sage: X17.base_ring()
             Number Field in sqrt17 with defining polynomial x^2 - 17 with sqrt17 = 4.123105625617660?
             sage: X17.is_geometric()
             True
-            sage: GeometricAutomatonSubspace(X17)  # long time
-            Geometric veering linear constraint automaton with 210 vertices
+            sage: A = DelaunayAutomaton()
+            sage: A.add_seed(X17)
+            1
+            sage: A.run()  # long time
+            0
+            sage: A  # long time
+            Delaunay automaton with 210 vertices
 
         We check below part of McMullen theorem about connectedness::
 
             sage: a0, b0, c0, e0 = next(VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=0))
             sage: X17_0 = VeeringTriangulationLinearFamilies.prototype_H2(a0, b0, c0, e0)
-            sage: A0 = GeometricAutomatonSubspace(X17_0, backend='sage')  # long time
+            sage: A0 = DelaunayAutomaton(backend='sage')
+            sage: A0.add_seed(X17_0)
+            1
+            sage: A0.run()  # long time
+            0
             sage: for a, b, c, e in VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=0):  # long time
             ....:     X = VeeringTriangulationLinearFamilies.prototype_H2(a, b, c, e, mutable=True)
             ....:     X.set_canonical_labels()
             ....:     assert X in A0
+
             sage: a1, b1, c1, e1 = next(VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=1))
             sage: X17_1 = VeeringTriangulationLinearFamilies.prototype_H2(a1, b1, c1, e1)
-            sage: A1 = GeometricAutomatonSubspace(X17_1, backend='sage')  # long time
+            sage: A1 = DelaunayAutomaton(backend='sage')
+            sage: A1.add_seed(X17_1)
+            1
+            sage: A1.run()  # long time
+            0
             sage: for a, b, c, e in VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=1):  # long time
             ....:     X = VeeringTriangulationLinearFamilies.prototype_H2(a, b, c, e, mutable=True)
             ....:     X.set_canonical_labels()
@@ -986,13 +995,13 @@ class VeeringTriangulationLinearFamilies:
         EXAMPLES::
 
             sage: from veerer.linear_family import VeeringTriangulationLinearFamilies
-            sage: from veerer.automaton import GeometricAutomatonSubspace
+            sage: from veerer.automaton import DelaunayAutomaton
 
             sage: X9 = VeeringTriangulationLinearFamilies.prototype_H1_1(0, 2, 1, -1)
             sage: X9.base_ring()
             Rational Field
             sage: X9.geometric_automaton()  # long time
-            Geometric veering linear constraint automaton with 1244 vertices
+            Delaunay automaton with 1244 vertices
         """
         #         (a+r,c)         (a+b,c)
         #           x-------x------o--x  (a+b+r,c)
