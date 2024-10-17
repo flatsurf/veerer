@@ -558,3 +558,18 @@ class StrebelGraph(Constellation):
             bdry = array('i', boundary)
 
         return StrebelGraph.from_permutations(vp, ep, fp, (bdry,), mutable, check)
+
+    def as_linear_family(self):
+        r"""
+        Return this Strebel graph as a linear family.
+
+        EXAMPLES::
+
+            sage: from veerer import StrebelGraph
+            sage: G = StrebelGraph("(0,1,2)(~0,~1:1,~2:2)")
+            sage: G.as_linear_family()
+            StrebelGraphLinearFamily("(0,1,2)(~2:2,~0,~1:1)", [(1, 0, 0), (0, 1, 0), (0, 0, 1)])
+        """
+        from sage.matrix.special import identity_matrix
+        from .linear_family import StrebelGraphLinearFamily
+        return StrebelGraphLinearFamily(self, identity_matrix(ZZ, self.num_edges()))
