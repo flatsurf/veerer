@@ -49,8 +49,9 @@ class Constellation:
             vp = self._vp = array('i', [-1] * n)
             for i in range(n):
                 vp[fp[ep[i]]] = i
+        else:
+            self._vp = vp
 
-        self._vp = vp
         self._ep = ep
         self._fp = fp
 
@@ -239,7 +240,9 @@ class Constellation:
         x = 140737488617563
         x = ((x ^ hash(self._vp.tobytes())) * 2147483693) + 82520 + self._n + self._n
         x = ((x ^ hash(self._ep.tobytes())) * 2147483693) + 82520 + self._n + self._n
-        x = ((x ^ hash(self._fp.tobytes())) * 2147483693) + 82520 + self._n + self._n
+
+        for l in self._data:
+            x = ((x ^ hash(l.tobytes())) * 2147483693) + 82520 + self._n + self._n
 
         return x
 
@@ -371,11 +374,46 @@ class Constellation:
         return cls.from_permutations(vp, ep, fp, data, mutable, check)
 
     def __eq__(self, other):
+        r"""
+        Return whether ``self`` and ``other`` are equal.
+
+        EXAMPLES::
+
+            sage: from veerer import Triangulation, VeeringTriangulation, StrebelGraph
+
+            sage: Triangulation("(0,1,2)(~0,~1,~2)") == Triangulation("(0,1,2)(~0,~1,~2)")
+            True
+            sage: Triangulation("(0,1,2)(~0,~1,~2)") == Triangulation("(0,~0,1)(~1,2,~2)")
+            False
+
+            sage: StrebelGraph("(0,1,2,~0,~1,~2)") == StrebelGraph("(0,1,2,~0,~1,~2)")
+            True
+            sage: StrebelGraph("(0,1,2,~0,~1,~2)") == StrebelGraph("(0,1:1,2,~0,~1,~2)")
+            False
+        """
         if type(self) != type(other):
             raise TypeError
         return self._n == other._n and self._fp == other._fp and self._ep == other._ep and self._data == other._data
 
     def __ne__(self, other):
+        r"""
+        Return whether ``self`` and ``other`` are different.
+
+        EXAMPLES::
+
+            sage: from veerer import Triangulation, VeeringTriangulation, StrebelGraph
+
+            sage: Triangulation("(0,1,2)(~0,~1,~2)") != Triangulation("(0,1,2)(~0,~1,~2)")
+            False
+            sage: Triangulation("(0,1,2)(~0,~1,~2)") != Triangulation("(0,~0,1)(~1,2,~2)")
+            True
+
+            sage: StrebelGraph("(0,1,2,~0,~1,~2)") != StrebelGraph("(0,1,2,~0,~1,~2)")
+            False
+            sage: StrebelGraph("(0,1,2,~0,~1,~2)") != StrebelGraph("(0,1:1,2,~0,~1,~2)")
+            True
+
+        """
         if type(self) != type(other):
             raise TypeError
         return self._n != other._n or self._fp != other._fp or self._ep != other._ep or self._data != other._data
