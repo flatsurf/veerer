@@ -133,7 +133,7 @@ DOWN = VERTICAL | 8
 
 SLOPES = [HORIZONTAL, VERTICAL]
 
-sHORINZONTAL = 'horizontal'
+sHORIZONTAL = 'horizontal'
 sVERTICAL = 'vertical'
 sRIGHT = 'right'
 sLEFT = 'left'
@@ -221,12 +221,12 @@ def slope_to_string(slope):
 
         sage: from veerer.constants import slope_to_string, HORIZONTAL, VERTICAL, RIGHT, LEFT, UP, DOWN
 
-        sage: assert colour_to_string(HORIZONTAL) == 'horizontal'
-        sage: assert colour_to_string(VERTICAL) == 'vertical'
-        sage: assert colour_to_string(RIGHT) == 'right'
-        sage: assert colour_to_string(LEFT) == 'left'
-        sage: assert colour_to_string(UP) == 'up'
-        sage: assert colour_to_string(DOWN) == 'down'
+        sage: assert slope_to_string(HORIZONTAL) == 'horizontal'
+        sage: assert slope_to_string(VERTICAL) == 'vertical'
+        sage: assert slope_to_string(RIGHT) == 'right'
+        sage: assert slope_to_string(LEFT) == 'left'
+        sage: assert slope_to_string(UP) == 'up'
+        sage: assert slope_to_string(DOWN) == 'down'
     """
     if slope == HORIZONTAL:
         return sHORIZONTAL
