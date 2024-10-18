@@ -1246,7 +1246,8 @@ class VeeringTriangulation(Triangulation):
             sage: t0 = Triangulation("(0,1,2)(~0,3,~2)", boundary="(~3:1)(~1:1)")
             sage: t1 = Triangulation("(0,1,2)(~0,3,~2)", boundary="(~3:1,~1:1)")
             sage: vt = VeeringTriangulation(t0, "BBRB")
-            sage: assert vt.dimension() == vt.stratum().dimension() == vt.as_linear_family().dimension() == 2
+            sage: assert vt.dimension() == vt.as_linear_family().dimension() == 2
+            sage: assert vt.stratum().dimension() == 2  # optional - surface_dynamics
 
         An example in H(2,-2)::
 
@@ -1254,7 +1255,8 @@ class VeeringTriangulation(Triangulation):
             sage: bdry = "(~2:2,~3:2)"
             sage: cols = "BRRR"
             sage: vt = VeeringTriangulation(fp, bdry, cols)
-            sage: assert vt.dimension() == vt.stratum().dimension() == vt.as_linear_family().dimension() == 2
+            sage: assert vt.dimension() == vt.as_linear_family().dimension() == 2
+            sage: assert vt.stratum().dimension() == 2  # optional - surface_dynamics
         """
         # each folded edge gives a simple pole
         return 2 * self.genus() - 2 + self.num_vertices() + self.num_folded_edges() + self.num_boundary_faces() + (self.is_holomorphic() and self.is_abelian())
@@ -4158,8 +4160,6 @@ class VeeringTriangulation(Triangulation):
 
             sage: t = Triangulation("(0,2,1)(3,~1,~0)", boundary="(~3:2,~2:2)")
             sage: vt = VeeringTriangulation(t, colouring="RBBB")
-            sage: vt.stratum()
-            H_1(2, -2)
             sage: sg = vt.strebel_graph(slope=VERTICAL)
             sage: sg
             StrebelGraph("(0,~1:1,~0,1:1)")
