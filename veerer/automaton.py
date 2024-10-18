@@ -226,6 +226,7 @@ class Automaton:
         return len(self._forward_neighbors)
 
     number_of_states = __len__
+    num_states = __len__
 
     def number_of_transitions(self):
         r"""
@@ -249,6 +250,8 @@ class Automaton:
             300
         """
         return sum(len(v) for v in self._forward_neighbors.values())
+
+    num_transitions = number_of_transitions
 
     def __iter__(self):
         r"""
