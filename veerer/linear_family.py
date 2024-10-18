@@ -189,9 +189,9 @@ class LinearFamily:
     Abstract class to handle linear coordinates on either veering triangulation
     or Strebel graph.
     """
-    _constellation_class = None
-
     def __init__(self, *args, mutable=False, check=True):
+        self._constellation_class_init()
+
         if len(args) < 2:
             raise ValueError('require at least two arguments')
         constellation_args = args[:-1]
@@ -208,6 +208,12 @@ class LinearFamily:
 
         if check:
             self._check(ValueError)
+
+    def _constellation_class_init(self):
+        bases = self.__class__.__bases__
+        if len(bases) != 2 or bases[0] != LinearFamily:
+            raise ValueError
+        self._constellation_class = bases[1]
 
     def __str__(self):
         r"""
@@ -270,6 +276,7 @@ class LinearFamily:
             sage: assert lf == lf2
             sage: lf2._check()
         """
+        self._constellation_class_init()
         a, R, raw_entries = arg
         self._constellation_class.__setstate__(self, a)
         n = self._n
@@ -321,6 +328,7 @@ class LinearFamily:
             return self
 
         L = self._constellation_class.copy(self, mutable=True, cls=self.__class__)
+        L._constellation_class = self._constellation_class
         L._subspace = copy(self._subspace)
         if not mutable:
             L._subspace.set_immutable()
@@ -522,8 +530,7 @@ class VeeringTriangulationLinearFamily(LinearFamily, VeeringTriangulation):
     Veering triangulation together with a subspace of H^1(S, Sigma; \bR) that
     describes a (piece of a) linear GL(2,R)-invariant immersed sub-orbifold.
     """
-    __slots__ = ['_subspace']
-    _constellation_class = VeeringTriangulation
+    __slots__ = ['_constellation_class', '_subspace']
 
     def veering_triangulation(self, mutable=False):
         r"""
@@ -831,7 +838,7 @@ class StrebelGraphLinearFamily(LinearFamily, StrebelGraph):
         sage: G.dimension()
         2
     """
-    _constellation_class = StrebelGraph
+    __slots__ = ['_constellation_class', '_subspace']
 
 
 class VeeringTriangulationLinearFamilies:
