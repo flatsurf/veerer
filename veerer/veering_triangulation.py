@@ -4001,40 +4001,34 @@ class VeeringTriangulation(Triangulation):
                         edges.append(i)
             yield self.blowup(edges)
 
-    def is_strebel_halfedge(self, e, slope=VERTICAL):
+    def is_strebel_half_edge(self, e, slope=VERTICAL, check=True):
         r"""
         Return whether ``e`` is a Strebel half-edge.
         """
+        if check:
+            e = self._check_half_edge(e)
+
         ep = self._ep
         fp = self._fp
 
-        if self._bdry[e] > 0: #a boundary half-edge is strebel
+        if self._bdry[e]:
+            # boundary half-edge
             return True
         else:
+            # internal half-edge
             a = fp[e]
             b = fp[a]
             assert e == fp[b]
 
-            ce = self.colour(e)
-            ca = self.colour(a)
-            cb = self.colour(b)
+            ca = self._colouring[a]
+            cb = self._colouring[b]
 
             if slope == VERTICAL:
-                #an internal edge that is not the edge with the largest x-coordinate
-                # in the adjacent triangle is strebel
-                if ce == RED and cb == BLUE:
-                    return True
-                elif ce == BLUE and ca == RED:
-                    return True
-                else:
-                    return False
+                return (ca != BLUE or cb != RED)
             elif slope == HORIZONTAL:
-                if ce == RED and ca == BLUE:
-                    return True
-                elif ce == BLUE and cb == RED:
-                    return True
-                else:
-                    return False
+                return (ca != RED or cb != BLUE)
+            else:
+                raise ValueError('invalid slope parameter')
 
     def strebel_edges(self, slope=VERTICAL):
         r"""
@@ -4053,7 +4047,7 @@ class VeeringTriangulation(Triangulation):
             if e == E:
                 raise NotImplementedError('folded edge')
             if e < ep[e]:
-                if self.is_strebel_halfedge(e, slope=slope) and self.is_strebel_halfedge(E, slope=slope):
+                if self.is_strebel_half_edge(e, slope=slope) and self.is_strebel_half_edge(E, slope=slope):
                     index_strebel[e] = j
                     index_strebel[E] = 2 * dim - j - 1
                     j = j + 1
