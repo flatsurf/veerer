@@ -540,10 +540,10 @@ class VeeringTriangulationLinearFamily(LinearFamily, VeeringTriangulation):
 
             sage: from veerer import VeeringTriangulation
             sage: vt = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
-            sage: vt.as_linear_family().veering_triangulation()
-            VeeringTriangulationLinearFamily("(0,1,2)(~2,~0,~1)", "RRB", [(1, 0, -1), (0, 1, 1)])
+            sage: vt.as_linear_family().veering_triangulation() == vt
+            True
         """
-        return VeeringTriangulation.copy(self, mutable)
+        return VeeringTriangulation.copy(self, mutable, cls=VeeringTriangulation)
 
     def _horizontal_subspace(self):
         mat = copy(self._subspace)
@@ -612,8 +612,6 @@ class VeeringTriangulationLinearFamily(LinearFamily, VeeringTriangulation):
             subspace = self._horizontal_subspace()
         for row in subspace.right_kernel_matrix():
             insert(sum(row[i] * x[i] for i in range(ambient_dim)) == 0)
-
-
 
     def _check(self, error=ValueError):
         subspace = self._subspace
@@ -825,6 +823,29 @@ class VeeringTriangulationLinearFamily(LinearFamily, VeeringTriangulation):
                     break
                 else:
                     self.flip_back(e, old_col)
+
+    def strebel_graph(self, slope=VERTICAL):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: triangles = "(0,1,2)(~1,3,4)(~3,5,6)(~6,7,8)"
+            sage: boundary = "(~0:1,~2:1,~4:1,~8:1,~7:1,~5:1)"
+            sage: colours = "BBRRRRBRB"
+            sage: vt = VeeringTriangulation(triangles, boundary, colours)
+            sage: v0,v1,v2,v3,v4 = vt.as_linear_family()._subspace.rows()
+            sage: VeeringTriangulationLinearFamily(vt, [v0 + v1 + v2 + v3 + v4]).strebel_graph()
+            StrebelGraphLinearFamily("(0,1,~1:1,~0,2,~3,4,~4:1,3,~2)", [(1, 0, 1, 0, 1)])
+            sage: VeeringTriangulationLinearFamily(vt, [v0 + v1 + v2, v3 + v4]).strebel_graph()
+            StrebelGraphLinearFamily("(0,1,~1:1,~0,2,~3,4,~4:1,3,~2)", [(1, 0, 1, 0, 1), (0, 0, 0, 1, 1)])
+            sage: VeeringTriangulationLinearFamily(vt, [v0, v1 + v2, v3 + v4]).strebel_graph()
+            StrebelGraphLinearFamily("(0,1,~1:1,~0,2,~3,4,~4:1,3,~2)", [(1, 0, 1, 0, 1), (0, 1, 0, 0, 0), (0, 0, 0, 1, 1)])
+        """
+        indices = [e for e in range(self._n // 2) if self.is_half_edge_strebel(e, slope)]
+        G = VeeringTriangulation.strebel_graph(self, slope)
+        subspace = self._subspace.matrix_from_columns(indices)
+        return StrebelGraphLinearFamily(G, subspace)
 
 
 class StrebelGraphLinearFamily(LinearFamily, StrebelGraph):

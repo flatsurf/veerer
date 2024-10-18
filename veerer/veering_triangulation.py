@@ -4001,21 +4001,20 @@ class VeeringTriangulation(Triangulation):
                         edges.append(i)
             yield self.blowup(edges)
 
-    def is_strebel_half_edge(self, e, slope=VERTICAL, check=True):
+    def is_half_edge_strebel(self, e, slope=VERTICAL, check=True):
         r"""
         Return whether ``e`` is a Strebel half-edge.
         """
         if check:
             e = self._check_half_edge(e)
 
-        ep = self._ep
-        fp = self._fp
 
         if self._bdry[e]:
             # boundary half-edge
             return True
         else:
             # internal half-edge
+            fp = self._fp
             a = fp[e]
             b = fp[a]
             assert e == fp[b]
@@ -4038,7 +4037,8 @@ class VeeringTriangulation(Triangulation):
         """
         n = self._n
         ep = self._ep
-        dim = self.dimension()
+        # NOTE: here we want the dimension of the ambient stratum
+        dim = VeeringTriangulation.dimension(self)
 
         index_strebel = [-1] * n
         j = 0
@@ -4047,13 +4047,13 @@ class VeeringTriangulation(Triangulation):
             if e == E:
                 raise NotImplementedError('folded edge')
             if e < ep[e]:
-                if self.is_strebel_half_edge(e, slope=slope) and self.is_strebel_half_edge(E, slope=slope):
+                if self.is_half_edge_strebel(e, slope=slope) and self.is_half_edge_strebel(E, slope=slope):
                     index_strebel[e] = j
                     index_strebel[E] = 2 * dim - j - 1
                     j = j + 1
 
         if j != dim:
-                raise ValueError('The half-edges are not as many as expected. Check code')
+            raise RuntimeError('not as many half-edges as expected; j = {} dim = {} index_strebel = {}'.format(j, dim, index_strebel))
 
         return index_strebel
 
@@ -4087,6 +4087,8 @@ class VeeringTriangulation(Triangulation):
             StrebelGraph("(0,~1:1,~0,1:1)")
             sage: assert sg.stratum() == vt.stratum() == Stratum((2,-2), 1)  # optional - surface_dynamics
 
+        More complicated examples::
+
             sage: triangles = "(0,1,2)(~1,3,4)(~3,5,6)(~6,7,8)"
             sage: boundary = "(~0:1,~2:1,~4:1,~8:1,~7:1,~5:1)"
             sage: colours = "BBRRRRBRB"
@@ -4104,6 +4106,13 @@ class VeeringTriangulation(Triangulation):
             StrebelGraph("(0:1,1,~1:1,~0,2)(3,~2,~3:2,4,~4:1)")
             sage: assert sg.stratum() == vt.stratum() == Stratum((5, 0, 0, 0, 0, -4, -5), 2) # optional - surface_dynamics
 
+            sage: vt = VeeringTriangulation("(0,1,2)(3,4,5)(6,7,8)", "(~8:2,~7:1,~6:1,~5:2,~4:1,~3:1,~2:2,~1:1,~0:1)", "RBRRBBRRB")
+            sage: sg = vt.strebel_graph()
+            sage: assert vt.stratum() == sg.stratum() == Stratum((6, 0, 0, 0, 0, -1, -1, -8), 2) # optional - surface_dynamics
+
+            sage: vt = VeeringTriangulation("(0,1,2)(3,4,5)(6,7,8)", "(~8:1,~7:1,~6:2,~5:1,~4:2,~3:1,~2:2,~1:1,~0:1)", "RBRRBBRRB")
+            sage: sg = vt.strebel_graph()
+            sage: assert vt.stratum() == sg.stratum() == Stratum((2, 0, 0, 0, 0, 0, 0, -4), 1) # optional - surface_dynamics
         """
         if not self.is_strebel(slope=slope):
             raise ValueError('triangulation is not Strebel')
@@ -4115,58 +4124,47 @@ class VeeringTriangulation(Triangulation):
         bdry = self._bdry
         colouring = self._colouring
 
-        dim = self.dimension()
+        # NOTE: here we want the dimension of the ambient stratum
+        dim = VeeringTriangulation.dimension(self)
         m = 2 * dim # number of half-edges
 
-        # STEP 1: get the list of half-edges in the strebel graph
+        # list of half-edges in the strebel graph
         index_strebel = self.strebel_edges(slope=slope)
 
-        # STEP 2: build vertex permutation, edge permutation, and boundary array
-        list_vertex_permutation = []
-        list_beta = []
+        # build vertex permutation, edge permutation, and boundary array
+        vertex_permutation = array('i', [-1] * m)
+        edge_permutation = array('i', [-1] * m)
+        beta = array('i', [-1] * m)
         for e0, i in enumerate(index_strebel):
             if i == -1:
                 continue
+            assert index_strebel[ep[e0]] != -1
+            edge_permutation[i] = index_strebel[ep[e0]]
             e = e0
-            sum_alpha_e = bdry[e]
-            while True:
-                if bdry[e] != 0: #make sure that the last edge (with label_e!= -1) does not counted
+            j = -1
+            sum_alpha_e = 0
+            while j == -1:
+                sum_alpha_e += bdry[e]
+                if bdry[e]: # make sure that the last edge (with label_e!= -1) does not counted
                     e_mark_0 = e
-                    e_mark_1 = vp[e]
                 e = vp[e]
-                label_e = index_strebel[e]
-                if label_e != -1:
-                    list_vertex_permutation.append(label_e)
-                    break
-                sum_alpha_e = sum_alpha_e + bdry[e] #CHECK that we do not sum over the last half-edge e
-            #compute beta_e w.r.t the colours of e0 and e:
+                j = index_strebel[e]
+            vertex_permutation[i] = j
+
+            # compute beta_e w.r.t the colours of e0 and e:
             if sum_alpha_e == 0:
-                list_beta.append(0)
-            else: #sum_alpha_e > 0
-                #RED = 1
-                #BLUE = 2
+                beta[i] = 0
+            else:
                 if slope == VERTICAL:
-                    if colouring[e_mark_0] == RED and colouring[e_mark_1] == BLUE:
-                        list_beta_e = sum_alpha_e
-                        list_beta.append(list_beta_e)
+                    if colouring[e_mark_0] == RED and colouring[vp[e_mark_0]] == BLUE:
+                        beta[i] = sum_alpha_e
                     else:
-                        list_beta_e = sum_alpha_e - 1
-                        list_beta.append(list_beta_e)
+                        beta[i] = sum_alpha_e - 1
                 elif slope == HORIZONTAL:
-                    if colouring[e_mark_0] == BLUE and colouring[e_mark_1] == RED:
-                        list_beta_e = sum_alpha_e
-                        list_beta.append(list_beta_e)
+                    if colouring[e_mark_0] == BLUE and colouring[vp[e_mark_0]] == RED:
+                        beta[i] = sum_alpha_e
                     else:
-                        list_beta_e = sum_alpha_e - 1
-                        list_beta.append(list_beta_e)
-
-        vertex_permutation = array('i', list_vertex_permutation)
-        beta = array('i', list_beta)
-
-        #edge permutation
-        edge_permutation = array('i', [-1] * m)
-        for i in range(m):
-            edge_permutation[i] = m-1-i
+                        beta[i] = sum_alpha_e - 1
 
         #STEP3: build the Strebel graph
         from .strebel_graph import StrebelGraph
