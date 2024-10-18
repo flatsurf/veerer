@@ -525,8 +525,13 @@ class Triangulation(Constellation):
             sage: T = Triangulation("(0,1,2)(~0)(~1,~2)", {"~0": 1, "~1": 1, "~2": 1})
             sage: T.num_boundary_faces()
             2
+
+            sage: fp = "(0,2,1)(~0,3,~1)"
+            sage: bdry = "(~2:2,~3:2)"
+            sage: Triangulation(fp, bdry, cols).num_boundary_faces()
+            1
         """
-        return sum(self._data[0][c[0]] == 1 for c in perm_cycles(self._fp))
+        return sum(bool(self._data[0][c[0]]) for c in perm_cycles(self._fp))
 
     def euler_characteristic(self):
         r"""

@@ -782,6 +782,12 @@ class VeeringTriangulation(Triangulation):
         e = int(e)
         return self._colouring[e]
 
+    def is_holomorphic(self):
+        return not any(self._bdry)
+
+    def is_meromorphic(self):
+        return any(self._bdry)
+
     def vertex_angle(self, e):
         r"""
         Return the angle at the vertex the half-edge ``e`` is adjacent to.
@@ -1233,9 +1239,25 @@ class VeeringTriangulation(Triangulation):
     def dimension(self):
         r"""
         Return the dimension of the ambient stratum of Abelian or quadratic differential.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: t0 = Triangulation("(0,1,2)(~0,3,~2)", boundary="(~3:1)(~1:1)")
+            sage: t1 = Triangulation("(0,1,2)(~0,3,~2)", boundary="(~3:1,~1:1)")
+            sage: vt = VeeringTriangulation(t0, "BBRB")
+            sage: assert vt.dimension() == vt.stratum().dimension() == vt.as_linear_family().dimension() == 2
+
+        An example in H(2,-2)::
+
+            sage: fp = "(0,2,1)(~0,3,~1)"
+            sage: bdry = "(~2:2,~3:2)"
+            sage: cols = "BRRR"
+            sage: vt = VeeringTriangulation(fp, bdry, cols)
+            sage: assert vt.dimension() == vt.stratum().dimension() == vt.as_linear_family().dimension() == 2
         """
-        # each folded edge gives a pole
-        return 2 * self.genus() - 2 + self.num_vertices() + self.num_folded_edges() + self.is_abelian()
+        # each folded edge gives a simple pole
+        return 2 * self.genus() - 2 + self.num_vertices() + self.num_folded_edges() + self.num_boundary_faces() + (self.is_holomorphic() and self.is_abelian())
 
     stratum_dimension = dimension
 
@@ -4062,9 +4084,8 @@ class VeeringTriangulation(Triangulation):
         
         ep = self._ep
         fp = self._fp
-        alpha = self._bdry
         
-        if alpha[e] > 0: #a boundary half-edge is strebel
+        if self._bdry[e] > 0: #a boundary half-edge is strebel
             return True
         else:
             a = fp[e]
@@ -4098,28 +4119,23 @@ class VeeringTriangulation(Triangulation):
         The half-edge belongs to the Strebel graph if and only if the index is not -1.
         The index of the half-edge in the Strebel graph is the corresponding label of the half-edge in the Strebel graph
         """
-        n = self._n # the number of half-edges
-        ep = self._ep #edge permutation
-        s = self.stratum()
+        n = self._n
+        ep = self._ep
+        dim = self.dimension()
 
-        try:
-            g = s.surface_genus()
-        except AttributeError:
-            g = s.genus()
-        sing = len(s.signature())
-        num_dim = 2*g + sing - 2 #complex dimension of the associated stratum
-        m = 2*(num_dim)
-
-        index_strebel = [-1]*n #index of the half-edge of self in the strebel graph
-
-        j = 0 #index of the half-edge in the strebel graph, j[e] is the label of the edge of e in Strebel graph
+        index_strebel = [-1] * n
+        j = 0
         for e in range(n):
-            if e<= ep[e]:
-                if self.is_strebel_halfedge(e, slope=slope) and self.is_strebel_halfedge(ep[e], slope=slope):
-                    index_strebel[e] = j #this half-edge belong to strebel
-                    index_strebel[ep[e]] = m - 1 - j #as well as the opposit half-edge
-                    j = j + 1 #move to next label
-        if j != m/2:
+            E = ep[e]
+            if e == E:
+                raise NotImplementedError('folded edge')
+            if e < ep[e]:
+                if self.is_strebel_halfedge(e, slope=slope) and self.is_strebel_halfedge(E, slope=slope):
+                    index_strebel[e] = j
+                    index_strebel[E] = 2 * dim - j - 1
+                    j = j + 1
+
+        if j != dim:
                 raise ValueError('The half-edges are not as many as expected. Check code')
 
         return index_strebel
@@ -4137,6 +4153,7 @@ class VeeringTriangulation(Triangulation):
         EXAMPLES::
 
             sage: from veerer import *
+            sage: from surface_dynamics import Stratum  # optional - surface_dynamics
 
         Strebel-veering triangulation in the stratum H(2, -2)::
 
@@ -4147,15 +4164,31 @@ class VeeringTriangulation(Triangulation):
             sage: sg = vt.strebel_graph(slope=VERTICAL)
             sage: sg
             StrebelGraph("(0,~1:1,~0,1:1)")
-            sage: sg.stratum()
-            H_1(2, -2)
+            sage: assert sg.stratum() == vt.stratum() == Stratum((2,-2), 1)  # optional - surface_dynamics
 
             sage: vt = VeeringTriangulation(t, colouring="BRBB")
             sage: sg = vt.strebel_graph(slope=HORIZONTAL)
             sage: sg
             StrebelGraph("(0,~1:1,~0,1:1)")
-            sage: sg.stratum()
-            H_1(2, -2)
+            sage: assert sg.stratum() == vt.stratum() == Stratum((2,-2), 1)  # optional - surface_dynamics
+
+            sage: triangles = "(0,1,2)(~1,3,4)(~3,5,6)(~6,7,8)"
+            sage: boundary = "(~0:1,~2:1,~4:1,~8:1,~7:1,~5:1)"
+            sage: colours = "BBRRRRBRB"
+            sage: vt = VeeringTriangulation(triangles, boundary, colours)
+            sage: sg = vt.strebel_graph()
+            sage: sg
+            StrebelGraph("(0,1,~1:1,~0,2,~3,4,~4:1,3,~2)")
+            sage: assert sg.stratum() == vt.stratum() == Stratum((0, 0, 0, 0, 0, 0, -2), 1)  # optional - surface_dynamics
+
+            sage: boundary = "(~0:2,~2:1,~4:1)(~8:3,~7:1,~5:1)"
+            sage: colours = "BBRRRRBRB"
+            sage: vt = VeeringTriangulation(triangles, boundary, colours)
+            sage: sg = vt.strebel_graph()
+            sage: sg
+            StrebelGraph("(0:1,1,~1:1,~0,2)(3,~2,~3:2,4,~4:1)")
+            sage: assert sg.stratum() == vt.stratum() == Stratum((5, 0, 0, 0, 0, -4, -5), 2) # optional - surface_dynamics
+
         """
         if not self.is_strebel(slope=slope):
             raise ValueError('triangulation is not Strebel')
@@ -4164,19 +4197,11 @@ class VeeringTriangulation(Triangulation):
         ep = self._ep
         fp = self._fp
         vp = self._vp
-        alpha = self._bdry
-        list_colour = [self.colour(e) for e in range(n)]
+        bdry = self._bdry
+        colouring = self._colouring
 
-        # TODO: clean this in surface-dynamics
-        # see https://github.com/flatsurf/surface-dynamics/issues/99
-        s = self.stratum()
-        try:
-            g = s.surface_genus()
-        except AttributeError:
-            g = s.genus()
-        sing = len(s.signature())
-        num_dim = 2*g + sing - 2 #complex dimension of the associated stratum
-        m = 2*(num_dim) #the number of the !!half!!-edgs of the stratum, so we have the factor "2" !
+        dim = self.dimension()
+        m = 2 * dim # number of half-edges
 
         # STEP 1: get the list of half-edges in the strebel graph
         index_strebel = self.strebel_edges(slope=slope)
@@ -4184,12 +4209,13 @@ class VeeringTriangulation(Triangulation):
         # STEP 2: build vertex permutation, edge permutation, and boundary array
         list_vertex_permutation = []
         list_beta = []
-        for i in range(m):
-            e0 = index_strebel.index(i)
+        for e0, i in enumerate(index_strebel):
+            if i == -1:
+                continue
             e = e0
-            sum_alpha_e = alpha[e]
+            sum_alpha_e = bdry[e]
             while True:
-                if alpha[e] != 0: #make sure that the last edge (with label_e!= -1) does not counted
+                if bdry[e] != 0: #make sure that the last edge (with label_e!= -1) does not counted
                     e_mark_0 = e
                     e_mark_1 = vp[e]
                 e = vp[e]
@@ -4197,7 +4223,7 @@ class VeeringTriangulation(Triangulation):
                 if label_e != -1:
                     list_vertex_permutation.append(label_e)
                     break
-                sum_alpha_e = sum_alpha_e + alpha[e] #CHECK that we do not sum over the last half-edge e
+                sum_alpha_e = sum_alpha_e + bdry[e] #CHECK that we do not sum over the last half-edge e
             #compute beta_e w.r.t the colours of e0 and e:
             if sum_alpha_e == 0:
                 list_beta.append(0)
@@ -4205,14 +4231,14 @@ class VeeringTriangulation(Triangulation):
                 #RED = 1
                 #BLUE = 2
                 if slope == VERTICAL:
-                    if list_colour[e_mark_0] == RED and list_colour[e_mark_1] == BLUE:
+                    if colouring[e_mark_0] == RED and colouring[e_mark_1] == BLUE:
                         list_beta_e = sum_alpha_e
                         list_beta.append(list_beta_e)
                     else:
                         list_beta_e = sum_alpha_e - 1
                         list_beta.append(list_beta_e)
                 elif slope == HORIZONTAL:
-                    if list_colour[e_mark_0] == BLUE and list_colour[e_mark_1] == RED:
+                    if colouring[e_mark_0] == BLUE and colouring[e_mark_1] == RED:
                         list_beta_e = sum_alpha_e
                         list_beta.append(list_beta_e)
                     else:
