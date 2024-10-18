@@ -26,6 +26,7 @@ Common base claas for class:~veerer.triangulation.Triangulations and :class:~vee
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 # ****************************************************************************
 
+import collections
 import numbers
 from array import array
 
@@ -79,8 +80,10 @@ class Constellation:
         if not perms_are_transitive([self._vp, self._ep, self._fp]):
             raise error('(fp, ep, vp) do not generate a transitive group')
         for l in self._data:
-            if not isinstance(l, array) or l.typecode != 'i' or len(l) != n:
-                raise error('each data must be an integer array of same length as the underlying permutations got a {} of length {}'.format(type(l).__name__, len(l)))
+            if not isinstance(l, collections.abc.Sequence) or len(l) != n:
+                raise error('each data must be a sequence of same length as the underlying permutations got a {} of length {}'.format(type(l).__name__, len(l)))
+            if self._mutable and not isinstance(l, collections.abc.MutableSequence):
+                raise error('immutable data in mutable object')
 
         for i in range(n):
             if self._ep[self._ep[i]] != i:
