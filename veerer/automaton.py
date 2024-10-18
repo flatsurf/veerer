@@ -1318,7 +1318,7 @@ class DelaunayAutomaton(Automaton):
             ....:             continue
             ....:         a, b, c, e = prototypes[0]
             ....:         F = VeeringTriangulationLinearFamilies.prototype_H2(a, b, c, e)
-            ....:         A = F.geometric_automaton()
+            ....:         A = F.delaunay_automaton()
             ....:         cylsRED = A.cylinder_diagrams(RED)
             ....:         n1RED = sum(len(next(iter(vts)).cylinders(RED)) == 1 for vts in cylsRED)
             ....:         n2RED = sum(len(next(iter(vts)).cylinders(RED)) == 2 for vts in cylsRED)
