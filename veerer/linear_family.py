@@ -958,6 +958,7 @@ class VeeringTriangulationLinearFamilies:
             sage: for a, b, c, e in VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=0):  # long time
             ....:     X = VeeringTriangulationLinearFamilies.prototype_H2(a, b, c, e, mutable=True)
             ....:     X.set_canonical_labels()
+            ....:     X.set_immutable()
             ....:     assert X in A0
 
             sage: a1, b1, c1, e1 = next(VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=1))
@@ -970,6 +971,7 @@ class VeeringTriangulationLinearFamilies:
             sage: for a, b, c, e in VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=1):  # long time
             ....:     X = VeeringTriangulationLinearFamilies.prototype_H2(a, b, c, e, mutable=True)
             ....:     X.set_canonical_labels()
+            ....:     X.set_immutable()
             ....:     assert X in A1
         """
         #         (a,c)
