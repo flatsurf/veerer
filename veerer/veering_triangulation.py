@@ -4055,6 +4055,43 @@ class VeeringTriangulation(Triangulation):
                         edges.append(i)
             yield self.blowup(edges)
 
+    def is_strebel_halfedge(self, e, slope=VERTICAL):
+        r'''
+        return True if a half-edge is Strebel
+        '''
+        
+        ep = self._ep
+        fp = self._fp
+        alpha = self._bdry
+        
+        if alpha[e] > 0: #a boundary half-edge is strebel
+            return True
+        else:
+            a = fp[e]
+            b = fp[a]
+            assert e == fp[b]
+            
+            ce = self.colour(e)
+            ca = self.colour(a)
+            cb = self.colour(b)
+            
+            if slope == VERTICAL: 
+                #an internal edge that is not the edge with the largest x-coordinate 
+                # in the adjacent triangle is strebel
+                if ce == RED and cb == BLUE:
+                    return True            
+                elif ce == BLUE and ca == RED:
+                    return True
+                else:
+                    return False
+            elif slope == HORIZONTAL:
+                if ce == RED and ca == BLUE:
+                    return True
+                elif ce == BLUE and cb == RED:
+                    return True
+                else:
+                    return False
+
     def strebel_edges(self, slope=VERTICAL):
         r"""
         return a list of indices of the half-edges of the Strebel veering triangulation
@@ -4063,12 +4100,8 @@ class VeeringTriangulation(Triangulation):
         """
         n = self._n # the number of half-edges
         ep = self._ep #edge permutation
-        fp = self._fp
-        vp = self._vp
-        list_boundary = self._bdry
-        list_colour = [self.colour(e) for e in range(n)]
-
         s = self.stratum()
+
         try:
             g = s.surface_genus()
         except AttributeError:
@@ -4079,110 +4112,13 @@ class VeeringTriangulation(Triangulation):
 
         index_strebel = [-1]*n #index of the half-edge of self in the strebel graph
 
-        if slope == VERTICAL: #construct vertical strebel graph
-            j = 0 #index of the half-edge in the strebel graph, j[e] is the label of the edge of e in Strebel graph
-            for e in range(n):
-                if e <= ep[e]:#?is it possible ep[e] = e?
-                    if (not list_boundary[e]) and not (list_boundary[ep[e]]):
-                        #Accoding to the result, an internal edge which is backward flippable
-                        # belongs to the Strebel graph
-                        if self.is_backward_flippable(e, check=False):
-                            index_strebel[e] = j #this half-edge belong to strebel
-                            index_strebel[ep[e]] = m - 1 - j #as well as the opposit half-edge
-                            j = j + 1 #move to next label
-                        #Accoding to the result, an internal edge which is diagonal of an
-                        # monochromatic quadrilateral belongs to the Strebel graph
-                        elif self.colours_about_edge(e) == [RED,RED,RED,RED] or self.colours_about_edge(e) == [BLUE,BLUE,BLUE,BLUE]:
-                            index_strebel[e] = j
-                            index_strebel[ep[e]] = m - 1 - j
-                            j = j + 1
-                    #Accoding to the result, a boundary edge which is not adjacent to any
-                    # internal face belongs to the Strebel graph
-                    elif (list_boundary[e] > 0) and (list_boundary[ep[e]] > 0):
-                        index_strebel[e] = j
-                        index_strebel[ep[e]] = m-1-j
-                        j = j + 1
-                    else:
-                        #RED = 1
-                        #BLUE = 2
-                        #Accoding to the result, a boundary edge which is adjacent to an
-                        # internal face but is not the edge with largest x-coordinate belongs to the Strebel graph
-                        if list_boundary[e] > 0: #ep[e] is in an internal edge
-                            a = fp[ep[e]]
-                            b = fp[a]
-                            if list_colour[ep[e]] == RED and list_colour[b] == BLUE:
-                                index_strebel[e] = j
-                                index_strebel[ep[e]] = m-1-j
-                                j = j + 1
-                            elif list_colour[ep[e]] == BLUE and list_colour[a] == RED:
-                                index_strebel[e] = j
-                                index_strebel[ep[e]] = m-1-j
-                                j = j + 1
-                        elif list_boundary[ep[e]] > 0: #e is in an internal edge
-                            a = fp[e]
-                            b = fp[a]
-                            if list_colour[e] == RED and list_colour[b] == BLUE:
-                                index_strebel[e] = j
-                                index_strebel[ep[e]] = m-1-j
-                                j = j + 1
-                            elif list_colour[e] == BLUE and list_colour[a] == RED:
-                                index_strebel[e] = j
-                                index_strebel[ep[e]] = m-1-j
-                                j = j + 1
-
-        elif slope == HORIZONTAL:
-            j = 0
-            for e in range(n):
-                if e <= ep[e]:
-                    if (not list_boundary[e]) and not (list_boundary[ep[e]]):
-                        #Accoding to the result, an internal edge which is forward flippable
-                        # belongs to the Strebel graph
-                        if self.is_forward_flippable(e, check=False):
-                            index_strebel[e] = j
-                            index_strebel[ep[e]] = m - 1 - j
-                            j = j + 1
-                        #Accoding to the result, an internal edge which is diagonal of an
-                        #monochromatic quadrilateral belongs to the Strebel graph
-                        elif self.colours_about_edge(e) == [RED,RED,RED,RED] or self.colours_about_edge(e) == [BLUE,BLUE,BLUE,BLUE]:
-                            index_strebel[e] = j
-                            index_strebel[ep[e]] = m - 1 - j
-                            j = j + 1
-                    #Accoding to the result, a boundary edge which is not adjacent to any
-                    # internal face belongs to the Strebel graph
-                    elif (list_boundary[e] > 0) and (list_boundary[ep[e]] > 0):
-                        index_strebel[e] = j
-                        index_strebel[ep[e]] = m-1-j
-                        j = j + 1
-                    else:
-                        #RED = 1
-                        #BLUE = 2
-                        #Accoding to the result, a boundary edge which is adjacent to an
-                        # internal face but is not the edge with largest y-coordinate belongs to the Strebel graph
-                        if list_boundary[e] > 0: #ep[e] is in an internal edge
-                            a = fp[ep[e]]
-                            b = fp[a]
-                            if list_colour[ep[e]] == RED and list_colour[a] == BLUE:
-                                index_strebel[e] = j
-                                index_strebel[ep[e]] = m-1-j
-                                j = j + 1
-                            elif list_colour[ep[e]] == BLUE and list_colour[b] == RED:
-                                index_strebel[e] = j
-                                index_strebel[ep[e]] = m-1-j
-                                j = j + 1
-                        elif list_boundary[ep[e]] > 0: #e is in an internal edge
-                            a = fp[e]
-                            b = fp[a]
-                            if list_colour[e] == RED and list_colour[a] == BLUE:
-                                index_strebel[e] = j
-                                index_strebel[ep[e]] = m-1-j
-                                j = j + 1
-                            elif list_colour[e] == BLUE and list_colour[b] == RED:
-                                index_strebel[e] = j
-                                index_strebel[ep[e]] = m-1-j
-                                j = j + 1
-        else:
-            raise ValueError('slope must either be HORIZONTAL or VERTICAL')
-
+        j = 0 #index of the half-edge in the strebel graph, j[e] is the label of the edge of e in Strebel graph
+        for e in range(n):
+            if e<= ep[e]:
+                if self.is_strebel_halfedge(e, slope=slope) and self.is_strebel_halfedge(ep[e], slope=slope):
+                    index_strebel[e] = j #this half-edge belong to strebel
+                    index_strebel[ep[e]] = m - 1 - j #as well as the opposit half-edge
+                    j = j + 1 #move to next label
         if j != m/2:
                 raise ValueError('The half-edges are not as many as expected. Check code')
 
