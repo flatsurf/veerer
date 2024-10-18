@@ -31,7 +31,7 @@ The smallest dilatation is the golden rotation::
     sage: SS.flip(0)
     sage: SS.flip(2)
     sage: SS.relabel("(0,2,1)")
-    sage: SS.xy_scaling(a, 1/a)
+    sage: SS.xy_scaling(-a, -1/a)
     sage: SS == S
     True
 
