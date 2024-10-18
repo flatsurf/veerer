@@ -189,7 +189,7 @@ class Constellation:
         TESTS::
 
             sage: from itertools import permutations, combinations
-            sage: from veerer import Triangulation
+            sage: from veerer import Triangulation, VeeringTriangulation
 
             sage: triangulations = []
 
@@ -233,6 +233,37 @@ class Constellation:
             ....:     else:
             ....:         hashes[h] = t
             sage: assert len(hashes) == len(triangulations), (len(hashes), len(triangulations))
+
+            sage: triangulations = []
+            sage: for cols in ["RRB", "RBR", "BRR", "BBR", "BRB", "RBB"]:
+            ....:     t = VeeringTriangulation("(0,1,2)", cols)
+            ....:     triangulations.append(t)
+
+            sage: for i in range(len(triangulations)):
+            ....:     for j in range(len(triangulations)):
+            ....:         assert (triangulations[i] == triangulations[j]) == (i == j), (i, j)
+            ....:         assert (triangulations[i] != triangulations[j]) == (i != j), (i, j)
+
+            sage: hashes1 = {}
+            sage: hashes2 = {}
+            sage: for t in triangulations:
+            ....:     h1 = hash(t) % (2 ** 16)
+            ....:     h2 = (hash(t) >> 16) % (2 ** 16)
+            ....:     if h1 in hashes1:
+            ....:         print('collision 1: {} {}'.format(hashes1[h1], t))
+            ....:     else:
+            ....:         hashes1[h1] = t
+            ....:     if h2 in hashes2:
+            ....:         print('collision 2: {} {}'.format(hashes2[h2], t))
+            ....:     else:
+            ....:         hashes2[h2] = t
+            sage: assert len(hashes1) == len(hashes2) == len(triangulations), (len(hashes1), len(hashes2), len(triangulations))
+
+            sage: t = VeeringTriangulation("(0,1,2)", cols, mutable=True)
+            sage: hash(t)
+            Traceback (most recent call last):
+            ...
+            ValueError: mutable veering triangulation not hashable
         """
         if self._mutable:
             raise ValueError('mutable veering triangulation not hashable')

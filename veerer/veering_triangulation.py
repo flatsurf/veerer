@@ -229,55 +229,6 @@ class VeeringTriangulation(Triangulation):
         from sage.rings.integer_ring import ZZ
         return ZZ
 
-    def __hash__(self):
-        r"""
-        TESTS::
-
-            sage: from veerer import *
-
-            sage: triangulations = []
-            sage: for cols in ["RRB", "RBR", "BRR", "BBR", "BRB", "RBB"]:
-            ....:     t = VeeringTriangulation("(0,1,2)", cols)
-            ....:     triangulations.append(t)
-
-            sage: for i in range(len(triangulations)):
-            ....:     for j in range(len(triangulations)):
-            ....:         assert (triangulations[i] == triangulations[j]) == (i == j), (i, j)
-            ....:         assert (triangulations[i] != triangulations[j]) == (i != j), (i, j)
-
-            sage: hashes1 = {}
-            sage: hashes2 = {}
-            sage: for t in triangulations:
-            ....:     h1 = hash(t) % (2 ** 16)
-            ....:     h2 = (hash(t) >> 16) % (2 ** 16)
-            ....:     if h1 in hashes1:
-            ....:         print('collision 1: {} {}'.format(hashes1[h1], t))
-            ....:     else:
-            ....:         hashes1[h1] = t
-            ....:     if h2 in hashes2:
-            ....:         print('collision 2: {} {}'.format(hashes2[h2], t))
-            ....:     else:
-            ....:         hashes2[h2] = t
-            sage: assert len(hashes1) == len(hashes2) == len(triangulations), (len(hashes1), len(hashes2), len(triangulations))
-
-            sage: t = VeeringTriangulation("(0,1,2)", cols, mutable=True)
-            sage: hash(t)
-            Traceback (most recent call last):
-            ...
-            ValueError: mutable veering triangulation not hashable
-        """
-        if self._mutable:
-            raise ValueError('mutable veering triangulation not hashable')
-
-        x = 140737488617563
-        x = ((x ^ hash(self._vp.tobytes())) * 2147483693) + 82520 + self._n + self._n
-        x = ((x ^ hash(self._ep.tobytes())) * 2147483693) + 82520 + self._n + self._n
-        x = ((x ^ hash(self._fp.tobytes())) * 2147483693) + 82520 + self._n + self._n
-        x = ((x ^ hash(self._bdry.tobytes())) * 2147483693) + 82520 + self._n + self._n
-        x = ((x ^ hash(self._colouring.tobytes())) * 2147483693) + 82520 + self._n + self._n
-
-        return x
-
     def right_wedges(self, slope=VERTICAL):
         r"""
         Return the (vertical or horizontal) right sides of the wedges in this veering triangulation.
@@ -695,35 +646,6 @@ class VeeringTriangulation(Triangulation):
         ep = self._ep
         for e in self.backward_flippable_edges():
             self._colouring[e] = self._colouring[ep[e]] = GREEN
-
-    def __eq__(self, other):
-        r"""
-        Equality test.
-        """
-        if type(self) != type(other):
-            raise TypeError
-        return self._n == other._n and self._fp == other._fp and self._ep == other._ep and self._colouring == other._colouring
-
-    def __ne__(self, other):
-        if type(self) != type(other):
-            raise TypeError
-        return self._n != other._n or self._fp != other._fp or self._ep != other._ep or self._colouring != other._colouring
-
-    def _richcmp_(self, other, op):
-        c = (self._n > other._n) - (self._n < other._n)
-        if c:
-            return rich_to_bool(op, c)
-
-        c = (self._colouring > other._colouring) - (self._colouring < other._colouring)
-        if c:
-            return rich_to_bool(op, c)
-
-        c = (self._fp > other._fp) - (self._fp < other._fp)
-        if c:
-            return rich_to_bool(op, c)
-
-        c = (self._ep > other._ep) - (self._ep < other._ep)
-        return rich_to_bool(op, c)
 
     def triangulation(self, mutable=False):
         r"""
