@@ -528,7 +528,7 @@ class Triangulation(Constellation):
 
             sage: fp = "(0,2,1)(~0,3,~1)"
             sage: bdry = "(~2:2,~3:2)"
-            sage: Triangulation(fp, bdry, cols).num_boundary_faces()
+            sage: Triangulation(fp, bdry).num_boundary_faces()
             1
         """
         return sum(bool(self._data[0][c[0]]) for c in perm_cycles(self._fp))
