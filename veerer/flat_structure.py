@@ -29,6 +29,7 @@ from sage.modules.free_module import VectorSpace
 from sage.modules.free_module_element import vector
 
 from .constants import BLUE, RED, PURPLE, GREEN, LEFT, RIGHT
+from .constellation import Constellation
 from .permutation import perm_cycles, perm_check, perm_init, perm_conjugate, perm_on_list
 from .triangulation import Triangulation
 from .veering_triangulation import VeeringTriangulation
@@ -96,47 +97,63 @@ class FlatVeeringTriangulation(Triangulation):
         sage: vecs = [-vecs[0], -vecs[1], -vecs[2], vecs[3], vecs[4], vecs[5]]
         sage: FlatVeeringTriangulation(fp, vecs)
         FlatVeeringTriangulation(Triangulation("(0,1,2)(~2,~0,~1)"), [(1, 2), (-2, -1), (1, -1), (-1, 1), (2, 1), (-1, -2)])
+
+    TESTS::
+
+        sage: from veerer import Triangulation, FlatVeeringTriangulation
+        sage: T = Triangulation("(0,1,2)(3,4,~0)(5,6,~1)")
+        sage: fl = FlatVeeringTriangulation(T, [(-47, 51), (-27, -67), (74, 16), (22, 79), (-69, -28), (-61, -31), (34, -36)], mutable=True)
+        sage: fl.relabel('(1,0)(3,5,4,6)')
+        sage: fl
+        FlatVeeringTriangulation(Triangulation("(0,2,1)(3,~0,4)(5,6,~1)"), [(-27, -67), (-47, 51), (74, 16), (34, -36), (-61, -31), (22, 79), (-69, -28), (47, -51), (27, 67)])
     """
+    def _set_data_pointers(self):
+        self._bdry = self._data[0]
+        self._holonomies = self._data[1]
+
     def __init__(self, triangulation, holonomies=None, base_ring=None, mutable=False, check=True):
-        Triangulation.__init__(self, triangulation, mutable=mutable, check=False)
+        if not isinstance(triangulation, Triangulation):
+            triangulation = Triangulation(triangulation)
+        if any(triangulation._bdry):
+            raise NotImplementedError
         if isinstance(triangulation, FlatVeeringTriangulation):
-            self._holonomies = triangulation._holonomies[:]
+            holonomies = triangulation._holonomies[:]
             self._base_ring = triangulation._K
             self._V = triangulation._V
             self._K = triangulation._K
             self._translation = triangulation._translation
-            return
-
-        if base_ring is None:
-            S = Sequence([vector(v) for v in holonomies])
-            self._V = S.universe()
-            self._K = self._V.base_ring()
-            holonomies = list(S)
         else:
-            self._K = base_ring
-            self._V = VectorSpace(self._K, 2)
-            holonomies = [self._V(v) for v in holonomies]
+            if base_ring is None:
+                S = Sequence([vector(v) for v in holonomies])
+                self._V = S.universe()
+                self._K = self._V.base_ring()
+                holonomies = list(S)
+            else:
+                self._K = base_ring
+                self._V = VectorSpace(self._K, 2)
+                holonomies = [self._V(v) for v in holonomies]
 
-        if self._K not in _Fields:
-            self._K = self._K.fraction_field()
-            self._V = self._V.change_ring(self._K)
-            holonomies = [v.change_ring(self._K) for v in holonomies]
+            if self._K not in _Fields:
+                self._K = self._K.fraction_field()
+                self._V = self._V.change_ring(self._K)
+                holonomies = [v.change_ring(self._K) for v in holonomies]
 
-        n = self._n
-        m = self.num_edges()
-        ep = self._ep
+            n = triangulation._n
+            m = triangulation.num_edges()
+            ep = triangulation._ep
 
-        if len(holonomies) == m:
-            for e in range(m):
-                E = ep[e]
-                if e != E and E < m:
-                    raise ValueError("edge perm not in standard form")
-            holonomies.extend([-holonomies[ep[e]] for e in range(m,n)])
-        if len(holonomies) != n:
-            raise ValueError('wrong number of vectors')
-        self._holonomies = holonomies
+            if len(holonomies) == m:
+                for e in range(m):
+                    E = ep[e]
+                    if e != E and E < m:
+                        raise ValueError("edge perm not in standard form")
+                holonomies.extend([-holonomies[ep[e]] for e in range(m,n)])
+            if len(holonomies) != n:
+                raise ValueError('wrong number of vectors')
 
-        cols = [vec_slope(self._holonomies[e]) for e in range(n)]
+        Constellation.__init__(self, triangulation._n, triangulation._vp[:], triangulation._ep[:], triangulation._fp[:], (triangulation._bdry[:], holonomies), True, False)
+
+        cols = [vec_slope(self._holonomies[e]) for e in range(self._n)]
         if isinstance(triangulation, VeeringTriangulation):
             # check that colours are compatible
             for e in range(triangulation.num_edges()):
@@ -162,6 +179,9 @@ class FlatVeeringTriangulation(Triangulation):
                     self._holonomies[e] = -self._holonomies[e]
                 if right != (self._holonomies[E][0] < 0):
                     self._holonomies[E] = -self._holonomies[E]
+
+        if not mutable:
+            self.set_immutable()
 
         if check:
             self._check()
@@ -344,7 +364,7 @@ class FlatVeeringTriangulation(Triangulation):
     def __repr__(self):
         return str(self)
 
-    def _check(self):
+    def _check(self, error=RuntimeError):
         r"""
         EXAMPLES::
 
@@ -354,30 +374,30 @@ class FlatVeeringTriangulation(Triangulation):
             sage: F = T.flat_structure_min()
             sage: F._check()
         """
-        Triangulation._check(self)
+        Triangulation._check(self, error)
 
         n = self.num_half_edges()
         ep = self.edge_permutation(copy=False)
         vectors = self._holonomies
         if len(vectors) != n:
-            raise ValueError("invalid list of vectors")
+            raise error("invalid list of vectors")
 
         for a in range(n):
             A = ep[a]
             u = vectors[a]
             v = vectors[A]
             if u != v and u != -v:
-                raise ValueError('ep[%s] = %s but vec[%s] = %s' % (a, u, A, v))
+                raise error('ep[%s] = %s but vec[%s] = %s' % (a, u, A, v))
 
         for a,b,c in self.faces():
             va = vectors[a]
             vb = vectors[b]
             vc = vectors[c]
             if va + vb + vc:
-                raise ValueError('vec[%s] = %s, vec[%s] = %s and vec[%s] = %s do not sum to zero' % (a, va, b, vb, c, vc))
+                raise error('vec[%s] = %s, vec[%s] = %s and vec[%s] = %s do not sum to zero' % (a, va, b, vb, c, vc))
 
             if det2(va, vb) <= 0 or det2(vb, vc) <= 0 or det2(vc, va) <= 0:
-                raise ValueError('(%s, %s, %s) is a clockwise triangle' %
+                raise error('(%s, %s, %s) is a clockwise triangle' %
                         (a, b, c))
 
         if self._translation:
@@ -403,6 +423,8 @@ class FlatVeeringTriangulation(Triangulation):
         res._K = self._K
         res._holonomies = [v.__copy__() for v in self._holonomies]
         res._translation = self._translation
+        res._bdry = self._bdry[:]
+        res._data = (res._bdry, res._holonomies)
         return res
 
     def edge_colour(self, e):
@@ -518,36 +540,6 @@ class FlatVeeringTriangulation(Triangulation):
 
         self._check()
 
-    def relabel(self, p):
-        r"""
-        Relabel the flat structure with the permutation `p`.
-
-        EXAMPLES::
-
-            sage: from veerer import Triangulation, FlatVeeringTriangulation
-            sage: T = Triangulation("(0,1,2)(3,4,~0)(5,6,~1)")
-            sage: fl = FlatVeeringTriangulation(T, [(-47, 51), (-27, -67), (74, 16), (22, 79), (-69, -28), (-61, -31), (34, -36)], mutable=True)
-            sage: fl.relabel('(1,0)(3,5,4,6)')
-            sage: fl
-            FlatVeeringTriangulation(Triangulation("(0,2,1)(3,~0,4)(5,6,~1)"), [(-27, -67), (-47, 51), (74, 16), (34, -36), (-61, -31), (22, 79), (-69, -28), (47, -51), (27, 67)])
-        """
-        if not self._mutable:
-            raise ValueError("immutable flat veering triangulation; use a mutable copy instead")
-
-        n = self._n
-        if not perm_check(p, n):
-            p = perm_init(p, n, self._ep)
-            if not perm_check(p, n, self._ep):
-                raise ValueError('invalid relabeling permutation')
-
-        self._vp = perm_conjugate(self._vp, p)
-        self._ep = perm_conjugate(self._ep, p)
-        self._fp = perm_conjugate(self._fp, p)
-
-        perm_on_list(p, self._holonomies)
-
-        self._check()
-
     def xy_scaling(self, a, b):
         r"""
         Rescale the horizontal direction by `a` and the vertical one by `b`.
@@ -564,4 +556,5 @@ class FlatVeeringTriangulation(Triangulation):
         if not self._mutable:
             raise ValueError("immutable flat veering triangulation; use a mutable copy instead")
 
-        self._holonomies = [self._V((a*x, b*y)) for x,y in self._holonomies]
+        for i, (x, y) in enumerate(self._holonomies):
+            self._holonomies[i] = self._V((a*x, b*y))
