@@ -138,7 +138,7 @@ class Automaton:
       (breadth first search)
 
     - ``extra_kwds`` -- additional argument that are forwarded to the method `_setup`
-      that could be overriden in subclasses
+      that could be overridden in subclasses
     """
     _name = ''
 

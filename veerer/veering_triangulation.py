@@ -4078,29 +4078,28 @@ class VeeringTriangulation(Triangulation):
             yield self.blowup(edges)
 
     def is_strebel_halfedge(self, e, slope=VERTICAL):
-        r'''
-        return True if a half-edge is Strebel
-        '''
-        
+        r"""
+        Return whether ``e`` is a Strebel half-edge.
+        """
         ep = self._ep
         fp = self._fp
-        
+
         if self._bdry[e] > 0: #a boundary half-edge is strebel
             return True
         else:
             a = fp[e]
             b = fp[a]
             assert e == fp[b]
-            
+
             ce = self.colour(e)
             ca = self.colour(a)
             cb = self.colour(b)
-            
-            if slope == VERTICAL: 
-                #an internal edge that is not the edge with the largest x-coordinate 
+
+            if slope == VERTICAL:
+                #an internal edge that is not the edge with the largest x-coordinate
                 # in the adjacent triangle is strebel
                 if ce == RED and cb == BLUE:
-                    return True            
+                    return True
                 elif ce == BLUE and ca == RED:
                     return True
                 else:
@@ -4253,7 +4252,7 @@ class VeeringTriangulation(Triangulation):
         for i in range(m):
             edge_permutation[i] = m-1-i
 
-        #STEP3: bulid the Strebel graph
+        #STEP3: build the Strebel graph
         from .strebel_graph import StrebelGraph
         return StrebelGraph.from_permutations(vertex_permutation, edge_permutation, None, (beta,), mutable=mutable, check=True)
 
