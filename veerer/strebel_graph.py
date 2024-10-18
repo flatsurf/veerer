@@ -28,7 +28,149 @@ from sage.rings.all import ZZ
 from .permutation import perm_cycles, perm_cycles_to_string, str_to_cycles_and_data
 from .triangulation import face_edge_perms_init, boundary_init
 from .constellation import Constellation
+from .constants import *
 
+def is_complete(T):
+        r'''
+        return whether T is a veering triangulation
+        
+        T is a list: [face permutation, vertex permutation, colouring, boundary, bdryedge],
+        where bdryedge is a list consisting of ``0`` or ``1`` and bdryedge[e] = 1 if and only
+        if e is a boundary edge of T
+        '''
+        
+        fp, vp, colouring, boundary, bdryedge = T
+        
+        n = len(fp) 
+        
+        for e in range(n):
+            if bdryedge[e]: #if e is a boundary half-edge
+                ang = boundary[e] #angle excess of the half-edge
+                if ang == 0:
+                    return False
+        
+        return True
+
+def one_edge_completion(T):
+        r'''
+        Return two colored triangulations (represented by a list of attributes) that adds one edge to T
+        with different colors.
+        
+        T is a list: [face permutation, vertex permutation, colouring, boundary, bdryedge],
+        where bdryedge is a list consisting of ``0`` or ``1`` and bdryedge[e] = 1 if and only
+        if e is a boundary edge of T
+        '''
+        
+        fp, vp, colouring, boundary, bdryedge = T
+        n = len(bdryedge) #current number of the half-edges
+        
+        for e in range(n):
+            if bdryedge[e]: #if e is a boundary half-edge
+                ang = boundary[e] #angle excess of the half-edge
+                if ang == 0:
+                    #new edge permutation
+                    newep = array('i', list(reversed(range(n + 2))))
+
+                    #change the labels of e, vp, fp, colouring and boundary due to the added edge
+                    if e > ZZ(n/2) - 1:
+                        e = e + 2
+                    
+                    newfp = array('i', fp)
+                    newvp = array('i', vp)
+                    newcolouring = array('i', colouring)
+                    newboundary = boundary.copy()
+                    newbdryedge = bdryedge.copy()
+                    
+                    newfp.insert(ZZ(n/2), -1)
+                    newfp.insert(ZZ(n/2)+1, -1)
+                    newvp.insert(ZZ(n/2), -1)
+                    newvp.insert(ZZ(n/2)+1, -1)
+                    newcolouring.insert(ZZ(n/2), -1)
+                    newcolouring.insert(ZZ(n/2)+1, -1)
+                    newboundary.insert(ZZ(n/2), -1)
+                    newboundary.insert(ZZ(n/2)+1, -1)
+                    newbdryedge.insert(ZZ(n/2), 0) #the half-edge n/2 is always internal
+                    newbdryedge.insert(ZZ(n/2)+1, 1) #the half-edge n/2 + 1 is always boundary
+                    
+                    for ee in range(n + 2):
+                        if (ee != ZZ(n/2)) and (ee != ZZ(n/2) + 1): 
+                            ve = newvp[ee]
+                            fe = newfp[ee]
+                            if fe > ZZ(n/2) - 1:
+                                newfp[ee] = fe + 2 
+                            if ve > ZZ(n/2) - 1:
+                                newvp[ee] = ve + 2
+                    
+                    #build the new triangle face
+                    a = newvp[e]
+                    b = newfp[e]
+                    c = newvp[newep[a]]
+
+                    newfp[e] = ZZ(n/2)
+                    newfp[ZZ(n/2)] = newep[a]
+                    newfp[newep[c]] = ZZ(n/2) + 1
+                    newfp[ZZ(n/2) + 1] = b
+
+                    newvp[newep[a]] = ZZ(n/2) + 1
+                    newvp[ZZ(n/2) + 1] = c
+                    newvp[b] = ZZ(n/2)
+                    newvp[ZZ(n/2)] = newep[e]
+                    
+                    #modify the bdryedge
+                    assert newbdryedge[e] == 1
+                    newbdryedge[e] = 0 #e becomes internal
+                    
+                    assert newbdryedge[newep[a]] == 1
+                    newbdryedge[newep[a]] = 0 #newep[a] becomes internal
+
+                    #build new colouring
+                    #claim: for e1=vp[e], e and e1 must have the same colour
+                    newcolouring_1 = array('i', newcolouring)
+                    newcolouring_2 = array('i', newcolouring)
+
+                    newcolouring_1[ZZ(n/2)] = newcolouring_1[ZZ(n/2) + 1] = 1 #RED
+                    newcolouring_2[ZZ(n/2)] = newcolouring_2[ZZ(n/2) + 1] = 2 #BLUE
+
+                    #build new angle excess
+                    newboundary_1 = newboundary.copy()
+                    newboundary_2 = newboundary.copy()
+
+                    if ((newcolouring_1[newep[a]], newcolouring_1[ZZ(n/2)+1], newcolouring_1[c]) == (BLUE, RED, BLUE)) or ((newcolouring_1[newep[a]], newcolouring_1[ZZ(n/2)+1], newcolouring_1[c]) == (RED, BLUE, RED)):
+                        newboundary_1[ZZ(n/2)+1] = newboundary_1[newep[a]] - 1
+                        newboundary_1[newep[a]] = 0
+                        newboundary_1[ZZ(n/2)] = 0
+                    elif ((newcolouring_1[newep[e]], newcolouring_1[ZZ(n/2)], newcolouring_1[b]) == (RED, BLUE, RED)) or ((newcolouring_1[newep[e]], newcolouring_1[ZZ(n/2)], newcolouring_1[b]) == (BLUE, RED, BLUE)):
+                        newboundary_1[ZZ(n/2)+1] = newboundary_1[newep[a]]
+                        newboundary_1[newep[a]] = 0
+                        newboundary_1[b] = newboundary_1[b] - 1
+                        newboundary_1[ZZ(n/2)] = 0
+                    else:
+                        newboundary_1[ZZ(n/2)+1] = newboundary_1[newep[a]]
+                        newboundary_1[newep[a]] = 0
+                        newboundary_1[ZZ(n/2)] = 0
+
+                    if ((newcolouring_2[newep[a]], newcolouring_2[ZZ(n/2)+1], newcolouring_2[c]) == (BLUE, RED, BLUE)) or ((newcolouring_2[newep[a]], newcolouring_2[ZZ(n/2)+1], newcolouring_2[c]) == (RED, BLUE, RED)):
+                        newboundary_2[ZZ(n/2)+1] = newboundary_2[newep[a]] - 1
+                        newboundary_2[newep[a]] = 0
+                        newboundary_2[ZZ(n/2)] = 0
+                    elif ((newcolouring_2[newep[e]], newcolouring_2[ZZ(n/2)], newcolouring_2[b]) == (RED, BLUE, RED)) or ((newcolouring_2[newep[e]], newcolouring_2[ZZ(n/2)], newcolouring_2[b]) == (BLUE, RED, BLUE)):
+                        newboundary_2[ZZ(n/2)+1] = newboundary_2[newep[a]]
+                        newboundary_2[newep[a]] = 0
+                        newboundary_2[b] = newboundary_2[b] - 1
+                        newboundary_2[ZZ(n/2)] = 0
+                    else:
+                        newboundary_2[ZZ(n/2)+1] = newboundary_2[newep[a]]
+                        newboundary_2[newep[a]] = 0
+                        newboundary_2[ZZ(n/2)] = 0
+                        
+
+                    T1 = [newfp, newvp, newcolouring_1, newboundary_1, newbdryedge]
+                    T2 = [newfp, newvp, newcolouring_2, newboundary_2, newbdryedge]
+                    
+                    return [T1, T2]
+        
+        assert is_complete(T)
+        return T
 
 class StrebelGraph(Constellation):
     r"""
@@ -204,3 +346,152 @@ class StrebelGraph(Constellation):
         from sage.matrix.special import identity_matrix
         from .linear_family import StrebelGraphLinearFamily
         return StrebelGraphLinearFamily(self, identity_matrix(ZZ, self.num_edges()))
+
+    def angle_excess(self, colouring, slope=VERTICAL):
+        r"""
+        Return the associated angle excess of the corners of a coloured strebel graph
+        """
+        
+        #remark: red-red corners with angle excess 0 and 1 both correspond
+        # to zero half-plane excess.
+        #claim: it is impossible to have a red-red corner with 0 angle 
+        # excess in a strebel graph. 
+        
+        n = self._n
+        vp = self._vp
+        beta = self._bdry
+        alpha = [-1]*n
+        
+        for e in range(n): 
+            e1 = vp[e]
+            if slope == VERTICAL:
+                if colouring[e] == RED and colouring[e1] == BLUE:
+                    alpha[e] = beta[e]
+                else:
+                    alpha[e] = beta[e] + 1
+            elif slope == HORIZONTAL:
+                if colouring[e] == BLUE and colouring[e1] == RED:
+                    alpha[e] = beta[e]
+                else:
+                    alpha[e] = beta[e] + 1  
+        
+        return alpha
+
+    def coloured_strebel(self, slope=VERTICAL):
+        r"""
+        Return a list of coloured Strebel graphs. Each coloured strebel
+        graph is represented by a list 
+        [face permutation, vertex permutation, colouring, boundary, bdryedge],
+        where bdryedge is a list consisting of ``0`` or ``1`` and bdryedge[e] = 1 
+        if and only if e is a boundary edge of T.
+        """
+        
+        n = self._n
+        m = ZZ(n/2)
+        
+        ep = self._ep
+        vp = self._vp
+        fp = self._fp
+        
+        invalide_veering_triangulations = []
+        
+        #generate all possible colouring for half-edges e with e<ep[e]
+        import itertools
+        l = list(itertools.product([1, 2], repeat=m))
+        all_colourings = []
+        for ll in l:
+            colouring = array('i', ll)
+            for i in range(m):
+                colouring.append(ll[m-1-i])
+            all_colourings.append(colouring)
+        
+        for colouring in all_colourings:
+            # boundary
+            boundary = self.angle_excess(colouring, slope=slope)
+            T = [fp, vp, colouring, boundary]
+            invalide_veering_triangulations.append(T)
+        
+        return invalide_veering_triangulations
+    
+    def veering_triangulations(self, slope=VERTICAL, inclusion=False):
+        r"""
+        return a list of pairs: (veering, inclusion), where:
+        ``veering`` is a slope-Strebel veering triangulation associated to the given Strebel graph,
+        and ``inclusion`` is the map from the half-edges of the strebel graph into the half-edges of ``veering`` 
+        
+        EXAMPLES::
+            
+            sage: from veerer import *
+            sage: G = StrebelGraph("(~1:1,~0,1:1,0)")
+            sage: G.stratum()
+            H_1(2, -2)
+            sage: G.veering_triangulations(inclusion=True)
+            [(VeeringTriangulation("", boundary="(0:1,~1:2,~0:1,1:2)", colouring="RR"),[0, 1, 2, 3]),
+            (VeeringTriangulation("(0,~3,2)(1,3,~2)", boundary="(~1:2,~0:2)", colouring="RRRB"),[2, 4, 3, 5]),
+            (VeeringTriangulation("(0,~3,2)(1,3,~2)", boundary="(~1:2,~0:2)", colouring="BBRB"),[2, 4, 3, 5]),
+            (VeeringTriangulation("", boundary="(0:1,~1:1,~0:1,1:1)", colouring="RB"),[2, 0, 3, 1]),
+            (VeeringTriangulation("", boundary="(0:1,~1:2,~0:1,1:2)", colouring="BB"),[0, 1, 2, 3])]
+            sage: set(G.veering_triangulations(slope=HORIZONTAL))
+            {VeeringTriangulation("(0,~3,2)(1,3,~2)", boundary="(~1:2,~0:2)", colouring="BBBR"),
+            VeeringTriangulation("", boundary="(0:1,~1:2,~0:1,1:2)", colouring="BB"),
+            VeeringTriangulation("(0,~3,2)(1,3,~2)", boundary="(~1:2,~0:2)", colouring="RRBR"),
+            VeeringTriangulation("", boundary="(0:1,~1:1,~0:1,1:1)", colouring="RB"),
+            VeeringTriangulation("", boundary="(0:1,~1:2,~0:1,1:2)", colouring="RR")}   
+        """
+        
+        starting = self.coloured_strebel(slope=slope)
+        
+        n = self._n
+        ep_st = self._ep
+        bdryedge =  [1]*n
+        
+        starting = [T + [bdryedge] for T in starting]
+        
+        incomplete = True
+        
+        while incomplete:
+            
+            incomplete = False
+            
+            for T in starting:
+                if not is_complete(T):
+                    i = starting.index(T)
+                    starting[i:i+1] = one_edge_completion(T)
+                    incomplete = True
+            
+        veering = []
+        for fp, vp, colouring, boundary, bdryedge in starting:
+            
+            nn = len(fp)
+            ep = array('i', list(reversed(range(nn))))
+            
+            from veerer import VeeringTriangulation
+            T = VeeringTriangulation.from_face_edge_perms(colouring, fp, ep, boundary=boundary, mutable=True)
+            if T.is_delaunay():
+                veering.append(T)
+        
+        #keep different veering triangulations by considering canonical labels, 
+        # and record the map from the half-edges of the strebel graph into veering triangulations
+        if not inclusion:
+            for vt in veering:
+                vt.set_canonical_labels()
+                vt.set_immutable()
+            return list(set(veering))
+        else:
+            inclusion_veering = {}
+            for vt in veering:
+                r, _ = vt.best_relabelling()
+                vt.relabel(r, check=False)
+                vt.set_immutable()
+                if vt not in inclusion_veering:
+                    #build the inclusion
+                    ep = vt._ep
+                    inclusion = []
+                    for e in range(n):
+                        if e < ep_st[e]:
+                            inclusion.append(r[e])
+                        else:
+                            inclusion.append(ep[r[ep_st[e]]])
+                    inclusion_veering[vt] = inclusion
+            return list(inclusion_veering.items())
+    
