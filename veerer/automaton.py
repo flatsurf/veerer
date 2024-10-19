@@ -649,7 +649,7 @@ class Automaton:
             sage: Q = Stratum([8], 2)                             # optional - surface_dynamics
             sage: A = CoreAutomaton.from_stratum(Q, max_size=100) # optional - surface_dynamics
             sage: A                                               # optional - surface_dynamics
-            Partial core veering automaton with 103 vertices
+            Partial core veering automaton with 101 vertices
         """
         return self.from_triangulation(VeeringTriangulation.from_stratum(stratum), **kwds)
 
