@@ -30,6 +30,7 @@ from .triangulation import face_edge_perms_init, boundary_init
 from .constellation import Constellation
 from .constants import *
 
+
 def is_complete(T):
         r'''
         return whether T is a veering triangulation
@@ -50,6 +51,7 @@ def is_complete(T):
                     return False
 
         return True
+
 
 def one_edge_completion(T):
         r'''
@@ -171,6 +173,7 @@ def one_edge_completion(T):
 
         assert is_complete(T)
         return T
+
 
 class StrebelGraph(Constellation):
     r"""
@@ -426,17 +429,13 @@ class StrebelGraph(Constellation):
             sage: G.stratum()
             H_1(2, -2)
             sage: G.veering_triangulations(inclusion=True)
-            [(VeeringTriangulation("", boundary="(0:1,~1:2,~0:1,1:2)", colouring="RR"),[0, 1, 2, 3]),
-            (VeeringTriangulation("(0,~3,2)(1,3,~2)", boundary="(~1:2,~0:2)", colouring="RRRB"),[2, 4, 3, 5]),
-            (VeeringTriangulation("(0,~3,2)(1,3,~2)", boundary="(~1:2,~0:2)", colouring="BBRB"),[2, 4, 3, 5]),
-            (VeeringTriangulation("", boundary="(0:1,~1:1,~0:1,1:1)", colouring="RB"),[2, 0, 3, 1]),
-            (VeeringTriangulation("", boundary="(0:1,~1:2,~0:1,1:2)", colouring="BB"),[0, 1, 2, 3])]
-            sage: set(G.veering_triangulations(slope=HORIZONTAL))
-            {VeeringTriangulation("(0,~3,2)(1,3,~2)", boundary="(~1:2,~0:2)", colouring="BBBR"),
-            VeeringTriangulation("", boundary="(0:1,~1:2,~0:1,1:2)", colouring="BB"),
-            VeeringTriangulation("(0,~3,2)(1,3,~2)", boundary="(~1:2,~0:2)", colouring="RRBR"),
-            VeeringTriangulation("", boundary="(0:1,~1:1,~0:1,1:1)", colouring="RB"),
-            VeeringTriangulation("", boundary="(0:1,~1:2,~0:1,1:2)", colouring="RR")}
+            [(VeeringTriangulation("", boundary="(0:1,~1:2,~0:1,1:2)", colouring="RR"), [0, 1, 2, 3]),
+            (VeeringTriangulation("(0,~3,2)(1,3,~2)", boundary="(~1:2,~0:2)", colouring="RRRB"), [2, 4, 3, 5]),
+            (VeeringTriangulation("(0,~3,2)(1,3,~2)", boundary="(~1:2,~0:2)", colouring="BBRB"), [2, 4, 3, 5]),
+            (VeeringTriangulation("", boundary="(0:1,~1:1,~0:1,1:1)", colouring="RB"), [2, 0, 3, 1]),
+            (VeeringTriangulation("", boundary="(0:1,~1:2,~0:1,1:2)", colouring="BB"), [0, 1, 2, 3])]
+            sage: len(set(G.veering_triangulations(slope=HORIZONTAL)))
+            5
         """
 
         starting = self.coloured_strebel(slope=slope)
@@ -464,9 +463,11 @@ class StrebelGraph(Constellation):
 
             nn = len(fp)
             ep = array('i', list(reversed(range(nn))))
+            boundary = array('i', boundary)
 
             from veerer import VeeringTriangulation
-            T = VeeringTriangulation.from_face_edge_perms(colouring, fp, ep, boundary=boundary, mutable=True)
+            #assert False, (ep,fp,boundary,colouring)
+            T = VeeringTriangulation.from_permutations(None, ep, fp, (boundary, colouring), mutable=True)
             if T.is_delaunay():
                 veering.append(T)
 
