@@ -33,37 +33,37 @@ from .constants import *
 def is_complete(T):
         r'''
         return whether T is a veering triangulation
-        
+
         T is a list: [face permutation, vertex permutation, colouring, boundary, bdryedge],
         where bdryedge is a list consisting of ``0`` or ``1`` and bdryedge[e] = 1 if and only
         if e is a boundary edge of T
         '''
-        
+
         fp, vp, colouring, boundary, bdryedge = T
-        
-        n = len(fp) 
-        
+
+        n = len(fp)
+
         for e in range(n):
             if bdryedge[e]: #if e is a boundary half-edge
                 ang = boundary[e] #angle excess of the half-edge
                 if ang == 0:
                     return False
-        
+
         return True
 
 def one_edge_completion(T):
         r'''
         Return two colored triangulations (represented by a list of attributes) that adds one edge to T
         with different colors.
-        
+
         T is a list: [face permutation, vertex permutation, colouring, boundary, bdryedge],
         where bdryedge is a list consisting of ``0`` or ``1`` and bdryedge[e] = 1 if and only
         if e is a boundary edge of T
         '''
-        
+
         fp, vp, colouring, boundary, bdryedge = T
         n = len(bdryedge) #current number of the half-edges
-        
+
         for e in range(n):
             if bdryedge[e]: #if e is a boundary half-edge
                 ang = boundary[e] #angle excess of the half-edge
@@ -74,13 +74,13 @@ def one_edge_completion(T):
                     #change the labels of e, vp, fp, colouring and boundary due to the added edge
                     if e > ZZ(n/2) - 1:
                         e = e + 2
-                    
+
                     newfp = array('i', fp)
                     newvp = array('i', vp)
                     newcolouring = array('i', colouring)
                     newboundary = boundary.copy()
                     newbdryedge = bdryedge.copy()
-                    
+
                     newfp.insert(ZZ(n/2), -1)
                     newfp.insert(ZZ(n/2)+1, -1)
                     newvp.insert(ZZ(n/2), -1)
@@ -91,16 +91,16 @@ def one_edge_completion(T):
                     newboundary.insert(ZZ(n/2)+1, -1)
                     newbdryedge.insert(ZZ(n/2), 0) #the half-edge n/2 is always internal
                     newbdryedge.insert(ZZ(n/2)+1, 1) #the half-edge n/2 + 1 is always boundary
-                    
+
                     for ee in range(n + 2):
-                        if (ee != ZZ(n/2)) and (ee != ZZ(n/2) + 1): 
+                        if (ee != ZZ(n/2)) and (ee != ZZ(n/2) + 1):
                             ve = newvp[ee]
                             fe = newfp[ee]
                             if fe > ZZ(n/2) - 1:
-                                newfp[ee] = fe + 2 
+                                newfp[ee] = fe + 2
                             if ve > ZZ(n/2) - 1:
                                 newvp[ee] = ve + 2
-                    
+
                     #build the new triangle face
                     a = newvp[e]
                     b = newfp[e]
@@ -115,11 +115,11 @@ def one_edge_completion(T):
                     newvp[ZZ(n/2) + 1] = c
                     newvp[b] = ZZ(n/2)
                     newvp[ZZ(n/2)] = newep[e]
-                    
+
                     #modify the bdryedge
                     assert newbdryedge[e] == 1
                     newbdryedge[e] = 0 #e becomes internal
-                    
+
                     assert newbdryedge[newep[a]] == 1
                     newbdryedge[newep[a]] = 0 #newep[a] becomes internal
 
@@ -162,13 +162,13 @@ def one_edge_completion(T):
                         newboundary_2[ZZ(n/2)+1] = newboundary_2[newep[a]]
                         newboundary_2[newep[a]] = 0
                         newboundary_2[ZZ(n/2)] = 0
-                        
+
 
                     T1 = [newfp, newvp, newcolouring_1, newboundary_1, newbdryedge]
                     T2 = [newfp, newvp, newcolouring_2, newboundary_2, newbdryedge]
-                    
+
                     return [T1, T2]
-        
+
         assert is_complete(T)
         return T
 
@@ -351,18 +351,18 @@ class StrebelGraph(Constellation):
         r"""
         Return the associated angle excess of the corners of a coloured strebel graph
         """
-        
+
         #remark: red-red corners with angle excess 0 and 1 both correspond
         # to zero half-plane excess.
-        #claim: it is impossible to have a red-red corner with 0 angle 
-        # excess in a strebel graph. 
-        
+        #claim: it is impossible to have a red-red corner with 0 angle
+        # excess in a strebel graph.
+
         n = self._n
         vp = self._vp
         beta = self._bdry
         alpha = [-1]*n
-        
-        for e in range(n): 
+
+        for e in range(n):
             e1 = vp[e]
             if slope == VERTICAL:
                 if colouring[e] == RED and colouring[e1] == BLUE:
@@ -373,28 +373,28 @@ class StrebelGraph(Constellation):
                 if colouring[e] == BLUE and colouring[e1] == RED:
                     alpha[e] = beta[e]
                 else:
-                    alpha[e] = beta[e] + 1  
-        
+                    alpha[e] = beta[e] + 1
+
         return alpha
 
     def coloured_strebel(self, slope=VERTICAL):
         r"""
         Return a list of coloured Strebel graphs. Each coloured strebel
-        graph is represented by a list 
+        graph is represented by a list
         [face permutation, vertex permutation, colouring, boundary, bdryedge],
-        where bdryedge is a list consisting of ``0`` or ``1`` and bdryedge[e] = 1 
+        where bdryedge is a list consisting of ``0`` or ``1`` and bdryedge[e] = 1
         if and only if e is a boundary edge of T.
         """
-        
+
         n = self._n
         m = ZZ(n/2)
-        
+
         ep = self._ep
         vp = self._vp
         fp = self._fp
-        
+
         invalide_veering_triangulations = []
-        
+
         #generate all possible colouring for half-edges e with e<ep[e]
         import itertools
         l = list(itertools.product([1, 2], repeat=m))
@@ -404,23 +404,23 @@ class StrebelGraph(Constellation):
             for i in range(m):
                 colouring.append(ll[m-1-i])
             all_colourings.append(colouring)
-        
+
         for colouring in all_colourings:
             # boundary
             boundary = self.angle_excess(colouring, slope=slope)
             T = [fp, vp, colouring, boundary]
             invalide_veering_triangulations.append(T)
-        
+
         return invalide_veering_triangulations
-    
+
     def veering_triangulations(self, slope=VERTICAL, inclusion=False):
         r"""
         return a list of pairs: (veering, inclusion), where:
         ``veering`` is a slope-Strebel veering triangulation associated to the given Strebel graph,
-        and ``inclusion`` is the map from the half-edges of the strebel graph into the half-edges of ``veering`` 
-        
+        and ``inclusion`` is the map from the half-edges of the strebel graph into the half-edges of ``veering``
+
         EXAMPLES::
-            
+
             sage: from veerer import *
             sage: G = StrebelGraph("(~1:1,~0,1:1,0)")
             sage: G.stratum()
@@ -436,41 +436,41 @@ class StrebelGraph(Constellation):
             VeeringTriangulation("", boundary="(0:1,~1:2,~0:1,1:2)", colouring="BB"),
             VeeringTriangulation("(0,~3,2)(1,3,~2)", boundary="(~1:2,~0:2)", colouring="RRBR"),
             VeeringTriangulation("", boundary="(0:1,~1:1,~0:1,1:1)", colouring="RB"),
-            VeeringTriangulation("", boundary="(0:1,~1:2,~0:1,1:2)", colouring="RR")}   
+            VeeringTriangulation("", boundary="(0:1,~1:2,~0:1,1:2)", colouring="RR")}
         """
-        
+
         starting = self.coloured_strebel(slope=slope)
-        
+
         n = self._n
         ep_st = self._ep
         bdryedge =  [1]*n
-        
+
         starting = [T + [bdryedge] for T in starting]
-        
+
         incomplete = True
-        
+
         while incomplete:
-            
+
             incomplete = False
-            
+
             for T in starting:
                 if not is_complete(T):
                     i = starting.index(T)
                     starting[i:i+1] = one_edge_completion(T)
                     incomplete = True
-            
+
         veering = []
         for fp, vp, colouring, boundary, bdryedge in starting:
-            
+
             nn = len(fp)
             ep = array('i', list(reversed(range(nn))))
-            
+
             from veerer import VeeringTriangulation
             T = VeeringTriangulation.from_face_edge_perms(colouring, fp, ep, boundary=boundary, mutable=True)
             if T.is_delaunay():
                 veering.append(T)
-        
-        #keep different veering triangulations by considering canonical labels, 
+
+        #keep different veering triangulations by considering canonical labels,
         # and record the map from the half-edges of the strebel graph into veering triangulations
         if not inclusion:
             for vt in veering:
@@ -494,4 +494,3 @@ class StrebelGraph(Constellation):
                             inclusion.append(ep[r[ep_st[e]]])
                     inclusion_veering[vt] = inclusion
             return list(inclusion_veering.items())
-    
