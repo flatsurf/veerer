@@ -176,12 +176,17 @@ class VeeringTriangulation(Triangulation):
         ev = self._vp
         cols = self._colouring
         bdry = self._bdry
+
+        if not isinstance(bdry, array) or \
+           len(bdry) != n or \
+            any(x < 0 for x in bdry):
+            raise error('bad boundary attribute bdry={}'.format(bdry))
+
         if not isinstance(cols, array) or \
-           not isinstance(bdry, array) or \
            len(cols) != n or \
            any(col not in COLOURS for col in cols) or \
            any(cols[e] != cols[ep[e]] for e in range(self._n)):
-            raise error('bad colouring attribute')
+            raise error('bad colouring attribute cols={}'.format(cols))
 
         if bdry is not self._data[0] or \
            cols is not self._data[1]:
