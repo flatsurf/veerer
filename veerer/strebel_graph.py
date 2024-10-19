@@ -426,7 +426,7 @@ class StrebelGraph(Constellation):
 
             sage: from veerer import *
             sage: G = StrebelGraph("(~1:1,~0,1:1,0)")
-            sage: G.stratum()
+            sage: G.stratum()  # optional - surface_dynamics
             H_1(2, -2)
             sage: G.veering_triangulations(inclusion=True)
             [(VeeringTriangulation("", boundary="(0:1,~1:2,~0:1,1:2)", colouring="RR"), [0, 1, 2, 3]),
