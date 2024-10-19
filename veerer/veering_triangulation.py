@@ -451,9 +451,11 @@ class VeeringTriangulation(Triangulation):
         colouring[1::3] = [col]*n
         colouring.extend(colouring[::-1])
 
-        return cls.from_face_edge_perms(array('i', colouring),
-                                        array('i', fp),
-                                        array('i', ep), mutable=mutable, check=check)
+        ep = array('i', ep)
+        fp = array('i', fp)
+        colouring = array('i', colouring)
+        boundary = array('i', [0] * (6 * n))
+        return VeeringTriangulation.from_permutations(None, ep, fp, (boundary, colouring), mutable=mutable, check=check)
 
     @classmethod
     def from_stratum(cls, c, folded_edges=False, mutable=False, check=True):
@@ -3987,7 +3989,7 @@ class VeeringTriangulation(Triangulation):
             boundary[relabelling[e]] = self._bdry[e]
             colouring[relabelling[e]] = self._colouring[e]
 
-        t = Triangulation.from_face_edge_perms(fp, ep, boundary=boundary)
+        t = Triangulation.from_permutations(None, ep, fp, (boundary,))
         return VeeringTriangulation(t, colouring), edge_map
 
     def codimension_one_horizontal_degenerations(self, i=None):

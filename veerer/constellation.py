@@ -567,14 +567,40 @@ class Constellation:
             return self._vp
 
     def next_at_vertex(self, e, check=True):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import Triangulation
+
+            sage: T = Triangulation("(~11,4,~3)(~10,~0,11)(~9,0,10)(~8,9,1)(~7,8,~1)(~6,7,2)(~5,6,~2)(~4,5,3)")
+            sage: T.next_at_vertex(0)
+            9
+            sage: T.next_at_vertex(9)
+            8
+            sage: T.next_at_vertex(5)
+            4
+        """
         if check:
-            self._check_half_edge(e)
+            e = self._check_half_edge(e)
         return self._vp[e]
 
     def previous_at_vertex(self, e, check=True):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import Triangulation
+
+            sage: T = Triangulation("(~11,4,~3)(~10,~0,11)(~9,0,10)(~8,9,1)(~7,8,~1)(~6,7,2)(~5,6,~2)(~4,5,3)")
+            sage: T.previous_at_vertex(9)
+            0
+            sage: T.previous_at_vertex(8)
+            9
+            sage: T.previous_at_vertex(4)
+            5
+        """
         if check:
-            self._check_half_edge(e)
-        return self._fp[self._ep[i]]
+            e = self._check_half_edge(e)
+        return self._fp[self._ep[e]]
 
     def edge_permutation(self, copy=True):
         if copy:
@@ -604,57 +630,6 @@ class Constellation:
         return self._fp[e]
 
     def previous_in_face(self, e, check=True):
-        if check:
-            e = self._check_half_edge(e)
-        return self._ep[self._vp[e]]
-
-    def boundary_vector(self, copy=True):
-        if copy:
-            return self._data[0][:]
-        else:
-            return self._data[0]
-
-    def next_at_vertex(self, i, check=True):
-        r"""
-        EXAMPLES::
-
-            sage: from veerer import Triangulation
-
-                    EXAMPLES::
-
-            sage: from veerer import Triangulation
-
-            sage: T = Triangulation("(~11,4,~3)(~10,~0,11)(~9,0,10)(~8,9,1)(~7,8,~1)(~6,7,2)(~5,6,~2)(~4,5,3)")
-            sage: T.next_in_face(0)
-            10
-            sage: T.next_in_face(9)
-            1
-            sage: T.next_in_face(5)
-            3
-        """
-        if check:
-            i = self._check_half_edge(i)
-        return self._fp[i]
-
-    def previous_at_vertex(self, i, check=True):
-        r"""
-        EXAMPLES::
-
-            sage: from veerer import Triangulation
-
-            sage: T = Triangulation("(~11,4,~3)(~10,~0,11)(~9,0,10)(~8,9,1)(~7,8,~1)(~6,7,2)(~5,6,~2)(~4,5,3)")
-            sage: T.previous_at_vertex(9)
-            0
-            sage: T.previous_at_vertex(8)
-            9
-            sage: T.previous_at_vertex(4)
-            5
-        """
-        if check:
-            i = self._check_half_edge(i)
-        return self._fp[self._ep[i]]
-
-    def previous_in_face(self, i, check=True):
         r"""
         EXAMPLES::
 
@@ -669,8 +644,14 @@ class Constellation:
             5
         """
         if check:
-            i = self._check_half_edge(i)
-        return self._ep[self._vp[i]]
+            e = self._check_half_edge(e)
+        return self._ep[self._vp[e]]
+
+    def boundary_vector(self, copy=True):
+        if copy:
+            return self._data[0][:]
+        else:
+            return self._data[0]
 
     def num_half_edges(self):
         r"""
