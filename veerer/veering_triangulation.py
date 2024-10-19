@@ -1176,7 +1176,7 @@ class VeeringTriangulation(Triangulation):
             sage: t1 = Triangulation("(0,1,2)(~0,3,~2)", boundary="(~3:1,~1:1)")
             sage: vt = VeeringTriangulation(t0, "BBRB")
             sage: assert vt.dimension() == vt.as_linear_family().dimension() == 2
-            sage: assert vt.stratum().dimension() == 2  # optional - surface_dynamics
+            sage: assert vt.stratum().dimension() == 2  # optional - surface_dynamics # not tested (not yet in surface_dynamics)
 
         An example in H(2,-2)::
 
@@ -1185,7 +1185,7 @@ class VeeringTriangulation(Triangulation):
             sage: cols = "BRRR"
             sage: vt = VeeringTriangulation(fp, bdry, cols)
             sage: assert vt.dimension() == vt.as_linear_family().dimension() == 2
-            sage: assert vt.stratum().dimension() == 2  # optional - surface_dynamics
+            sage: assert vt.stratum().dimension() == 2  # optional - surface_dynamics # not tested (not yet in surface_dynamics)
         """
         # each folded edge gives a simple pole
         return 2 * self.genus() - 2 + self.num_vertices() + self.num_folded_edges() + self.num_boundary_faces() + (self.is_holomorphic() and self.is_abelian())
