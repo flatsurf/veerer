@@ -295,6 +295,9 @@ class Automaton:
             sage: bdry = "(~2:2,~3:2)"
             sage: cols = "BRRR"
             sage: vt = VeeringTriangulation(fp, bdry, cols)
+
+        In the Delaunay automaton, the sources are the horizontal-Strebel veering triangulations::
+
             sage: A = DelaunayAutomaton(backward=True)
             sage: A.add_seed(vt)
             1
@@ -302,11 +305,18 @@ class Automaton:
             0
             sage: list(A.sources())
             [VeeringTriangulation("(0,~3,2)(1,3,~2)", boundary="(~1:2,~0:2)", colouring="RRBR")]
-
-        And the sources coincide with horizontal-Strebel veering triangulations::
-
             sage: set(A.sources()) == set(vt for vt in A if vt.is_strebel(HORIZONTAL))
             True
+
+        In the Delaunay-Strebel automaton, the sources are the horizontal Strebel graphs::
+
+            sage: A = DelaunayStrebelAutomaton(backward=True)
+            sage: A.add_seed(vt)
+            1
+            sage: A.run()
+            0
+            sage: list(A.sources())
+            [('horizontal-strebel', StrebelGraph("(0,~1:1,~0,1:1)"))]
         """
         return (x for x, backward_neighbors in self._backward_neighbors.items() if not backward_neighbors)
 
@@ -321,6 +331,9 @@ class Automaton:
             sage: bdry = "(~2:2,~3:2)"
             sage: cols = "BRRR"
             sage: vt = VeeringTriangulation(fp, bdry, cols)
+
+        In the Delaunay automaton, the sinks are the vertical-Strebel veering triangulations::
+
             sage: A = DelaunayAutomaton(backward=True)
             sage: A.add_seed(vt)
             1
@@ -328,11 +341,18 @@ class Automaton:
             0
             sage: list(A.sinks())
             [VeeringTriangulation("(0,~3,2)(1,3,~2)", boundary="(~1:2,~0:2)", colouring="RRRB")]
-
-        The sinks coincide with vertical-Strebel veering triangulations::
-
             sage: set(A.sinks()) == set(vt for vt in A if vt.is_strebel(VERTICAL))
             True
+
+        In the Delaunay-Strebel, the sinks are the vertical Strebel graphs::
+
+            sage: A = DelaunayStrebelAutomaton(backward=True)
+            sage: A.add_seed(vt)
+            1
+            sage: A.run()
+            0
+            sage: list(A.sinks())
+            [('vertical-strebel', StrebelGraph("(0,~1:1,~0,1:1)"))]
         """
         return (x for x, forward_neighbors in self._forward_neighbors.items() if not forward_neighbors)
 
@@ -1397,13 +1417,13 @@ class DelaunayStrebelAutomaton(Automaton):
         sage: DS.run()
         0
         sage: DS
-        Delaunay-Strebel automaton with 8 vertices
+        Delaunay-Strebel automaton with 11 vertices
         sage: sum(kind == 'vertical-strebel' for kind, state in DS)
         1
         sage: sum(kind == 'horizontal-strebel' for kind, state in DS)
         1
         sage: sum(kind == 'delaunay' for kind, state in DS)
-        6
+        9
     """
     _name = 'Delaunay-Strebel'
 
@@ -1466,8 +1486,12 @@ class DelaunayStrebelAutomaton(Automaton):
             return
 
         elif kind == 'horizontal-strebel':
-            # TODO: a horizontal Strebel does have outgoing neighbors
-            return
+            for colouring in state.colourings():
+                for vt in state.veering_triangulations(colouring, HORIZONTAL, mutable=True):
+                    if vt.is_delaunay():
+                        vt.set_canonical_labels()
+                        vt.set_immutable()
+                        yield (('delaunay', vt), colouring)
 
         else:
             raise RuntimeError
@@ -1502,8 +1526,12 @@ class DelaunayStrebelAutomaton(Automaton):
                 yield ((kind, in_neighbor), (edges, col))
 
         elif kind == 'vertical-strebel':
-            # TODO: a vertical Strebel does have incoming neighbors
-            return
+            for colouring in state.colourings():
+                for vt in state.veering_triangulations(colouring, VERTICAL, mutable=True):
+                    if vt.is_delaunay():
+                        vt.set_canonical_labels()
+                        vt.set_immutable()
+                        yield (('delaunay', vt), colouring)
 
         elif kind == 'horizontal-strebel':
             return
