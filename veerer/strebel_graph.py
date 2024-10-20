@@ -25,7 +25,7 @@ import numbers
 
 from sage.rings.all import ZZ
 
-from .permutation import perm_cycles, perm_cycles_to_string, str_to_cycles_and_data
+from .permutation import perm_check, perm_cycles, perm_cycles_to_string, str_to_cycles_and_data
 from .triangulation import face_edge_perms_init, boundary_init
 from .constellation import Constellation
 from .constants import *
@@ -147,6 +147,10 @@ def one_edge_completion(T):
         newboundary_2[newep[a]] = 0
         newboundary_2[m] = 0
 
+    assert perm_check(newvp), (T, newvp)
+    assert perm_check(newep), (T, newep)
+    assert perm_check(newfp), (T, newfp)
+
     # TODO: here we use the same arrays newvp, newep, newfp for two distinct
     # data. This can lead to two veering triangulations sharing data which
     # must be avoided when mutable=True.
@@ -185,6 +189,10 @@ class StrebelGraph(Constellation):
 
     def _set_data_pointers(self):
         self._bdry = self._data[0]
+
+    def base_ring(self):
+        from sage.rings.integer_ring import ZZ
+        return ZZ
 
     def __str__(self):
         r"""
