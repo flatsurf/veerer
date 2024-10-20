@@ -1398,8 +1398,9 @@ class DelaunayStrebelAutomaton(Automaton):
 
     EXAMPLES:
 
-    A meromorphic example in H(2,-2) that consists of three veering
-    triangulations.
+    The example of the meromorphic stratum H(2,-2) that consists of 9 Delaunay
+    veering triangulations, 1 horizontal Strebel graph and 1 vertical Strebel
+    graph::
 
         sage: from veerer import *
 
@@ -1440,11 +1441,11 @@ class DelaunayStrebelAutomaton(Automaton):
         else:
             raise TypeError('invalid state')
 
-        # TODO: we should also allow Strebel graphs as seeds
+        if self._backend is None:
+            from .polyhedron.cone import default_backend
+            self._backend = default_backend(state.base_ring())
+
         if kind == 'delaunay':
-            if self._backend is None:
-                from .polyhedron.cone import default_backend
-                self._backend = default_backend(state.base_ring())
             if not state.is_geometric(backend=self._backend):
                 raise ValueError('invalid seed')
 
