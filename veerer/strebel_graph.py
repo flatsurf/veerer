@@ -41,7 +41,7 @@ def one_edge_completion(T):
     if e is a boundary edge of T
 
     EXAMPLES::
-    
+
         sage: from array import array
         sage: from veerer.strebel_graph import one_edge_completion
         sage: vp = array('i', [3, 2, 0, 1])
@@ -159,22 +159,22 @@ def one_edge_completion(T):
     if b == newep[a]:
         newboundary_1[m+1] = newboundary[newep[a]]
     elif ((newcolouring_1[newep[a]], newcolouring_1[m+1], newcolouring_1[c]) == (BLUE, RED, BLUE)) or ((newcolouring_1[newep[a]], newcolouring_1[m+1], newcolouring_1[c]) == (RED, BLUE, RED)):
-        newboundary_1[m+1] = newboundary_1[newep[a]] - 1
+        newboundary_1[m+1] = newboundary[newep[a]] - 1
     elif ((newcolouring_1[newep[e]], newcolouring_1[m], newcolouring_1[b]) == (RED, BLUE, RED)) or ((newcolouring_1[newep[e]], newcolouring_1[m], newcolouring_1[b]) == (BLUE, RED, BLUE)):
-        newboundary_1[m+1] = newboundary_1[newep[a]]
-        newboundary_1[b] = newboundary_1[b] - 1
+        newboundary_1[m+1] = newboundary[newep[a]]
+        newboundary_1[b] = newboundary[b] - 1
     else:
-        newboundary_1[m+1] = newboundary_1[newep[a]]
+        newboundary_1[m+1] = newboundary[newep[a]]
     
     if b == newep[a]:
         newboundary_2[m+1] = newboundary[newep[a]]
     elif ((newcolouring_2[newep[a]], newcolouring_2[m+1], newcolouring_2[c]) == (BLUE, RED, BLUE)) or ((newcolouring_2[newep[a]], newcolouring_2[m+1], newcolouring_2[c]) == (RED, BLUE, RED)):
-        newboundary_2[m+1] = newboundary_2[newep[a]] - 1
+        newboundary_2[m+1] = newboundary[newep[a]] - 1
     elif ((newcolouring_2[newep[e]], newcolouring_2[m], newcolouring_2[b]) == (RED, BLUE, RED)) or ((newcolouring_2[newep[e]], newcolouring_2[m], newcolouring_2[b]) == (BLUE, RED, BLUE)):
-        newboundary_2[m+1] = newboundary_2[newep[a]]
-        newboundary_2[b] = newboundary_2[b] - 1
+        newboundary_2[m+1] = newboundary[newep[a]]
+        newboundary_2[b] = newboundary[b] - 1
     else:
-        newboundary_2[m+1] = newboundary_2[newep[a]]
+        newboundary_2[m+1] = newboundary[newep[a]]
 
     assert perm_check(newvp), (T, newvp)
     assert perm_check(newep), (T, newep)
