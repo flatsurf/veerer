@@ -39,6 +39,30 @@ def one_edge_completion(T):
     T is a list: [vertex permutation, edge permutation, face permutation, colouring, boundary, bdryedge],
     where bdryedge is a list consisting of ``0`` or ``1`` and bdryedge[e] = 1 if and only
     if e is a boundary edge of T
+
+    EXAMPLES::
+    
+        sage: from array import array
+        sage: from veerer.strebel_graph import one_edge_completion
+        sage: vp = array('i', [3, 2, 0, 1])
+        sage: ep = array('i', [3, 2, 1, 0])
+        sage: fp = array('i', [0, 1, 3, 2])
+        sage: c = [2,1,1,2]
+        sage: bdry = array('i', [3, 3, 0, 3])
+        sage: T = [vp,ep,fp,c,bdry,[1]*4]
+        sage: one_edge_completion(T)
+        [[array('i', [5, 4, 1, 2, 0, 3]),
+        array('i', [5, 4, 3, 2, 1, 0]),
+        array('i', [0, 1, 5, 3, 2, 4]),
+        array('i', [2, 1, 1, 1, 1, 2]),
+        array('i', [3, 3, 0, 3, 0, 0]),
+        [1, 1, 0, 1, 0, 0]],
+        [array('i', [5, 4, 1, 2, 0, 3]),
+        array('i', [5, 4, 3, 2, 1, 0]),
+        array('i', [0, 1, 5, 3, 2, 4]),
+        array('i', [2, 1, 2, 2, 1, 2]),
+        array('i', [3, 3, 0, 3, 0, 0]),
+        [1, 1, 0, 1, 0, 0]]]
     """
     vp, ep, fp, colouring, boundary, bdryedge = T
     n = len(bdryedge) #current number of the half-edges
@@ -89,16 +113,24 @@ def one_edge_completion(T):
     a = newvp[e]
     b = newfp[e]
     c = newvp[newep[a]]
-
     newfp[e] = m
     newfp[m] = newep[a]
-    newfp[newep[c]] = m + 1
-    newfp[m + 1] = b
-
+    
+    #build the vertex permutation for half-edges of the triangle face
     newvp[newep[a]] = m + 1
-    newvp[m + 1] = c
-    newvp[b] = m
     newvp[m] = newep[e]
+    
+    #build the new boundary face and the vertex permutation for half-edges in the new boundary face
+    if c == newep[e]:
+        assert b == newep[a]
+        newfp[m + 1] = m + 1
+        newvp[m + 1] = m
+        newvp[b] = m + 1
+    else:
+        newfp[newep[c]] = m + 1
+        newfp[m + 1] = b
+        newvp[m + 1] = c
+        newvp[b] = m
 
     #modify the bdryedge
     assert newbdryedge[e] == 1
@@ -119,33 +151,30 @@ def one_edge_completion(T):
     newboundary_1 = newboundary[:]
     newboundary_2 = newboundary[:]
 
-    if ((newcolouring_1[newep[a]], newcolouring_1[m+1], newcolouring_1[c]) == (BLUE, RED, BLUE)) or ((newcolouring_1[newep[a]], newcolouring_1[m+1], newcolouring_1[c]) == (RED, BLUE, RED)):
+    #new internal edge
+    newboundary_1[newep[a]] = newboundary_2[newep[a]] = 0
+    newboundary_1[m] = newboundary_2[m] = 0
+    
+    #determin colors of ``m+1`` and ``newep[a]``
+    if b == newep[a]:
+        newboundary_1[m+1] = newboundary[newep[a]]
+    elif ((newcolouring_1[newep[a]], newcolouring_1[m+1], newcolouring_1[c]) == (BLUE, RED, BLUE)) or ((newcolouring_1[newep[a]], newcolouring_1[m+1], newcolouring_1[c]) == (RED, BLUE, RED)):
         newboundary_1[m+1] = newboundary_1[newep[a]] - 1
-        newboundary_1[newep[a]] = 0
-        newboundary_1[m] = 0
     elif ((newcolouring_1[newep[e]], newcolouring_1[m], newcolouring_1[b]) == (RED, BLUE, RED)) or ((newcolouring_1[newep[e]], newcolouring_1[m], newcolouring_1[b]) == (BLUE, RED, BLUE)):
         newboundary_1[m+1] = newboundary_1[newep[a]]
-        newboundary_1[newep[a]] = 0
         newboundary_1[b] = newboundary_1[b] - 1
-        newboundary_1[m] = 0
     else:
         newboundary_1[m+1] = newboundary_1[newep[a]]
-        newboundary_1[newep[a]] = 0
-        newboundary_1[m] = 0
-
-    if ((newcolouring_2[newep[a]], newcolouring_2[m+1], newcolouring_2[c]) == (BLUE, RED, BLUE)) or ((newcolouring_2[newep[a]], newcolouring_2[m+1], newcolouring_2[c]) == (RED, BLUE, RED)):
+    
+    if b == newep[a]:
+        newboundary_2[m+1] = newboundary[newep[a]]
+    elif ((newcolouring_2[newep[a]], newcolouring_2[m+1], newcolouring_2[c]) == (BLUE, RED, BLUE)) or ((newcolouring_2[newep[a]], newcolouring_2[m+1], newcolouring_2[c]) == (RED, BLUE, RED)):
         newboundary_2[m+1] = newboundary_2[newep[a]] - 1
-        newboundary_2[newep[a]] = 0
-        newboundary_2[m] = 0
     elif ((newcolouring_2[newep[e]], newcolouring_2[m], newcolouring_2[b]) == (RED, BLUE, RED)) or ((newcolouring_2[newep[e]], newcolouring_2[m], newcolouring_2[b]) == (BLUE, RED, BLUE)):
         newboundary_2[m+1] = newboundary_2[newep[a]]
-        newboundary_2[newep[a]] = 0
         newboundary_2[b] = newboundary_2[b] - 1
-        newboundary_2[m] = 0
     else:
         newboundary_2[m+1] = newboundary_2[newep[a]]
-        newboundary_2[newep[a]] = 0
-        newboundary_2[m] = 0
 
     assert perm_check(newvp), (T, newvp)
     assert perm_check(newep), (T, newep)
