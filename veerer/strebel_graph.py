@@ -115,11 +115,11 @@ def one_edge_completion(T):
     c = newvp[newep[a]]
     newfp[e] = m
     newfp[m] = newep[a]
-    
+
     #build the vertex permutation for half-edges of the triangle face
     newvp[newep[a]] = m + 1
     newvp[m] = newep[e]
-    
+
     #build the new boundary face and the vertex permutation for half-edges in the new boundary face
     if c == newep[e]:
         assert b == newep[a]
@@ -154,7 +154,7 @@ def one_edge_completion(T):
     #new internal edge
     newboundary_1[newep[a]] = newboundary_2[newep[a]] = 0
     newboundary_1[m] = newboundary_2[m] = 0
-    
+
     #determin colors of ``m+1`` and ``newep[a]``
     if b == newep[a]:
         newboundary_1[m+1] = newboundary[newep[a]]
@@ -165,7 +165,7 @@ def one_edge_completion(T):
         newboundary_1[b] = newboundary[b] - 1
     else:
         newboundary_1[m+1] = newboundary[newep[a]]
-    
+
     if b == newep[a]:
         newboundary_2[m+1] = newboundary[newep[a]]
     elif ((newcolouring_2[newep[a]], newcolouring_2[m+1], newcolouring_2[c]) == (BLUE, RED, BLUE)) or ((newcolouring_2[newep[a]], newcolouring_2[m+1], newcolouring_2[c]) == (RED, BLUE, RED)):

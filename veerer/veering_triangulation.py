@@ -4260,4 +4260,3 @@ class VeeringTriangulations:
             [(2*m-1, ~(3*m-1), m)]
         colouring = [RED] * (2*m) + [BLUE] * m
         return VeeringTriangulation(T, colouring)
-
