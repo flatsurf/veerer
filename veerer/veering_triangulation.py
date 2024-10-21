@@ -2540,7 +2540,7 @@ class VeeringTriangulation(Triangulation):
             sage: vt = VeeringTriangulation(fp, cols)
             sage: cs = vt.train_track_switch_constraints()
             sage: cs
-            {x0 + x3 - x8 == 0, x1 - x4 + x7 == 0, x2 + x3 - x4 == 0, x0 + x5 - x6 == 0}
+            {-1*x0 - x3 + x8 == 0, -1*x1 + x4 - x7 == 0, -1*x2 - x3 + x4 == 0, -1*x0 - x5 + x6 == 0}
         """
         from sage.rings.integer_ring import ZZ
         from .polyhedron.linear_expression import LinearExpressions

@@ -178,7 +178,8 @@ class LinearExpression(ModuleElement):
         return self.parent().element_class(self.parent(), data, inhomogeneous_term)
 
     def __neg__(self):
-        return LinearExpression(self.parent(), {i: -c for (i, c) in self._f.items()}, -self._inhomogeneous_term)
+        P = self.parent()
+        return P.element_class(P, {i: -c for (i, c) in self._f.items()}, -self._inhomogeneous_term)
 
     def __le__(self, other):
         return LinearConstraint(op_LE, self, other)
@@ -199,7 +200,7 @@ class LinearExpression(ModuleElement):
         return LinearConstraint(op_GE, self, other)
 
     def _richcmp_(self, other, op):
-        return LinearExpression(op, self, other)
+        return self.element_class(op, self, other)
 
     def denominator(self):
         r"""
@@ -421,8 +422,8 @@ class ConstraintSystem:
         cs._dim = self._dim
         return cs
 
-    def insert(self, constraint):
-        if not isinstance(constraint, LinearConstraint):
+    def insert(self, constraint, check=True):
+        if check and not isinstance(constraint, LinearConstraint):
             raise TypeError('invalid type; expected LinearConstraint but got {}'.format(type(constraint).__name__))
         if self._dim is None:
             self._dim = max(constraint._expression._f) + 1
@@ -613,11 +614,11 @@ class LinearExpressions(UniqueRepresentation, Parent):
         sage: 5 * L.variable(2) - 3 * L.variable(7)
         5*x2 - 3*x7
         """
-        return LinearExpression(self, {int(i): self.base_ring().one()})
+        return self.element_class(self, {int(i): self.base_ring().one()})
 
     def _element_constructor_(self, *args):
         if not args:
-            return LinearExpression(self)
+            return self.element_class(self)
         elif len(args) == 1:
             base_ring = self.base_ring()
             data = args[0]
@@ -633,7 +634,7 @@ class LinearExpressions(UniqueRepresentation, Parent):
                 inhomogeneous_term = base_ring(data)
             else:
                 raise ValueError('can not construct linear expression from {}'.format(data))
-            return LinearExpression(self, f, inhomogeneous_term)
+            return self.element_class(self, f, inhomogeneous_term)
 
         elif len(args) == 2:
             data0 = args[0]
@@ -647,6 +648,6 @@ class LinearExpressions(UniqueRepresentation, Parent):
             else:
                 raise ValueError('invalid first argument {}'.format(data0))
             data1 = base_ring(data1)
-            return LinearExpression(self, data0, data1)
+            return self.element_class(self, data0, data1)
         else:
             raise ValueError('can not construct linear expression from {}'.format(args))
