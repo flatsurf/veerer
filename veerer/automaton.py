@@ -178,13 +178,25 @@ class Automaton:
         r"""
         Some consistency checks.
         """
-        if set(self._forward_neighbors) != set(self._backward_neighbors):
-            raise ValueError('inconsistent list of states')
+        if not (self._branch or self._backward_flip_queue or self._seeds):
+            d1 = set(self._forward_neighbors).difference(self._backward_neighbors)
+            assert not d1, d1
 
-        num_incoming_edges = sum(len(v) for v in self._backward_neighbors.values())
-        num_outgoing_edges = sum(len(v) for v in self._forward_neighbors.values())
-        if num_outgoing_edges != num_incoming_edges:
-            print('inconsistent number of edges: {} incoming and {} outgoing'.format(num_incoming_edges, num_outgoing_edges))
+            d2 = set(self._backward_neighbors).difference(self._forward_neighbors)
+            assert not d2, d2
+
+            num_incoming_edges = sum(len(v) for v in self._backward_neighbors.values())
+            num_outgoing_edges = sum(len(v) for v in self._forward_neighbors.values())
+            assert num_outgoing_edges == num_incoming_edges, (num_outgoing_edges, num_incoming_edges)
+
+            for state in self:
+                in_neighbors1 = set(x for x, label in self._backward_neighbors[state])
+                in_neighbors2 = set(x for x, label in self._in_neighbors(state))
+                assert in_neighbors1 == in_neighbors2, (state, in_neighbors1, in_neighbors2)
+
+                out_neighbors1 = set(x for x, label in self._forward_neighbors[state])
+                out_neighbors2 = set(x for x, label in self._out_neighbors(state))
+                assert out_neighbors1 == out_neighbors2, (state, out_neighbors1, out_neighbors2)
 
     def __str__(self):
         r"""
@@ -696,11 +708,11 @@ class Automaton:
 
         if state in self._forward_neighbors:
             if self._verbosity >= 2:
-                print('[add_seed] state=%s already in the graph' % state)
+                print('[add_seed] state=%s already in the graph' % (state,))
             return 0
 
         if self._verbosity >= 2:
-            print('[add_seed] adding state=%s to the list of seeds' % state)
+            print('[add_seed] adding state=%s to the list of seeds' % (state,))
 
         self._seeds.append(state)
         return 1
@@ -722,7 +734,11 @@ class Automaton:
                 return
 
             state = self._backward_flip_queue.pop()
+            if self._verbosity >= 2:
+                print('[next_seed] found state to feed backward_flip_queue %s' % (state,))
             for back_neighbor, label in self._in_neighbors(state):
+                if self._verbosity >= 2:
+                    print('[next_seed] add back_neighbor %s' % (back_neighbor,))
                 self.add_seed(back_neighbor)
 
     def run(self, max_size=None):
@@ -818,7 +834,7 @@ class Automaton:
         old_size = len(self._forward_neighbors)
         while max_size is None or count < max_size:
             if self._verbosity >= 2:
-                print('[automaton] NEW LOOP')
+                print('[automaton] new loop')
                 sys.stdout.flush()
 
             while not branch:
@@ -833,7 +849,7 @@ class Automaton:
                     return 0
 
                 if self._verbosity >= 2:
-                    print('[automaton] seed %s' % seed)
+                    print('[automaton] seed %s' % (state,))
                     sys.stdout.flush()
 
                 forward_neighbors[state] = []
@@ -857,7 +873,7 @@ class Automaton:
                 raise RuntimeError
 
             if self._verbosity >= 2:
-                print('[automaton] at %s' % state)
+                print('[automaton] at %s' % (state,))
                 sys.stdout.flush()
 
             for out_neighbor, label in self._out_neighbors(state):
@@ -1294,7 +1310,7 @@ class DelaunayAutomaton(Automaton):
             assert all(state.colour(e) == state.colour(edges[0]) for e in edges)
             in_neighbor = state.copy(mutable=True)
             for e in edges:
-                in_neighbor.flip(e, col, check=CHECK)
+                in_neighbor.flip_back(e, col, check=CHECK)
                 if CHECK:
                     in_neighbor._check(RuntimeError)
                     if not in_neighbor.is_delaunay(backend=self._backend):
@@ -1426,13 +1442,13 @@ class DelaunayStrebelAutomaton(Automaton):
         sage: sum(kind == 'delaunay' for kind, state in DS)
         9
 
-    Some one dimensional examples in genus 0::
-
+    Some one and two dimensional examples in genus 0::
 
         sage: examples = [StrebelGraph("(0,~1)(1,~0)"), StrebelGraph("(0:2,~1)(1,~0)"),
         ....:             StrebelGraph("(0:2,~1)(1,~0:2)"), StrebelGraph("(0,~1)(1)(~0)"),
         ....:             StrebelGraph("(0:2,~1)(1)(~0)"), StrebelGraph("(0,~0,~1:1,1)"),
-        ....:             StrebelGraph("(0,~0,~1)(1)")]
+        ....:             StrebelGraph("(0,~0,~1)(1)"), StrebelGraph("(0,2,~0,~1)(1)(~2)"),
+        ....:             StrebelGraph("(0,2,~1)(1)(~2,~0)"), StrebelGraph("(0:2,2,~1)(1,~0)(~2)")]
         sage: for G in examples:
         ....:     print(G)
         ....:     DS = DelaunayStrebelAutomaton(backward=True)
@@ -1465,12 +1481,22 @@ class DelaunayStrebelAutomaton(Automaton):
         StrebelGraph("(0,~0,~1)(1)")
         Delaunay-Strebel automaton with 10 vertices
         1 1 8
+        StrebelGraph("(0,2,~0,~1)(1)(~2)")
+        Delaunay-Strebel automaton with 34 vertices
+        2 2 30
+        StrebelGraph("(0,2,~1)(1)(~2,~0)")
+        Delaunay-Strebel automaton with 52 vertices
+        1 1 50
+        StrebelGraph("(0:2,2,~1)(1,~0)(~2)")
+        Delaunay-Strebel automaton with 126 vertices
+        6 6 114
     """
     _name = 'Delaunay-Strebel'
 
     def _check(self):
-        from .features import surface_dynamics_feature
+        super()._check()
 
+        from .features import surface_dynamics_feature
         if surface_dynamics_feature.is_present():
             s = set(state.stratum() for kind, state in self)
             if len(s) != 1:
@@ -1495,7 +1521,7 @@ class DelaunayStrebelAutomaton(Automaton):
 
         if kind == 'delaunay':
             if not state.is_geometric(backend=self._backend):
-                raise ValueError('invalid seed')
+                raise ValueError('invalid seed: non-Delaunay veering triangulation {}'.format(state))
 
         state = state.copy(mutable=True)
         state.set_canonical_labels()
@@ -1565,7 +1591,7 @@ class DelaunayStrebelAutomaton(Automaton):
                 assert all(state.colour(e) == state.colour(edges[0]) for e in edges)
                 in_neighbor = state.copy(mutable=True)
                 for e in edges:
-                    in_neighbor.flip(e, col, check=CHECK)
+                    in_neighbor.flip_back(e, col, check=CHECK)
                     if CHECK:
                         in_neighbor._check(RuntimeError)
                         if not in_neighbor.is_delaunay(backend=self._backend):

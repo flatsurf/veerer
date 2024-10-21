@@ -3786,6 +3786,18 @@ class VeeringTriangulation(Triangulation):
             [([0], 2)]
             sage: sorted(VeeringTriangulation(fp, bdry, cols2).backward_delaunay_flips())
             [([0], 1), ([0], 2)]
+
+
+        An example in H_0(1, 0, -1^3)::
+
+            sage: from veerer import VeeringTriangulation
+            sage: vt =  VeeringTriangulation("(1,~5,~2)(2,~4,~3)(4,~1,~0)", boundary="(0:1)(3:1)(5:1)", colouring="BRBRBB")
+            sage: assert vt.is_delaunay()
+            sage: for edges, col in vt.backward_delaunay_flips():
+            ....:     vt2 = vt.copy(mutable=True)
+            ....:     for e in edges:
+            ....:         vt2.flip_back(e, col)
+            ....:         assert vt2.is_delaunay()
         """
         from sage.matrix.constructor import matrix
 
@@ -3832,7 +3844,7 @@ class VeeringTriangulation(Triangulation):
             Fred = F.add_constraint(y[self._norm(a)] <= y[self._norm(d)])
             if Fred.affine_dimension() == 2 * dim - 1:
                 neighbours.append((edges, BLUE))
-                Fblue = F.add_constraint(x[self._norm(a)] >= x[self._norm(d)])
+                Fblue = F.add_constraint(y[self._norm(a)] >= y[self._norm(d)])
                 if Fblue.affine_dimension() == 2 * dim - 1:
                     neighbours.append((edges, RED))
             else:
