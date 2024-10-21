@@ -2448,7 +2448,7 @@ class VeeringTriangulation(Triangulation):
     def _set_train_track_constraints_fast(self, cs, L, slope):
         zero = L.base_ring().zero()
         one = L.base_ring().one()
-        mone = -one
+        m_one = -one
         ne = self.num_edges()
         ep = self._ep
         if slope == VERTICAL:
@@ -2479,26 +2479,26 @@ class VeeringTriangulation(Triangulation):
                 # i is degenerate
                 cs.insert(L.element_class(L, {shift + i: one}, zero) == zero, check=False)
                 if i != k:
-                    cs.insert(L.element_class(L, {shift + i: one, shift + k: mone}, zero) == zero, check=False)
+                    cs.insert(L.element_class(L, {shift + i: one, shift + k: m_one}, zero) == zero, check=False)
             elif cj == ZERO and ck == NEG and ci == POS:
                 # j is degenerate
                 cs.insert(L.element_class(L, {shift + j: one}, zero) == zero, check=False)
                 if i != k:
-                    cs.insert(L.element_class(L, {shift + k: one, shift + i: mone}, zero) == zero, check=False)
+                    cs.insert(L.element_class(L, {shift + k: one, shift + i: m_one}, zero) == zero, check=False)
             elif ck == ZERO and ci == NEG and cj == POS:
                 # k is degenerate
                 cs.insert(L.element_class(L, {shift + k: one}, zero) == zero, check=False)
                 if i != j:
-                    cs.insert(L.element_class(L, {shift + i: one, shift + j: mone}, zero) == zero, check=False)
+                    cs.insert(L.element_class(L, {shift + i: one, shift + j: m_one}, zero) == zero, check=False)
             elif ck == LAR or (ci == POS and cj == NEG):
                 # k is large
-                cs.insert(L.element_class(L, {shift + k: one, shift + i: mone, shift + j: mone}, zero) == zero, check=False)
+                cs.insert(L.element_class(L, {shift + k: one, shift + i: m_one, shift + j: m_one}, zero) == zero, check=False)
             elif ci == LAR or (cj == POS and ck == NEG):
                 # i is large
-                cs.insert(L.element_class(L, {shift + i: one, shift + j: mone, shift + k: mone}, zero) == zero, check=False)
+                cs.insert(L.element_class(L, {shift + i: one, shift + j: m_one, shift + k: m_one}, zero) == zero, check=False)
             elif cj == LAR or (ck == POS and ci == NEG):
                 # j is large
-                cs.insert(L.element_class(L, {shift + j: one, shift + k: mone, shift + i: mone}, zero) == zero, check=False)
+                cs.insert(L.element_class(L, {shift + j: one, shift + k: m_one, shift + i: m_one}, zero) == zero, check=False)
             else:
                 raise ValueError('can not determine the nature of triangle (%s, %s, %s) with colors (%s, %s, %s) in %s direction' %
                                  (self._edge_rep(i), self._edge_rep(j), self._edge_rep(k),
