@@ -1502,6 +1502,16 @@ class DelaunayStrebelAutomaton(Automaton):
             if len(s) != 1:
                 raise ValueError('got different strata: {}'.format(sorted(s)))
 
+        horizontal_strebel = set()
+        vertical_strebel = set()
+        for kind, state in self:
+            if kind == 'horizontal-strebel':
+                horizontal_strebel.add(state)
+            elif kind == 'vertical-strebel':
+                vertical_strebel.add(state)
+
+        assert horizontal_strebel == vertical_strebel, horizontal_strebel.symmetric_difference(vertical_strebel)
+
     def _setup(self, backend=None):
         self._backend = backend
 
