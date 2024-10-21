@@ -2832,7 +2832,6 @@ class VeeringTriangulation(Triangulation):
         self._set_train_track_constraints(M.add_constraint, x, slope, 1, allow_degenerations)
         return M.optimizing_point()
 
-    # TODO: this is not a polytope but a cone
     def delaunay_cone(self, x_low_bound=0, y_low_bound=0, hw_bound=0, backend=None):
         r"""
         Return the geometric polytope of this veering triangulation.
@@ -3648,9 +3647,9 @@ class VeeringTriangulation(Triangulation):
             sage: from veerer import *
 
             sage: vt = VeeringTriangulation("(0,2,3)(1,4,~0)(5,6,~1)", "BRRBBBB")
-            sage: sorted(vt.geometric_flips())
+            sage: sorted(vt.delaunay_flips())
             [([3], 1), ([3], 2), ([4], 1), ([4], 2), ([5], 1), ([5], 2)]
-            sage: sorted(vt.geometric_flips(backend='sage'))
+            sage: sorted(vt.delaunay_flips(backend='sage'))
             [([3], 1), ([3], 2), ([4], 1), ([4], 2), ([5], 1), ([5], 2)]
 
         L-shaped square tiled surface with 3 squares (given as a sphere with
@@ -3660,18 +3659,18 @@ class VeeringTriangulation(Triangulation):
             sage: from veerer import *
             sage: T, s, t = VeeringTriangulations.L_shaped_surface(1, 1, 1, 1)
             sage: f = VeeringTriangulationLinearFamily(T, [s, t])
-            sage: sorted(f.geometric_flips(backend='ppl'))
+            sage: sorted(f.delaunay_flips(backend='ppl'))
             [([3, 4, 5], 1), ([3, 4, 5], 2)]
-            sage: sorted(f.geometric_flips(backend='sage'))
+            sage: sorted(f.delaunay_flips(backend='sage'))
             [([3, 4, 5], 1), ([3, 4, 5], 2)]
-            sage: sorted(f.geometric_flips(backend='normaliz-QQ'))  # optional - pynormaliz
+            sage: sorted(f.delaunay_flips(backend='normaliz-QQ'))  # optional - pynormaliz
             [([3, 4, 5], 1), ([3, 4, 5], 2)]
 
         To be compared with the geometric flips in the ambient stratum::
 
-            sage: sorted(T.geometric_flips())
+            sage: sorted(T.delaunay_flips())
             [([3], 1), ([3], 2), ([4], 1), ([4], 2), ([5], 1), ([5], 2)]
-            sage: sorted(T.as_linear_family().geometric_flips())
+            sage: sorted(T.as_linear_family().delaunay_flips())
             [([3], 1), ([3], 2), ([4], 1), ([4], 2), ([5], 1), ([5], 2)]
 
 
@@ -3683,11 +3682,11 @@ class VeeringTriangulation(Triangulation):
             sage: f = VeeringTriangulationLinearFamily(T, [s, t])
             sage: T.flippable_edges()
             [0, 3, 4, 5, 6]
-            sage: sorted(f.geometric_flips(backend='ppl'))
+            sage: sorted(f.delaunay_flips(backend='ppl'))
             [([4], 2), ([5], 1), ([5], 2)]
-            sage: sorted(f.geometric_flips(backend='sage'))
+            sage: sorted(f.delaunay_flips(backend='sage'))
             [([4], 2), ([5], 1), ([5], 2)]
-            sage: sorted(f.geometric_flips(backend='normaliz-QQ'))  # optional - pynormaliz
+            sage: sorted(f.delaunay_flips(backend='normaliz-QQ'))  # optional - pynormaliz
             [([4], 2), ([5], 1), ([5], 2)]
 
         TESTS::
@@ -3696,9 +3695,9 @@ class VeeringTriangulation(Triangulation):
             sage: fp = "(0,~8,~7)(1,3,~2)(2,7,~3)(4,6,~5)(5,8,~6)(~4,~1,~0)"
             sage: cols = "RBRRRRBBR"
             sage: vt = VeeringTriangulation(fp, cols)
-            sage: sorted(vt.geometric_flips())
+            sage: sorted(vt.delaunay_flips())
             [([2], 1), ([2], 2), ([4, 8], 1), ([4, 8], 2)]
-            sage: sorted(vt.as_linear_family().geometric_flips())
+            sage: sorted(vt.as_linear_family().delaunay_flips())
             [([2], 1), ([2], 2), ([4, 8], 1), ([4, 8], 2)]
         """
         from sage.matrix.constructor import matrix
@@ -3754,8 +3753,11 @@ class VeeringTriangulation(Triangulation):
 
         return neighbours
 
-    # TODO: deprecate
-    geometric_flips = delaunay_flips
+    def geometric_flips(self, *args, **kwds):
+        import warnings
+        warnings.warn('the method geometric_flips is deprecated; use delaunay_flips instead')
+
+        return self.delaunay_flips(*args, **kwds)
 
     # TODO: this is mostly a copy/past with variation of the forward version
     # above. The code would better be factorized
