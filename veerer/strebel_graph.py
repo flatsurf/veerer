@@ -65,7 +65,7 @@ def one_edge_completion(T):
         [1, 1, 0, 1, 0, 0]]]
     """
     vp, ep, fp, colouring, boundary, bdryedge = T
-    n = len(bdryedge) #current number of the half-edges
+    n = len(bdryedge)
     m = n // 2
 
     found = False
@@ -76,10 +76,10 @@ def one_edge_completion(T):
     if not found:
         raise ValueError('already complete')
 
-    #new edge permutation
+    # new edge permutation
     newep = array('i', list(reversed(range(n + 2))))
 
-    #change the labels of e, vp, fp, colouring and boundary due to the added edge
+    # change the labels of e, vp, fp, colouring and boundary due to the added edge
     if e > m - 1:
         e = e + 2
 
@@ -97,8 +97,8 @@ def one_edge_completion(T):
     newcolouring.insert(m+1, -1)
     newboundary.insert(m, -1)
     newboundary.insert(m+1, -1)
-    newbdryedge.insert(m, 0) # the half-edge m is always internal
-    newbdryedge.insert(m+1, 1) #the half-edge m + 1 is always boundary
+    newbdryedge.insert(m, 0) # m is internal
+    newbdryedge.insert(m+1, 1) # m + 1 is boundary
 
     for ee in range(n + 2):
         if (ee != m) and (ee != m + 1):
@@ -109,18 +109,18 @@ def one_edge_completion(T):
             if ve > m - 1:
                 newvp[ee] = ve + 2
 
-    #build the new triangle face
+    # build the new triangle face
     a = newvp[e]
     b = newfp[e]
     c = newvp[newep[a]]
     newfp[e] = m
     newfp[m] = newep[a]
 
-    #build the vertex permutation for half-edges of the triangle face
+    # build the vertex permutation for half-edges of the triangle face
     newvp[newep[a]] = m + 1
     newvp[m] = newep[e]
 
-    #build the new boundary face and the vertex permutation for half-edges in the new boundary face
+    # build the new boundary face and the vertex permutation for half-edges in the new boundary face
     if c == newep[e]:
         assert b == newep[a]
         newfp[m + 1] = m + 1
@@ -132,30 +132,30 @@ def one_edge_completion(T):
         newvp[m + 1] = c
         newvp[b] = m
 
-    #modify the bdryedge
+    # modify bdryedge
     assert newbdryedge[e] == 1
-    newbdryedge[e] = 0 #e becomes internal
+    newbdryedge[e] = 0 # e becomes internal
 
     assert newbdryedge[newep[a]] == 1
-    newbdryedge[newep[a]] = 0 #newep[a] becomes internal
+    newbdryedge[newep[a]] = 0 # newep[a] becomes internal
 
-    #build new colouring
-    #claim: for e1=vp[e], e and e1 must have the same colour
+    # build new colouring
+    # claim: for e1=vp[e], e and e1 must have the same colour
     newcolouring_1 = array('i', newcolouring)
     newcolouring_2 = array('i', newcolouring)
 
-    newcolouring_1[m] = newcolouring_1[m + 1] = 1 #RED
-    newcolouring_2[m] = newcolouring_2[m + 1] = 2 #BLUE
+    newcolouring_1[m] = newcolouring_1[m + 1] = RED
+    newcolouring_2[m] = newcolouring_2[m + 1] = BLUE
 
-    #build new angle excess
+    # build new angle excess
     newboundary_1 = newboundary[:]
     newboundary_2 = newboundary[:]
 
-    #new internal edge
+    # new internal edge
     newboundary_1[newep[a]] = newboundary_2[newep[a]] = 0
     newboundary_1[m] = newboundary_2[m] = 0
 
-    #determin colors of ``m+1`` and ``newep[a]``
+    # determine colors of ``m+1`` and ``newep[a]``
     if b == newep[a]:
         newboundary_1[m+1] = newboundary[newep[a]]
     elif ((newcolouring_1[newep[a]], newcolouring_1[m+1], newcolouring_1[c]) == (BLUE, RED, BLUE)) or ((newcolouring_1[newep[a]], newcolouring_1[m+1], newcolouring_1[c]) == (RED, BLUE, RED)):
