@@ -739,7 +739,7 @@ class Automaton:
             for back_neighbor, label in self._in_neighbors(state):
                 if self._verbosity >= 2:
                     print('[next_seed] add back_neighbor %s' % (back_neighbor,))
-                self.add_seed(back_neighbor)
+                self.add_seed(back_neighbor, setup=False)
 
     def run(self, max_size=None):
         r"""
@@ -1573,6 +1573,8 @@ class DelaunayStrebelAutomaton(Automaton):
         elif kind == 'horizontal-strebel':
             for colouring in state.colourings():
                 for vt in state.veering_triangulations(colouring, HORIZONTAL, mutable=True):
+                    # TODO: this check for Delaunay condition is costly. Maybe it could
+                    # be amortized inside the function veering_triangulations?
                     if vt.is_delaunay():
                         vt.set_canonical_labels()
                         vt.set_immutable()
@@ -1613,6 +1615,8 @@ class DelaunayStrebelAutomaton(Automaton):
         elif kind == 'vertical-strebel':
             for colouring in state.colourings():
                 for vt in state.veering_triangulations(colouring, VERTICAL, mutable=True):
+                    # TODO: this check for Delaunay condition is costly. Maybe it could
+                    # be amortized inside the function veering_triangulations?
                     if vt.is_delaunay():
                         vt.set_canonical_labels()
                         vt.set_immutable()

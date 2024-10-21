@@ -960,9 +960,6 @@ class Constellation:
         for l in self._data:
             perm_on_list(p, l, n)
 
-        # TODO: remove check
-        self._check()
-
     def _relabelling_from(self, start_edge):
         r"""
         Return a canonical relabelling map obtained from walking

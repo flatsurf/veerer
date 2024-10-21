@@ -37,6 +37,7 @@ import ppl
 from sage.structure.richcmp import op_LT, op_LE, op_EQ, op_NE, op_GT, op_GE, rich_to_bool
 from sage.modules.free_module import FreeModule
 from sage.matrix.constructor import matrix
+from sage.rings.integer_ring import ZZ
 
 from .constants import *
 from .constellation import Constellation
@@ -201,7 +202,7 @@ class VeeringTriangulation(Triangulation):
         for a in range(n):
             if self._bdry[a]:
                 continue
-            col, a, b, c = self.triangle(a)
+            col, a, b, c = self.triangle(a, check=False)
             good = False
             if col == BLUE:
                 good = cols[a] == BLUE and cols[b] == BLUE and cols[c] == RED
@@ -231,7 +232,6 @@ class VeeringTriangulation(Triangulation):
                 raise error('monochromatic vertex {} of colour {}'.format(v, colour_to_string(cols[v[0]])))
 
     def base_ring(self):
-        from sage.rings.integer_ring import ZZ
         return ZZ
 
     def right_wedges(self, slope=VERTICAL):
@@ -1076,7 +1076,7 @@ class VeeringTriangulation(Triangulation):
         for a in range(n):
             if seen[a]:
                 continue
-            col, a, b, c = self.triangle(a)
+            col, a, b, c = self.triangle(a, check=False)
             seen[a] = seen[b] = seen[c] = True
             a1 = a
             a2 = a+n
@@ -1192,16 +1192,18 @@ class VeeringTriangulation(Triangulation):
 
     stratum_dimension = dimension
 
-    def colours_about_edge(self, e):
-        e = int(e)
-        return [self._colouring[f] for f in self.square_about_edge(e)]
+    def colours_about_edge(self, e, check=True):
+        if check:
+            e = self._check_half_edge(e)
+        return [self._colouring[f] for f in self.square_about_edge(e, check=False)]
 
-    def alternating_square(self, e):
+    def alternating_square(self, e, check=True):
         r"""
         Return whether there is an alternating square around the edge ``e``.
         """
-        e = int(e)
-        colours = self.colours_about_edge(e)
+        if check:
+            e = self._check_half_edge(e)
+        colours = self.colours_about_edge(e, check=False)
         if any(colours[f] == GREEN or colours[f] == PURPLE for f in range(4)):
             return False
         return all(colours[f] != colours[(f+1) % 4] for f in range(4))
@@ -1305,7 +1307,7 @@ class VeeringTriangulation(Triangulation):
         """
         if check:
             e = self._check_half_edge(e)
-        return Triangulation.is_flippable(self, e) and self.alternating_square(e)
+        return Triangulation.is_flippable(self, e, check=False) and self.alternating_square(e, check=False)
 
     def is_forward_flippable(self, e, check=True):
         r"""
@@ -1329,11 +1331,11 @@ class VeeringTriangulation(Triangulation):
         """
         if check:
             e = self._check_half_edge(e)
-        if self._colouring[e] == GREEN or not Triangulation.is_flippable(self, e):
+        if self._colouring[e] == GREEN or not Triangulation.is_flippable(self, e, check=False):
             return False
         if self._colouring[e] == PURPLE:
             return True
-        ca, cb, cc, cd = self.colours_about_edge(e)
+        ca, cb, cc, cd = self.colours_about_edge(e, check=False)
         return bool(ca & (BLUE | GREEN)) and bool(cb & (RED | GREEN)) and bool(cc & (BLUE | GREEN)) and bool(cd & (RED | GREEN))
 
     def is_backward_flippable(self, e, check=True):
@@ -1358,11 +1360,11 @@ class VeeringTriangulation(Triangulation):
         """
         if check:
             e = self._check_half_edge(e)
-        if self._colouring[e] == PURPLE or not Triangulation.is_flippable(self, e):
+        if self._colouring[e] == PURPLE or not Triangulation.is_flippable(self, e, check=False):
             return False
         if self._colouring[e] == GREEN:
             return True
-        ca, cb, cc, cd = self.colours_about_edge(e)
+        ca, cb, cc, cd = self.colours_about_edge(e, check=False)
         return bool(ca & (RED | PURPLE)) and bool(cb & (BLUE | PURPLE)) and bool(cc & (RED | PURPLE)) and bool(cd & (BLUE | PURPLE))
 
     def forward_flippable_edges(self, folded=True):
@@ -1772,7 +1774,7 @@ class VeeringTriangulation(Triangulation):
         if Lx is not None:
             raise NotImplementedError("not implemented for linear equations")
         if Gx is not None:
-            a, b, c, d = self.square_about_edge(e)
+            a, b, c, d = self.square_about_edge(e, check=False)
             e = self._norm(e)
             a = self._norm(a)
             d = self._norm(d)
@@ -1801,7 +1803,7 @@ class VeeringTriangulation(Triangulation):
 
         if reduced:
             ep = self._ep
-            a, b, c, d = self.square_about_edge(e)
+            a, b, c, d = self.square_about_edge(e, check=False)
             assert self._colouring[a] & (RED | GREEN), (a, colour_to_string(self._colouring[a]))
             assert self._colouring[b] & (BLUE | GREEN), (b, colour_to_string(self._colouring[b]))
             assert self._colouring[c] & (RED | GREEN), (c, colour_to_string(self._colouring[c]))
@@ -2433,7 +2435,7 @@ class VeeringTriangulation(Triangulation):
         self._colouring[e] = self._colouring[E] = col
 
         if Gx is not None:
-            a, b, c, d = self.square_about_edge(e)
+            a, b, c, d = self.square_about_edge(e, check=False)
             e = self._norm(e)
             a = self._norm(a)
             b = self._norm(b)
@@ -2442,6 +2444,73 @@ class VeeringTriangulation(Triangulation):
             Gx.add_multiple_of_column(e, e, -1)
             Gx.add_multiple_of_column(e, a, +1)
             Gx.add_multiple_of_column(e, b, +1)
+
+    def _set_train_track_constraints_fast(self, cs, L, slope):
+        zero = L.base_ring().zero()
+        one = L.base_ring().one()
+        mone = -one
+        ne = self.num_edges()
+        ep = self._ep
+        if slope == VERTICAL:
+            LAR = PURPLE
+            POS = BLUE
+            NEG = RED
+            ZERO = GREEN
+            shift = 0
+        elif slope == HORIZONTAL:
+            LAR = GREEN
+            POS = RED
+            NEG = BLUE
+            ZERO = PURPLE
+            shift = ne
+        else:
+            raise ValueError('bad slope parameter')
+
+        # switch
+        for (i, j, k) in self.triangles():
+            i = self._norm(i)
+            ci = self._colouring[i]
+            j = self._norm(j)
+            cj = self._colouring[j]
+            k = self._norm(k)
+            ck = self._colouring[k]
+
+            if ci == ZERO and cj == NEG and ck == POS:
+                # i is degenerate
+                cs.insert(L.element_class(L, {shift + i: one}, zero) == zero, check=False)
+                if i != k:
+                    cs.insert(L.element_class(L, {shift + i: one, shift + k: mone}, zero) == zero, check=False)
+            elif cj == ZERO and ck == NEG and ci == POS:
+                # j is degenerate
+                cs.insert(L.element_class(L, {shift + j: one}, zero) == zero, check=False)
+                if i != k:
+                    cs.insert(L.element_class(L, {shift + k: one, shift + i: mone}, zero) == zero, check=False)
+            elif ck == ZERO and ci == NEG and cj == POS:
+                # k is degenerate
+                cs.insert(L.element_class(L, {shift + k: one}, zero) == zero, check=False)
+                if i != j:
+                    cs.insert(L.element_class(L, {shift + i: one, shift + j: mone}, zero) == zero, check=False)
+            elif ck == LAR or (ci == POS and cj == NEG):
+                # k is large
+                cs.insert(L.element_class(L, {shift + k: one, shift + i: mone, shift + j: mone}, zero) == zero, check=False)
+            elif ci == LAR or (cj == POS and ck == NEG):
+                # i is large
+                cs.insert(L.element_class(L, {shift + i: one, shift + j: mone, shift + k: mone}, zero) == zero, check=False)
+            elif cj == LAR or (ck == POS and ci == NEG):
+                # j is large
+                cs.insert(L.element_class(L, {shift + j: one, shift + k: mone, shift + i: mone}, zero) == zero, check=False)
+            else:
+                raise ValueError('can not determine the nature of triangle (%s, %s, %s) with colors (%s, %s, %s) in %s direction' %
+                                 (self._edge_rep(i), self._edge_rep(j), self._edge_rep(k),
+                                  colour_to_string(ci), colour_to_string(cj), colour_to_string(ck),
+                                  'horizontal' if slope == HORIZONTAL else 'vertical'))
+
+        # non-negativity
+        for e in range(ne):
+            if ep[e] != e and ep[e] < ne:
+                raise ValueError('edge permutation not in standard form')
+            if self._colouring[e] != ZERO:
+                cs.insert(L.element_class(L, {shift + e: one}, zero) >= zero, check=False)
 
     def _set_switch_conditions(self, insert, x, slope=VERTICAL):
         r"""
@@ -2516,7 +2585,6 @@ class VeeringTriangulation(Triangulation):
             elif cj == LAR or (ck == POS and ci == NEG):
                 # j is large
                 insert(x[j] == x[k] + x[i])
-                l,s1,s2 = j,k,i
             else:
                 raise ValueError('can not determine the nature of triangle (%s, %s, %s) with colors (%s, %s, %s) in %s direction' %
                                  (self._edge_rep(i), self._edge_rep(j), self._edge_rep(k),
@@ -2647,6 +2715,26 @@ class VeeringTriangulation(Triangulation):
             else:
                 insert(x[e] >= low_bound)
 
+    def _set_delaunay_constraints_fast(self, cs, L):
+        zero = L.base_ring().zero()
+        ne = self.num_edges()
+        for e in self.forward_flippable_edges():
+            a, _, _, d = self.square_about_edge(e, check=False)
+            a = self._norm(a)
+            d = self._norm(d)
+            e = self._norm(e)
+            # y[a] + y[d] - x[e] >= 0
+            l = L.element_class(L, {ne + a: 1, ne + d: 1, e: -1}, zero)
+            cs.insert(l >= 0, check=False)
+        for e in self.backward_flippable_edges():
+            a, _, _, d = self.square_about_edge(e, check=False)
+            a = self._norm(a)
+            d = self._norm(d)
+            e = self._norm(e)
+            # x[a] + x[d] - y[e] >= 0
+            l = L.element_class(L, {a: 1, d: 1, ne + e: -1}, zero)
+            cs.insert(l >= 0, check=False)
+
     def _set_delaunay_constraints(self, insert, x, y, hw_bound=0):
         r"""
         Set the geometric constraints.
@@ -2674,10 +2762,10 @@ class VeeringTriangulation(Triangulation):
         """
         hw_bound = max(0, int(hw_bound))
         for e in self.forward_flippable_edges():
-            a, b, c, d = self.square_about_edge(e)
+            a, b, c, d = self.square_about_edge(e, check=False)
             insert(x[self._norm(e)] <= y[self._norm(a)] + y[self._norm(d)] - hw_bound)
         for e in self.backward_flippable_edges():
-            a, b, c, d = self.square_about_edge(e)
+            a, b, c, d = self.square_about_edge(e, check=False)
             insert(y[self._norm(e)] <= x[self._norm(a)] + x[self._norm(d)] - hw_bound)
 
     def _set_balance_constraints(self, insert, x, slope, homogeneous):
@@ -2687,11 +2775,11 @@ class VeeringTriangulation(Triangulation):
         if homogeneous:
             if slope == VERTICAL:
                 for eff, ebf in itertools.product(self.forward_flippable_edges(), self.backward_flippable_edges()):
-                    a, b, c, d = self.square_about_edge(ebf)
+                    a, b, c, d = self.square_about_edge(ebf, check=False)
                     insert(x[self._norm(b)] + x[self._norm(c)] >= x[self._norm(eff)])
             elif slope == HORIZONTAL:
                 for eff, ebf in itertools.product(self.forward_flippable_edges(), self.backward_flippable_edges()):
-                    a, b, c, d = self.square_about_edge(eff)
+                    a, b, c, d = self.square_about_edge(eff, check=False)
                     insert(x[self._norm(b)] + x[self._norm(c)] >= x[self._norm(ebf)])
             else:
                 raise ValueError("slope must be HORIZONTAL or VERTICAL")
@@ -2700,11 +2788,11 @@ class VeeringTriangulation(Triangulation):
                 for e in self.forward_flippable_edges():
                     insert(x[self._norm(e)] <= 1)
                 for e in self.backward_flippable_edges():
-                    a, b, c, d = self.square_about_edge(e)
+                    a, b, c, d = self.square_about_edge(e, check=False)
                     insert(x[self._norm(b)] + x[self._norm(c)] >= 1)
             elif slope == HORIZONTAL:
                 for e in self.forward_flippable_edges():
-                    a, b, c, d = self.square_about_edge(e)
+                    a, b, c, d = self.square_about_edge(e, check=False)
                     insert(x[self._norm(b)] + x[self._norm(c)] >= 1)
                 for e in self.backward_flippable_edges():
                     insert(x[self._norm(e)] <= 1)
@@ -2851,15 +2939,15 @@ class VeeringTriangulation(Triangulation):
             sage: T.delaunay_cone(backend='sage')
             Cone of dimension 4 in ambient dimension 6 made of 6 facets (backend=sage)
         """
-        from sage.rings.integer_ring import ZZ
+        if x_low_bound or y_low_bound or hw_bound:
+            raise NotImplementedError
+
         L = LinearExpressions(ZZ)
         ne = self.num_edges()
-        x = [L.variable(e) for e in range(ne)]
-        y = [L.variable(ne+e) for e in range(ne)]
         cs = ConstraintSystem()
-        self._set_train_track_constraints(cs.insert, x, VERTICAL, x_low_bound, False)
-        self._set_train_track_constraints(cs.insert, y, HORIZONTAL, y_low_bound, False)
-        self._set_delaunay_constraints(cs.insert, x, y, hw_bound=hw_bound)
+        self._set_train_track_constraints_fast(cs, L, VERTICAL)
+        self._set_train_track_constraints_fast(cs, L, HORIZONTAL)
+        self._set_delaunay_constraints_fast(cs, L)
         return cs.cone(backend)
 
     def geometric_polytope(self, *args, **kwds):
@@ -3503,7 +3591,7 @@ class VeeringTriangulation(Triangulation):
         """
         return self.balanced_polytope(backend=backend).affine_dimension() == self.dimension()
 
-    def edge_has_curve(self, e, verbose=False):
+    def edge_has_curve(self, e, check=True, verbose=False):
         r"""
         INPUT:
 
@@ -3549,6 +3637,9 @@ class VeeringTriangulation(Triangulation):
             sage: P2.affine_dimension()
             2
         """
+        if check:
+            e = self._check_half_edge(e)
+
         # TODO: we should only search for vertex cycles; i.e. not allow more
         # than two pairs (i, ~i) to be both seen (barbell are fine but not more)
 
@@ -3561,7 +3652,7 @@ class VeeringTriangulation(Triangulation):
         if verbose:
             print('[edge_has_curve] checking edge %s with colour %s' % (edge_rep(e), colouring[e]))
 
-        a, b, c, d = self.square_about_edge(e)
+        a, b, c, d = self.square_about_edge(e, check=False)
         if colouring[a] == BLUE or colouring[b] == RED:
             assert colouring[c] == BLUE or colouring[d] == RED
             POS, NEG = BLUE, RED
@@ -3717,7 +3808,7 @@ class VeeringTriangulation(Triangulation):
         eqns = matrix(base_ring, P.eqns())
         delaunay_facets = {}
         for e in self.forward_flippable_edges():
-            a, b, c, d = self.square_about_edge(e)
+            a, b, c, d = self.square_about_edge(e, check=False)
             constraint = x[self._norm(e)] == y[self._norm(a)] + y[self._norm(d)]
             constraint = constraint.coefficients(dim=2*ne, homogeneous=True)
             linear_form_project(eqns, constraint)
@@ -3741,7 +3832,7 @@ class VeeringTriangulation(Triangulation):
             assert all(self._colouring[e] == self._colouring[edges[0]] for e in edges)
             # NOTE: the equations for the different edges are all equivalent, it
             # is hence enough to use the first edge
-            a, b, c, d = self.square_about_edge(edges[0])
+            a, b, c, d = self.square_about_edge(edges[0], check=False)
             Fred = F.add_constraint(x[self._norm(a)] <= x[self._norm(d)])
             if Fred.affine_dimension() == 2 * dim - 1:
                 neighbours.append((edges, RED))
@@ -3818,7 +3909,7 @@ class VeeringTriangulation(Triangulation):
         eqns = matrix(base_ring, P.eqns())
         delaunay_facets = {}
         for e in self.backward_flippable_edges():
-            a, b, c, d = self.square_about_edge(e)
+            a, b, c, d = self.square_about_edge(e, check=False)
             constraint = y[self._norm(e)] == x[self._norm(a)] + x[self._norm(d)]
             constraint = constraint.coefficients(dim=2*ne, homogeneous=True)
             linear_form_project(eqns, constraint)
@@ -3842,7 +3933,7 @@ class VeeringTriangulation(Triangulation):
             assert all(self._colouring[e] == self._colouring[edges[0]] for e in edges)
             # NOTE: the equations for the different edges are all equivalent, it
             # is hence enough to use the first edge
-            a, b, c, d = self.square_about_edge(edges[0])
+            a, b, c, d = self.square_about_edge(edges[0], check=False)
             Fred = F.add_constraint(y[self._norm(a)] <= y[self._norm(d)])
             if Fred.affine_dimension() == 2 * dim - 1:
                 neighbours.append((edges, BLUE))
