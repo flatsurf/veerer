@@ -3783,7 +3783,7 @@ class VeeringTriangulation(Triangulation):
             sage: VeeringTriangulation(fp, bdry, cols0).backward_delaunay_flips()
             []
             sage: VeeringTriangulation(fp, bdry, cols1).backward_delaunay_flips()
-            [([0], 2)]
+            [([0], 2), ([0], 1)]
             sage: sorted(VeeringTriangulation(fp, bdry, cols2).backward_delaunay_flips())
             [([0], 1), ([0], 2)]
 
