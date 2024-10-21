@@ -1425,8 +1425,56 @@ class DelaunayStrebelAutomaton(Automaton):
         1
         sage: sum(kind == 'delaunay' for kind, state in DS)
         9
+
+    Some one dimensional examples in genus 0::
+
+
+        sage: examples = [StrebelGraph("(0,~1)(1,~0)"), StrebelGraph("(0:2,~1)(1,~0)"),
+        ....:             StrebelGraph("(0:2,~1)(1,~0:2)"), StrebelGraph("(0,~1)(1)(~0)"),
+        ....:             StrebelGraph("(0:2,~1)(1)(~0)"), StrebelGraph("(0,~0,~1:1,1)"),
+        ....:             StrebelGraph("(0,~0,~1)(1)")]
+        sage: for G in examples:
+        ....:     print(G)
+        ....:     DS = DelaunayStrebelAutomaton(backward=True)
+        ....:     _ = DS.add_seed(G)
+        ....:     _ = DS.run()
+        ....:     DS._check()
+        ....:     print(DS)
+        ....:     n_hs = sum(kind == 'horizontal-strebel' for kind, state in DS)
+        ....:     n_vs = sum(kind == 'vertical-strebel' for kind, state in DS)
+        ....:     n_d = sum(kind == 'delaunay' for kind, state in DS)
+        ....:     print(n_hs, n_vs, n_d)
+        StrebelGraph("(0,~1)(1,~0)")
+        Delaunay-Strebel automaton with 10 vertices
+        1 1 8
+        StrebelGraph("(0:2,~1)(1,~0)")
+        Delaunay-Strebel automaton with 26 vertices
+        3 3 20
+        StrebelGraph("(0:2,~1)(1,~0:2)")
+        Delaunay-Strebel automaton with 16 vertices
+        2 2 12
+        StrebelGraph("(0,~1)(1)(~0)")
+        Delaunay-Strebel automaton with 6 vertices
+        1 1 4
+        StrebelGraph("(0:2,~1)(1)(~0)")
+        Delaunay-Strebel automaton with 20 vertices
+        3 3 14
+        StrebelGraph("(0,~0,~1:1,1)")
+        Delaunay-Strebel automaton with 13 vertices
+        1 1 11
+        StrebelGraph("(0,~0,~1)(1)")
+        Delaunay-Strebel automaton with 10 vertices
+        1 1 8
     """
     _name = 'Delaunay-Strebel'
+
+    def _check(self):
+        from .features import surface_dynamics_feature
+
+        if surface_dynamics_feature.is_present():
+            s = set(state.stratum() for kind, state in self)
+            if len(s) != 1:
+                raise ValueError('got different strata: {}'.format(sorted(s)))
 
     def _setup(self, backend=None):
         self._backend = backend

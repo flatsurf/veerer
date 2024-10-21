@@ -427,18 +427,38 @@ class StrebelGraph(Constellation):
         EXAMPLES::
 
             sage: from veerer import *
-            sage: G = StrebelGraph("(~1:1,~0,1:1,0)")
-            sage: G.stratum()  # optional - surface_dynamics
+            sage: examples = []
+            sage: examples.append(StrebelGraph("(~1:1,~0,1:1,0)"))
+            sage: examples.append(StrebelGraph("(0,~1)(1)(~0)"))
+            sage: examples.append(StrebelGraph("(0:2)(1:2)(~1,~0:2)"))
+            sage: for G in examples:  # optional - surface_dynamics
+            ....:     print(G.stratum())
             H_1(2, -2)
-            sage: for colouring in G.colourings():
-            ....:     vts = G.veering_triangulations(colouring)
-            ....:     assert all(vt.strebel_graph() == G for vt in vts)
-            ....:     assert all(vt.stratum() == G.stratum() for vt in vts)  # optional - surface_dynamics
-            ....:     print(colouring, list(G.veering_triangulations(colouring)))
+            H_0(1, -1^3)
+            H_0(4, -2^3)
+
+            sage: for G in examples:
+            ....:     print(G)
+            ....:     for colouring in G.colourings():
+            ....:         vts = G.veering_triangulations(colouring)
+            ....:         assert all(vt.strebel_graph() == G for vt in vts)
+            ....:         assert all(vt.stratum() == G.stratum() for vt in vts)  # optional - surface_dynamics
+            ....:         print(colouring, list(G.veering_triangulations(colouring)))
+            StrebelGraph("(0,~1:1,~0,1:1)")
             array('i', [1, 1, 1, 1]) [VeeringTriangulation("", boundary="(0:1,~1:2,~0:1,1:2)", colouring="RR")]
             array('i', [1, 2, 2, 1]) [VeeringTriangulation("(0,2,1)(3,~1,~0)", boundary="(~3:1,~2:2)", colouring="RBBR"), VeeringTriangulation("(0,2,1)(3,~1,~0)", boundary="(~3:2,~2:2)", colouring="RBBB"), VeeringTriangulation("(0,2,1)(3,~1,~0)", boundary="(~3:2,~2:2)", colouring="RBRR"), VeeringTriangulation("(0,2,1)(3,~1,~0)", boundary="(~3:2,~2:1)", colouring="RBRB")]
             array('i', [2, 1, 1, 2]) [VeeringTriangulation("", boundary="(0:1,~1:1,~0:1,1:1)", colouring="BR")]
             array('i', [2, 2, 2, 2]) [VeeringTriangulation("", boundary="(0:1,~1:2,~0:1,1:2)", colouring="BB")]
+            StrebelGraph("(0,~1)(1)(~0)")
+            array('i', [1, 1, 1, 1]) [VeeringTriangulation("", boundary="(0:1,~1:1)(1:1)(~0:1)", colouring="RR")]
+            array('i', [1, 2, 2, 1]) [VeeringTriangulation("(0,2,~1)", boundary="(1:1)(~2:1)(~0:1)", colouring="RBR"), VeeringTriangulation("(0,2,~1)", boundary="(1:1)(~2:1)(~0:1)", colouring="RBB")]
+            array('i', [2, 1, 1, 2]) [VeeringTriangulation("(0,~1,2)", boundary="(1:1)(~2:1)(~0:1)", colouring="BRR"), VeeringTriangulation("(0,~1,2)", boundary="(1:1)(~2:1)(~0:1)", colouring="BRB")]
+            array('i', [2, 2, 2, 2]) [VeeringTriangulation("", boundary="(0:1,~1:1)(1:1)(~0:1)", colouring="BB")]
+            StrebelGraph("(0:2)(1:2)(~1,~0:2)")
+            array('i', [1, 1, 1, 1]) [VeeringTriangulation("", boundary="(0:3)(1:3)(~1:1,~0:3)", colouring="RR")]
+            array('i', [1, 2, 2, 1]) [VeeringTriangulation("", boundary="(0:3)(1:3)(~1:1,~0:2)", colouring="RB")]
+            array('i', [2, 1, 1, 2]) [VeeringTriangulation("(2,~0,~1)", boundary="(0:3)(1:3)(~2:3)", colouring="BRR"), VeeringTriangulation("(2,~0,~1)", boundary="(0:3)(1:3)(~2:3)", colouring="BRB")]
+            array('i', [2, 2, 2, 2]) [VeeringTriangulation("", boundary="(0:3)(1:3)(~1:1,~0:3)", colouring="BB")]
         """
         def is_complete(T):
             vp, ep, fp, colouring, boundary, bdryedge = T
