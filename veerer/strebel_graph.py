@@ -204,6 +204,8 @@ class StrebelGraph(Constellation):
         sage: StrebelGraph("(0,~0:1)")
         StrebelGraph("(0,~0:1)")
     """
+    __slots__ = ['_excess']
+
     def __init__(self, faces, mutable=False, check=True):
         if isinstance(faces, StrebelGraph):
             fp = faces.face_permutation(copy=True)
@@ -217,7 +219,7 @@ class StrebelGraph(Constellation):
         Constellation.__init__(self, len(fp), None, ep, fp, (bdry,), mutable, check)
 
     def _set_data_pointers(self):
-        self._bdry = self._data[0]
+        self._excess = self._data[0]
 
     def base_ring(self):
         from sage.rings.integer_ring import ZZ
@@ -232,7 +234,7 @@ class StrebelGraph(Constellation):
             sage: str(T)
             'StrebelGraph("(0,1,2)(~2:2,~0,~1:1)")'
         """
-        bdry_cycles = perm_cycles_to_string(perm_cycles(self._fp, n=self._n), involution=self._ep, data=self._bdry)
+        bdry_cycles = perm_cycles_to_string(perm_cycles(self._fp, n=self._n), involution=self._ep, data=self._excess)
         return 'StrebelGraph("%s")' % bdry_cycles
 
     def __repr__(self):
@@ -271,7 +273,7 @@ class StrebelGraph(Constellation):
             f = vp[e]
             while True:
                 # propagate the orientation from e
-                if self._bdry[e] % 2 == 0: #if even, we flip the edge
+                if self._excess[e] % 2 == 0: #if even, we flip the edge
                     o = not o
 
                 if oris[f] is None:
@@ -297,10 +299,10 @@ class StrebelGraph(Constellation):
             sage: from veerer import StrebelGraph
         """
         # degrees of holomorphic part
-        hol = [len(v) - 2 + sum(self._bdry[i] for i in v) for v in self.vertices()]
+        hol = [len(v) - 2 + sum(self._excess[i] for i in v) for v in self.vertices()]
 
         # degrees of meromorphic part
-        mer = [-2 - sum(self._bdry[i] for i in f) for f in self.faces()]
+        mer = [-2 - sum(self._excess[i] for i in f) for f in self.faces()]
 
         # Determine whether it is Abelian (k=1) or quadratic (k=2) stratum
         if any(x % 2 for x in hol) or any(x % 2 for x in mer) or not self.is_abelian():
@@ -394,7 +396,7 @@ class StrebelGraph(Constellation):
 
         n = self._n
         vp = self._vp
-        alpha = array('i', self._bdry)
+        alpha = array('i', self._excess)
 
         for e in range(n):
             e1 = vp[e]
