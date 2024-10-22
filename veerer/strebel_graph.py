@@ -33,12 +33,16 @@ from .constants import *
 
 def one_edge_completion(t, angle_excess, colouring):
     r"""
-    Return two colored triangulations (represented by a list of attributes) that adds one edge to T
-    with different colors.
+    Return a pair of triples ``(new_t, new_angle_excess, new_colouring)`` corresponding to
+    adding an edge forming a triangle with the two allowed colours.
 
-    T is a list: [vertex permutation, edge permutation, face permutation, colouring, boundary, bdryedge],
-    where bdryedge is a list consisting of ``0`` or ``1`` and bdryedge[e] = 1 if and only
-    if e is a boundary edge of T
+    INPUT:
+
+    - ``t`` -- a :class:`Triangulation` (with boundary)
+
+    - ``angle_excess`` -- an array of angle excess
+
+    - ``colouring`` -- an array of RED, BLUE colouring
 
     EXAMPLES::
 
@@ -105,7 +109,7 @@ def one_edge_completion(t, angle_excess, colouring):
     newep[M] = m
 
     for ee in range(n + 2):
-        if (ee != m) and (ee != m + 1):
+        if (ee != m) and (ee != M):
             vpe = newvp[ee]
             fpe = newfp[ee]
             epe = newep[ee]
@@ -120,7 +124,7 @@ def one_edge_completion(t, angle_excess, colouring):
         e = e + 2
     E = newep[e]
 
-    # build the new triangle face
+    # build the new triangle face (e, m, A)
     a = newvp[e]
     A = newep[a]
     b = newfp[e]
@@ -131,7 +135,10 @@ def one_edge_completion(t, angle_excess, colouring):
     newvp[A] = M
     newvp[m] = E
 
-    if c == E:
+    is_bigon = c == E
+    assert is_bigon == (b == A)
+
+    if is_bigon:
         assert b == A
         newfp[M] = M
         newvp[M] = m
@@ -144,57 +151,56 @@ def one_edge_completion(t, angle_excess, colouring):
 
     # new bdry: m is internal, M is boundary and e and A becomes internal
     newbdry = bdry[:]
-    newbdry.insert(m, 0) # m is internal
-    newbdry.insert(M, 1) # m + 1 is boundary
+    newbdry.insert(m, 0)
+    newbdry.insert(M, 1)
 
     assert newbdry[e] == 1
     assert newbdry[A] == 1
     newbdry[e] = newbdry[A] = 0
 
     # build new colourings
-    newcolouring_1 = array('i', colouring)
-    newcolouring_1.insert(m, -1)
-    newcolouring_1.insert(M, -1)
+    colouring1 = array('i', colouring)
+    colouring1.insert(m, -1)
+    colouring1.insert(M, -1)
 
     # claim: a and e must have different colours
     # (so that both RED and BLUE are allowed for the new edge (m, M)
-    assert newcolouring_1[a] != newcolouring_1[e]
+    assert colouring1[a] != colouring1[e]
 
-    newcolouring_2 = newcolouring_1[:]
-    newcolouring_1[m] = newcolouring_1[M] = RED
-    newcolouring_2[m] = newcolouring_2[M] = BLUE
+    colouring2 = colouring1[:]
+    colouring1[m] = colouring1[M] = RED
+    colouring2[m] = colouring2[M] = BLUE
 
     # build new angle excesses
-    newangle_excess_1 = angle_excess[:]
-    newangle_excess_1.insert(m, -1)
-    newangle_excess_1.insert(M, -1)
-    newangle_excess_1[M] = newangle_excess_1[A]
-    newangle_excess_1[A] = newangle_excess_1[m] = 0
+    angle_excess1 = angle_excess[:]
+    angle_excess1.insert(m, -1)
+    angle_excess1.insert(M, -1)
+    angle_excess1[M] = angle_excess1[A]
+    angle_excess1[A] = angle_excess1[m] = 0
 
-    newangle_excess_2 = newangle_excess_1[:]
+    angle_excess2 = angle_excess1[:]
 
-    if b != A:
-        # ie not the bigon case
-        col_a = newcolouring_1[a]
-        col_b = newcolouring_1[b]
-        col_c = newcolouring_1[c]
-        col_e = newcolouring_1[e]
+    if not is_bigon:
+        col_a = colouring1[a]
+        col_b = colouring1[b]
+        col_c = colouring1[c]
+        col_e = colouring1[e]
 
         if col_a == BLUE:
             assert col_e == RED
             if col_b == RED:
-                newangle_excess_2[b] -= 1
+                angle_excess2[b] -= 1
             if col_c == BLUE:
-                newangle_excess_1[M] -= 1
+                angle_excess1[M] -= 1
         else:
             assert col_a == RED and col_e == BLUE
             if col_b == BLUE:
-                newangle_excess_1[b] -= 1
+                angle_excess1[b] -= 1
             if col_c == RED:
-                newangle_excess_2[M] -= 1
+                angle_excess2[M] -= 1
 
     t = Triangulation.from_permutations(newvp, newep, newfp, (newbdry,), mutable=False, check=False)
-    return ((t, newangle_excess_1, newcolouring_1), (t, newangle_excess_2, newcolouring_2))
+    return ((t, angle_excess1, colouring1), (t, angle_excess2, colouring2))
 
 
 class StrebelGraph(Constellation):
