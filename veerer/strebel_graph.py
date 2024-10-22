@@ -26,12 +26,12 @@ import numbers
 from sage.rings.all import ZZ
 
 from .permutation import perm_check, perm_cycles, perm_cycles_to_string, str_to_cycles_and_data
-from .triangulation import face_edge_perms_init, boundary_init
+from .triangulation import face_edge_perms_init, boundary_init, Triangulation
 from .constellation import Constellation
 from .constants import *
 
 
-def one_edge_completion(T):
+def one_edge_completion(t, angle_excess, colouring):
     r"""
     Return two colored triangulations (represented by a list of attributes) that adds one edge to T
     with different colors.
@@ -43,150 +43,158 @@ def one_edge_completion(T):
     EXAMPLES::
 
         sage: from array import array
+        sage: from veerer import Triangulation
         sage: from veerer.strebel_graph import one_edge_completion
-        sage: vp = array('i', [3, 2, 0, 1])
-        sage: ep = array('i', [3, 2, 1, 0])
-        sage: fp = array('i', [0, 1, 3, 2])
-        sage: c = [2,1,1,2]
-        sage: bdry = array('i', [3, 3, 0, 3])
-        sage: T = [vp,ep,fp,c,bdry,[1]*4]
-        sage: one_edge_completion(T)
-        [[array('i', [5, 4, 1, 2, 0, 3]),
-        array('i', [5, 4, 3, 2, 1, 0]),
-        array('i', [0, 1, 5, 3, 2, 4]),
-        array('i', [2, 1, 1, 1, 1, 2]),
-        array('i', [3, 3, 0, 3, 0, 0]),
-        [1, 1, 0, 1, 0, 0]],
-        [array('i', [5, 4, 1, 2, 0, 3]),
-        array('i', [5, 4, 3, 2, 1, 0]),
-        array('i', [0, 1, 5, 3, 2, 4]),
-        array('i', [2, 1, 2, 2, 1, 2]),
-        array('i', [3, 3, 0, 3, 0, 0]),
-        [1, 1, 0, 1, 0, 0]]]
+        sage: t = Triangulation("", "(0:1)(1:1)(~0:1,~1:1)")
+        sage: colouring = [2,1,1,2]
+        sage: angle_excess = array('i', [3, 3, 0, 3])
+        sage: one_edge_completion(t, angle_excess, colouring)
+        ((Triangulation("(2,~0,~1)", boundary="(0:1)(1:1)(~2:1)"),
+          array('i', [3, 3, 0, 3, 0, 0]),
+          array('i', [2, 1, 1, 1, 1, 2])),
+         (Triangulation("(2,~0,~1)", boundary="(0:1)(1:1)(~2:1)"),
+          array('i', [3, 3, 0, 3, 0, 0]),
+          array('i', [2, 1, 2, 2, 1, 2])))
     """
-    vp, ep, fp, colouring, boundary, bdryedge = T
-    n = len(bdryedge)
+    # We insert the (m, M)-edge as follows
+    #
+    #   x
+    #   |
+    #   |
+    #   |c
+    #   |
+    #   x
+    #   | \ M
+    #   |A   \
+    #   |       \
+    #  a|  e      m\   b
+    #   x-----------x-----------x
+    #             E           B
+
+    vp = t._vp
+    ep = t._ep
+    fp = t._fp
+    bdry = t._bdry
+    angle_excess = angle_excess
+    n = t._n
     m = n // 2
+    M = m + 1
 
     found = False
     for e in range(n):
-        if bdryedge[e] and boundary[e] == 0:
+        if bdry[e] and angle_excess[e] == 0:
             found = True
             break
     if not found:
         raise ValueError('already complete')
 
-    # new edge permutation
-    newep = array('i', list(reversed(range(n + 2))))
 
-    # change the labels of e, vp, fp, colouring and boundary due to the added edge
-    if e > m - 1:
-        e = e + 2
-
-    newfp = array('i', fp)
+    # add an edge (m, M) and possibly shift e
     newvp = array('i', vp)
-    newcolouring = array('i', colouring)
-    newboundary = boundary[:]
-    newbdryedge = bdryedge[:]
+    newep = array('i', ep)
+    newfp = array('i', fp)
 
-    newfp.insert(m, -1)
-    newfp.insert(m+1, -1)
     newvp.insert(m, -1)
-    newvp.insert(m+1, -1)
-    newcolouring.insert(m, -1)
-    newcolouring.insert(m+1, -1)
-    newboundary.insert(m, -1)
-    newboundary.insert(m+1, -1)
-    newbdryedge.insert(m, 0) # m is internal
-    newbdryedge.insert(m+1, 1) # m + 1 is boundary
+    newvp.insert(M, -1)
+    newep.insert(m, -1)
+    newep.insert(M, -1)
+    newfp.insert(m, -1)
+    newfp.insert(M, -1)
+
+    newep[m] = M
+    newep[M] = m
 
     for ee in range(n + 2):
         if (ee != m) and (ee != m + 1):
-            ve = newvp[ee]
-            fe = newfp[ee]
-            if fe > m - 1:
-                newfp[ee] = fe + 2
-            if ve > m - 1:
-                newvp[ee] = ve + 2
+            vpe = newvp[ee]
+            fpe = newfp[ee]
+            epe = newep[ee]
+            if fpe > m - 1:
+                newfp[ee] = fpe + 2
+            if vpe > m - 1:
+                newvp[ee] = vpe + 2
+            if epe > m - 1:
+                newep[ee] = epe + 2
+
+    if e > m - 1:
+        e = e + 2
+    E = newep[e]
 
     # build the new triangle face
     a = newvp[e]
+    A = newep[a]
     b = newfp[e]
-    c = newvp[newep[a]]
+    c = newvp[A]
+    C = newep[c]
     newfp[e] = m
-    newfp[m] = newep[a]
+    newfp[m] = A
+    newvp[A] = M
+    newvp[m] = E
 
-    # build the vertex permutation for half-edges of the triangle face
-    newvp[newep[a]] = m + 1
-    newvp[m] = newep[e]
-
-    # build the new boundary face and the vertex permutation for half-edges in the new boundary face
-    if c == newep[e]:
-        assert b == newep[a]
-        newfp[m + 1] = m + 1
-        newvp[m + 1] = m
-        newvp[b] = m + 1
+    if c == E:
+        assert b == A
+        newfp[M] = M
+        newvp[M] = m
+        newvp[b] = M
     else:
-        newfp[newep[c]] = m + 1
-        newfp[m + 1] = b
-        newvp[m + 1] = c
+        newfp[C] = M
+        newfp[M] = b
+        newvp[M] = c
         newvp[b] = m
 
-    # modify bdryedge
-    assert newbdryedge[e] == 1
-    newbdryedge[e] = 0 # e becomes internal
+    # new bdry: m is internal, M is boundary and e and A becomes internal
+    newbdry = bdry[:]
+    newbdry.insert(m, 0) # m is internal
+    newbdry.insert(M, 1) # m + 1 is boundary
 
-    assert newbdryedge[newep[a]] == 1
-    newbdryedge[newep[a]] = 0 # newep[a] becomes internal
+    assert newbdry[e] == 1
+    assert newbdry[A] == 1
+    newbdry[e] = newbdry[A] = 0
 
-    # build new colouring
-    # claim: for e1=vp[e], e and e1 must have the same colour
-    newcolouring_1 = array('i', newcolouring)
-    newcolouring_2 = array('i', newcolouring)
+    # build new colourings
+    newcolouring_1 = array('i', colouring)
+    newcolouring_1.insert(m, -1)
+    newcolouring_1.insert(M, -1)
 
-    newcolouring_1[m] = newcolouring_1[m + 1] = RED
-    newcolouring_2[m] = newcolouring_2[m + 1] = BLUE
+    # claim: a and e must have different colours
+    # (so that both RED and BLUE are allowed for the new edge (m, M)
+    assert newcolouring_1[a] != newcolouring_1[e]
 
-    # build new angle excess
-    newboundary_1 = newboundary[:]
-    newboundary_2 = newboundary[:]
+    newcolouring_2 = newcolouring_1[:]
+    newcolouring_1[m] = newcolouring_1[M] = RED
+    newcolouring_2[m] = newcolouring_2[M] = BLUE
 
-    # new internal edge
-    newboundary_1[newep[a]] = newboundary_2[newep[a]] = 0
-    newboundary_1[m] = newboundary_2[m] = 0
+    # build new angle excesses
+    newangle_excess_1 = angle_excess[:]
+    newangle_excess_1.insert(m, -1)
+    newangle_excess_1.insert(M, -1)
+    newangle_excess_1[M] = newangle_excess_1[A]
+    newangle_excess_1[A] = newangle_excess_1[m] = 0
 
-    # determine colors of ``m+1`` and ``newep[a]``
-    if b == newep[a]:
-        newboundary_1[m+1] = newboundary[newep[a]]
-    elif ((newcolouring_1[newep[a]], newcolouring_1[m+1], newcolouring_1[c]) == (BLUE, RED, BLUE)) or ((newcolouring_1[newep[a]], newcolouring_1[m+1], newcolouring_1[c]) == (RED, BLUE, RED)):
-        newboundary_1[m+1] = newboundary[newep[a]] - 1
-    elif ((newcolouring_1[newep[e]], newcolouring_1[m], newcolouring_1[b]) == (RED, BLUE, RED)) or ((newcolouring_1[newep[e]], newcolouring_1[m], newcolouring_1[b]) == (BLUE, RED, BLUE)):
-        newboundary_1[m+1] = newboundary[newep[a]]
-        newboundary_1[b] = newboundary[b] - 1
-    else:
-        newboundary_1[m+1] = newboundary[newep[a]]
+    newangle_excess_2 = newangle_excess_1[:]
 
-    if b == newep[a]:
-        newboundary_2[m+1] = newboundary[newep[a]]
-    elif ((newcolouring_2[newep[a]], newcolouring_2[m+1], newcolouring_2[c]) == (BLUE, RED, BLUE)) or ((newcolouring_2[newep[a]], newcolouring_2[m+1], newcolouring_2[c]) == (RED, BLUE, RED)):
-        newboundary_2[m+1] = newboundary[newep[a]] - 1
-    elif ((newcolouring_2[newep[e]], newcolouring_2[m], newcolouring_2[b]) == (RED, BLUE, RED)) or ((newcolouring_2[newep[e]], newcolouring_2[m], newcolouring_2[b]) == (BLUE, RED, BLUE)):
-        newboundary_2[m+1] = newboundary[newep[a]]
-        newboundary_2[b] = newboundary[b] - 1
-    else:
-        newboundary_2[m+1] = newboundary[newep[a]]
+    if b != A:
+        # ie not the bigon case
+        col_a = newcolouring_1[a]
+        col_b = newcolouring_1[b]
+        col_c = newcolouring_1[c]
+        col_e = newcolouring_1[e]
 
-    assert perm_check(newvp), (T, newvp)
-    assert perm_check(newep), (T, newep)
-    assert perm_check(newfp), (T, newfp)
+        if col_a == BLUE:
+            assert col_e == RED
+            if col_b == RED:
+                newangle_excess_2[b] -= 1
+            if col_c == BLUE:
+                newangle_excess_1[M] -= 1
+        else:
+            assert col_a == RED and col_e == BLUE
+            if col_b == BLUE:
+                newangle_excess_1[b] -= 1
+            if col_c == RED:
+                newangle_excess_2[M] -= 1
 
-    # TODO: here we use the same arrays newvp, newep, newfp for two distinct
-    # data. This can lead to two veering triangulations sharing data which
-    # must be avoided when mutable=True.
-    T1 = [newvp, newep, newfp, newcolouring_1, newboundary_1, newbdryedge]
-    T2 = [newvp, newep, newfp, newcolouring_2, newboundary_2, newbdryedge]
-
-    return [T1, T2]
+    t = Triangulation.from_permutations(newvp, newep, newfp, (newbdry,), mutable=False, check=False)
+    return ((t, newangle_excess_1, newcolouring_1), (t, newangle_excess_2, newcolouring_2))
 
 
 class StrebelGraph(Constellation):
@@ -462,31 +470,31 @@ class StrebelGraph(Constellation):
             array('i', [2, 1, 1, 2]) [VeeringTriangulation("(2,~0,~1)", boundary="(0:3)(1:3)(~2:3)", colouring="BRR"), VeeringTriangulation("(2,~0,~1)", boundary="(0:3)(1:3)(~2:3)", colouring="BRB")]
             array('i', [2, 2, 2, 2]) [VeeringTriangulation("", boundary="(0:3)(1:3)(~1:1,~0:3)", colouring="BB")]
         """
-        def is_complete(T):
-            vp, ep, fp, colouring, boundary, bdryedge = T
-            return not any(b1 and b2 == 0 for (b1, b2) in zip(bdryedge, boundary))
+        def is_complete(t, angle_excess, colouring):
+            return not any(b1 and b2 == 0 for (b1, b2) in zip(t._bdry, angle_excess))
 
         n = self._n
-        bdryedge =  [1] * n
-        veering = []
-        boundary = self.angle_excess(colouring, slope=slope)
-        T = (self._vp[:], self._ep[:], self._fp[:], colouring, boundary, bdryedge)
+        angle_excess = self.angle_excess(colouring, slope=slope)
+        t0 = Triangulation.from_permutations(self._vp[:], self._ep[:], self._fp[:], (array('i', [1] * n),), mutable=False, check=True)
+        T = (t0, angle_excess, colouring)
         complete = []
         incomplete = []
-        if is_complete(T):
+        if is_complete(*T):
             complete.append(T)
         else:
             incomplete.append(T)
 
         while incomplete:
             T = incomplete.pop()
-            for TT in one_edge_completion(T):
-                if is_complete(TT):
+            for TT in one_edge_completion(*T):
+                if is_complete(*TT):
                     complete.append(TT)
                 else:
                     incomplete.append(TT)
 
         from .veering_triangulation import VeeringTriangulation
-        for vp, ep, fp, colouring, boundary, bdryedge in complete:
-            nn = len(fp)
-            yield VeeringTriangulation.from_permutations(vp, ep, fp, (boundary, colouring), mutable=mutable, check=True)
+        for t, angle_excess, colouring in complete:
+            vp = t._vp
+            ep = t._ep
+            fp = t._fp
+            yield VeeringTriangulation.from_permutations(vp, ep, fp, (angle_excess, colouring), mutable=mutable, check=True)
