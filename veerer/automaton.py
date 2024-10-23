@@ -1572,13 +1572,10 @@ class DelaunayStrebelAutomaton(Automaton):
 
         elif kind == 'horizontal-strebel':
             for colouring in state.colourings():
-                for vt in state.veering_triangulations(colouring, HORIZONTAL, mutable=True):
-                    # TODO: this check for Delaunay condition is costly. Maybe it could
-                    # be amortized inside the function veering_triangulations?
-                    if vt.is_delaunay():
-                        vt.set_canonical_labels()
-                        vt.set_immutable()
-                        yield (('delaunay', vt), colouring)
+                for vt in state.delaunay_triangulations(colouring, HORIZONTAL, mutable=True):
+                    vt.set_canonical_labels()
+                    vt.set_immutable()
+                    yield (('delaunay', vt), colouring)
 
         else:
             raise RuntimeError
@@ -1614,13 +1611,10 @@ class DelaunayStrebelAutomaton(Automaton):
 
         elif kind == 'vertical-strebel':
             for colouring in state.colourings():
-                for vt in state.veering_triangulations(colouring, VERTICAL, mutable=True):
-                    # TODO: this check for Delaunay condition is costly. Maybe it could
-                    # be amortized inside the function veering_triangulations?
-                    if vt.is_delaunay():
-                        vt.set_canonical_labels()
-                        vt.set_immutable()
-                        yield (('delaunay', vt), colouring)
+                for vt in state.delaunay_triangulations(colouring, VERTICAL, mutable=True):
+                    vt.set_canonical_labels()
+                    vt.set_immutable()
+                    yield (('delaunay', vt), colouring)
 
         elif kind == 'horizontal-strebel':
             return

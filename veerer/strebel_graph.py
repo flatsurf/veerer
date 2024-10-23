@@ -435,6 +435,27 @@ class StrebelGraph(Constellation):
             colouring.extend([colouring[ep[e]] for e in range(m, n)])
             yield colouring
 
+    def cone(self, backend=None):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import StrebelGraph
+            sage: sg = StrebelGraph("(~1:1,~0,1:1,0)")
+            sage: sg.cone(backend='ppl')
+            Cone of dimension 4 in ambient dimension 4 made of 2 facets (backend=ppl)
+            sage: sg.cone(backend='sage')
+            Cone of dimension 4 in ambient dimension 4 made of 2 facets (backend=sage)
+            sage: sg.cone(backend='normaliz-QQ')  # optional - pynormaliz
+            Cone of dimension 4 in ambient dimension 4 made of 2 facets (backend=normaliz-QQ)
+        """
+        from .polyhedron import LinearExpressions, ConstraintSystem
+        L = LinearExpressions(self.base_ring())
+        ne = self.num_edges()
+        cs = ConstraintSystem(2 * ne)
+        for e in range(ne):
+            cs.insert(L.variable(e) >= 0)
+        return cs.cone(backend=backend)
+
     def veering_triangulations(self, colouring, slope=VERTICAL, mutable=False):
         r"""
         Run through Strebel-veering triangulations obtained by completing this
@@ -504,3 +525,46 @@ class StrebelGraph(Constellation):
             ep = t._ep
             fp = t._fp
             yield VeeringTriangulation.from_permutations(vp, ep, fp, (angle_excess, colouring), mutable=mutable, check=True)
+
+    def delaunay_triangulations(self, colouring, slope=VERTICAL, mutable=False, backend=None):
+        r"""
+        Run through the Delaunay Strebel-veering triangulations
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: examples = []
+            sage: examples.append(StrebelGraph("(~1:1,~0,1:1,0)"))
+            sage: examples.append(StrebelGraph("(0,2,~1)(1)(~2,~0)"))
+            sage: examples.append(StrebelGraph("(0:2,2,~1)(1,~0)(~2)"))
+            sage: for G in examples:
+            ....:     print(G)
+            ....:     for colouring in G.colourings():
+            ....:         print(colouring, sum(1 for _ in G.veering_triangulations(colouring)), sum(1 for _ in G.delaunay_triangulations(colouring)))
+            StrebelGraph("(0,~1:1,~0,1:1)")
+            array('i', [1, 1, 1, 1]) 1 1
+            array('i', [1, 2, 2, 1]) 4 2
+            array('i', [2, 1, 1, 2]) 1 1
+            array('i', [2, 2, 2, 2]) 1 1
+            StrebelGraph("(0,2,~1)(1)(~2,~0)")
+            array('i', [1, 1, 1, 1, 1, 1]) 1 1
+            array('i', [1, 1, 2, 2, 1, 1]) 6 5
+            array('i', [1, 2, 1, 1, 2, 1]) 3 3
+            array('i', [1, 2, 2, 2, 2, 1]) 6 5
+            array('i', [2, 1, 1, 1, 1, 2]) 6 3
+            array('i', [2, 1, 2, 2, 1, 2]) 3 3
+            array('i', [2, 2, 1, 1, 2, 2]) 6 3
+            array('i', [2, 2, 2, 2, 2, 2]) 1 1
+            StrebelGraph("(0:2,2,~1)(1,~0)(~2)")
+            array('i', [1, 1, 1, 1, 1, 1]) 1 1
+            array('i', [1, 1, 2, 2, 1, 1]) 2 2
+            array('i', [1, 2, 1, 1, 2, 1]) 2 2
+            array('i', [1, 2, 2, 2, 2, 1]) 2 2
+            array('i', [2, 1, 1, 1, 1, 2]) 6 5
+            array('i', [2, 1, 2, 2, 1, 2]) 6 5
+            array('i', [2, 2, 1, 1, 2, 2]) 2 2
+            array('i', [2, 2, 2, 2, 2, 2]) 1 1
+        """
+        for vt in self.veering_triangulations(colouring, slope, mutable):
+            if vt.is_delaunay(backend):
+                yield vt

@@ -188,6 +188,8 @@ class LinearFamily:
     r"""
     Abstract class to handle linear coordinates on either veering triangulation
     or Strebel graph.
+
+    The subspace is given by generators.
     """
     def __init__(self, *args, mutable=False, check=True):
         self._constellation_class_init()
@@ -860,6 +862,34 @@ class StrebelGraphLinearFamily(LinearFamily, StrebelGraph):
         2
     """
     __slots__ = ['_constellation_class', '_subspace']
+
+    def veering_triangulations(self, colouring, slope=VERTICAL, mutable=False):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import StrebelGraphLinearFamily
+            sage: G = StrebelGraphLinearFamily("(0,1,2)(~0,~1:1,~2:2)", [(1, 1, 0), (1, 0, 1)])
+            sage: for colouring in G.colourings():
+            ....:     print(colouring, sum(1 for _ in G.veering_triangulations(colouring)), sum(1 for _ in G.delaunay_triangulations(colouring)))
+            ....:     assert all(vt.strebel_graph() == G for vt in G.veering_triangulations(colouring))
+            ....:     assert all(vt.strebel_graph() == G for vt in G.delaunay_triangulations(colouring))
+            array('i', [1, 1, 1, 1, 1, 1]) 1 1
+            array('i', [1, 1, 2, 2, 1, 1]) 6 2
+            array('i', [1, 2, 1, 1, 2, 1]) 3 1
+            array('i', [1, 2, 2, 2, 2, 1]) 6 0
+            array('i', [2, 1, 1, 1, 1, 2]) 3 0
+            array('i', [2, 1, 2, 2, 1, 2]) 3 2
+            array('i', [2, 2, 1, 1, 2, 2]) 3 1
+            array('i', [2, 2, 2, 2, 2, 2]) 1 1
+        """
+        for vt in StrebelGraph.veering_triangulations(self, colouring, slope, mutable):
+            switch = vt.switch_subspace_generators_matrix()
+            switch.echelonize()
+            assert switch[:self.num_edges(), :self.num_edges()].is_one()
+            subspace = []
+            for row in self._subspace.rows():
+                subspace.append(sum(x * switch.row(i) for i, x in enumerate(row)))
+            yield VeeringTriangulationLinearFamily(vt, subspace)
 
 
 class VeeringTriangulationLinearFamilies:

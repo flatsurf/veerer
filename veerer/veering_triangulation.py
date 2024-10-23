@@ -2612,9 +2612,9 @@ class VeeringTriangulation(Triangulation):
         """
         from sage.rings.integer_ring import ZZ
         from .polyhedron.linear_expression import LinearExpressions
-        L = LinearExpressions(ZZ)
-        cs = ConstraintSystem()
         ne = self.num_edges()
+        L = LinearExpressions(ZZ)
+        cs = ConstraintSystem(ne)
         variables = [L.variable(e) for e in range(ne)]
         self._set_switch_conditions(cs.insert, variables, slope)
         return cs
@@ -4000,11 +4000,23 @@ class VeeringTriangulation(Triangulation):
 
             sage: from veerer import VeeringTriangulation
             sage: vt = VeeringTriangulation("(0,1,2)(3,4,5)(6,7,8)(~0,~7,~5)(~3,~4,~2)(~6,~1,~8)", "RRBRRBRRB")
-            sage: vt.switch_subspace_generators_matrix()
-            [ 1  1  0  0  0  0  1  1  0]
+            sage: m = vt.switch_subspace_generators_matrix()
+            sage: m  # random
+            sage: m.echelon_form()
+            [ 1  0 -1  0 -1 -1  0  0  0]
+            [ 0  1  1  0  1  1  0  1  1]
             [ 0  0  0  1  1  0  0  0  0]
-            [ 1  0 -1  1  0 -1  0  0  0]
             [ 0  0  0  0  0  0  1  0 -1]
+            sage: vt = VeeringTriangulation("", boundary="(0:1,1:1,2:1)(~2:3,~0:1,~1:2)", colouring="RRR")
+            sage: m = vt.switch_subspace_generators_matrix()  # random
+            sage: m  # random
+            [1 0 0]
+            [0 1 0]
+            [0 0 1]
+            sage: m.echelon_form()
+            [1 0 0]
+            [0 1 0]
+            [0 0 1]
         """
         return matrix(self.base_ring(), self.train_track_switch_constraints(slope).cone().lines())
 
