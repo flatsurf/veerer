@@ -216,7 +216,7 @@ class LinearExpression(ModuleElement):
             return (self.denominator() * self).change_ring(ZZ)
         raise ValueError('invalid base ring')
 
-    def ppl(self):
+    def ppl(self, dim=None):
         r"""
         EXAMPLES::
 
@@ -229,7 +229,10 @@ class LinearExpression(ModuleElement):
         lin = self.integral()
         # TODO: the line below is too costly : it accounts for 80% of the
         # geometric automaton computation
-        return sum(mpz(coeff) * ppl.Variable(i) for i, coeff in lin._f.items()) + mpz(lin._inhomogeneous_term)
+        l = sum(mpz(coeff) * ppl.Variable(i) for i, coeff in lin._f.items()) + mpz(lin._inhomogeneous_term)
+        if dim is not None:
+            l.set_space_dimension(dim)
+        return l
 
     def coefficients(self, dim=None, homogeneous=False):
         r"""
@@ -344,7 +347,7 @@ class LinearConstraint:
     def coefficients(self, dim=None, homogeneous=False):
         return self._expression.coefficients(dim, homogeneous)
 
-    def ppl(self):
+    def ppl(self, dim=None):
         r"""
         EXAMPLES::
 
@@ -362,17 +365,17 @@ class LinearConstraint:
             -3*x0+1>=0
         """
         if self._op == op_LE:
-            return self._expression.ppl() <= 0
+            return self._expression.ppl(dim) <= 0
         elif self._op == op_LT:
-            return self._expression.ppl() < 0
+            return self._expression.ppl(dim) < 0
         elif self._op == op_EQ:
-            return self._expression.ppl() == 0
+            return self._expression.ppl(dim) == 0
         elif self._op == op_NE:
-            return self._expression.ppl() != 0
+            return self._expression.ppl(dim) != 0
         elif self._op == op_GT:
-            return self._expression.ppl() > 0
+            return self._expression.ppl(dim) > 0
         elif self._op == op_GE:
-            return self._expression.ppl() >= 0
+            return self._expression.ppl(dim) >= 0
 
     def integral(self):
         return LinearConstraint(self._op, self._expression.integral(), ZZ.zero())
@@ -389,10 +392,23 @@ class ConstraintSystem:
         sage: cs.insert(2 * L.variable(1) - L.variable(3) <= 18)
         sage: cs
         {x0 - 2 >= 0, 2*x1 - x3 - 18 <= 0}
+
+        sage: cs = ConstraintSystem(4)
+        sage: cs.insert(L.variable(0) >= 0)
+        sage: cs.cone()
+        Cone of dimension 4 in ambient dimension 4 made of 1 facets (backend=ppl)
+
+        sage: cs = ConstraintSystem(4)
+        sage: cs.cone()
+        Cone of dimension 4 in ambient dimension 4 made of 0 facets (backend=ppl)
+        sage: ConstraintSystem(4).cone(backend='sage')
+        Cone of dimension 4 in ambient dimension 4 made of 0 facets (backend=sage)
+        sage: ConstraintSystem(4).cone(backend='normaliz-QQ')  # optional - pynormaliz
+        Cone of dimension 4 in ambient dimension 4 made of 0 facets (backend=normaliz-QQ)
     """
-    def __init__(self):
+    def __init__(self, dim=None):
         self._data = []
-        self._dim = None
+        self._dim = dim
 
     def base_ring(self):
         r"""
@@ -407,7 +423,7 @@ class ConstraintSystem:
             Rational Field
         """
         if not self._data:
-            raise ValueError
+            return ZZ
         return cm.common_parent(*[constraint._expression.parent().base_ring() for constraint in self._data])
 
     def __repr__(self):
@@ -434,7 +450,16 @@ class ConstraintSystem:
     def __iter__(self):
         return iter(self._data)
 
-    def ppl(self):
+    def __getitem__(self, i):
+        return self._data[i]
+
+    def __len__(self):
+        return len(self._data)
+
+    def __bool__(self):
+        return bool(self._data)
+
+    def ppl(self, dim=None):
         r"""
         EXAMPLES::
 
@@ -446,9 +471,11 @@ class ConstraintSystem:
             sage: cs.ppl()
             Constraint_System {10*x0-3*x2-5>=0, x0+x1+x2-3==0}
         """
+        if dim is None:
+            dim = self._dim
         cs = ppl.Constraint_System()
         for constraint in self._data:
-            cs.insert(constraint.ppl())
+            cs.insert(constraint.ppl(dim))
         return cs
 
     def ieqs_eqns(self, dim=None, homogeneous=False):
@@ -506,13 +533,14 @@ class ConstraintSystem:
             cs.insert(constraint.integral())
         return cs
 
-    def cone(self, backend='sage'):
+    def cone(self, backend=None):
         r"""
         Return the cone defined from these constraints.
 
         INPUT:
 
         - ``backend`` (optional): either ``'ppl'``, ``'sage'``, ``'normaliz-QQ'`` or ``'noramliz-NF'``
+
         EXAMPLES::
 
             sage: from veerer.polyhedron import LinearExpressions, ConstraintSystem
@@ -557,9 +585,13 @@ class ConstraintSystem:
 
         if backend == 'ppl':
             from .cone import Cone_ppl
+            if not self:
+                return Cone_ppl.vector_space(self._dim)
             return Cone_ppl(QQ, ppl.C_Polyhedron(self.ppl()))
         elif backend == 'sage':
             from .cone import Cone_sage
+            if not self:
+                return Cone_sage.vector_space(self._dim)
             ieqs, eqns = self.ieqs_eqns()
             return Cone_sage._new(ieqs, eqns)
         elif backend == 'normaliz-QQ':
@@ -567,6 +599,8 @@ class ConstraintSystem:
             pynormaliz_feature.require()
 
             from .cone import Cone_normalizQQ
+            if not self:
+                return Cone_normalizQQ.vector_space(self._dim)
             ieqs, eqns = self.ieqs_eqns(homogeneous=True)
             return Cone_normalizQQ._new(ieqs, eqns)
         elif backend == 'normaliz-NF':
@@ -574,6 +608,8 @@ class ConstraintSystem:
             pynormaliz_feature.require()
 
             from .cone import Cone_normalizNF
+            if not self:
+                return Cone_normalizNF.vector_space(self._dim)
             ieqs, eqns = self.ieqs_eqns(homogeneous=True)
             return Cone_normalizNF._new(ieqs, eqns)
         else:
