@@ -568,3 +568,73 @@ class StrebelGraph(Constellation):
         for vt in self.veering_triangulations(colouring, slope, mutable):
             if vt.is_delaunay(backend):
                 yield vt
+
+    def residue_constraint_generators(self, coes):
+        r"""
+        return a list generators for the subspace with constraints on residues.
+        
+        EXAMPLES::
+        
+            sage: from veerer import *
+            sage: G = StrebelGraph("(0)(~0)")
+            sage: G.residue_constraint_generators([[1,1]])
+            [[1]]
+            sage: StrebelGraphLinearFamily(G, G.residue_constraint_generators([[1,1]]))
+            StrebelGraphLinearFamily("(0:0)(~0:0)", [(1)])
+            sage: G.residue_constraint_generators([[1,-1]])
+            ValueError: the constraints cut a zero dimensional subpace in the Strebel polyhedron of StrebelGraph("(0:0)(~0:0)")
+
+            sage: G = StrebelGraph("(0,2,~3,~1)(1)(3,~0)(~2)")
+            sage: G.residue_constraint_generators([[0,0,0,0]])
+            [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+            sage: G.residue_constraint_generators([[1,2,0,0]])
+            [[1, 1, 0, 0], [0, 1, 1, 0], [0, 1, 0, 1]]
+            sage: StrebelGraphLinearFamily(G, G.residue_constraint_generators([[1,2,0,0]]))
+            StrebelGraphLinearFamily("(0:0,2:0,~3:0,~1:0)(1:0)(3:0,~0:0)(~2:0)", [(1, 0, 0, -1), (0, 1, 0, 1), (0, 0, 1, -1)])
+            sage: G.residue_constraint_generators([[1,0,1,0],[0,1,0,-1]])
+            [[1, 0, 0, 0], [0, 0, 0, 1]]
+            sage: StrebelGraphLinearFamily(G, G.residue_constraint_generators([[1,0,1,0],[0,1,0,-1]]))
+            StrebelGraphLinearFamily("(0:0,2:0,~3:0,~1:0)(1:0)(3:0,~0:0)(~2:0)", [(1, 0, 0, 0), (0, 0, 0, 1)])
+        """
+        from .polyhedron import LinearExpressions, ConstraintSystem
+        from sage.rings.rational_field import QQ
+        
+        ep = self._ep
+        list_faces = self.faces()
+        nf = len(list_faces)
+        ne = ZZ(self._n // 2)
+        
+        o = [1 if e else -1 for e in self.is_abelian(certificate=True)[1]]
+        
+        #todo: allow it varies according to the input ``coe``
+        F = LinearExpressions(QQ)
+        x = [F.variable(i) for i in range(ne)]
+        
+        #build expression of residues
+        p = []
+        for f in list_faces:
+            pp = 0
+            for e in f:
+                if e < ep[e]:
+                    pp = pp + o[e]*x[e]
+                else:
+                    pp = pp + o[e]*x[ep[e]]
+            p.append(pp)
+        
+        #build constraints
+        cs = ConstraintSystem(dim = ne)    
+        for coe in coes:
+            assert nf == len(coe)
+            fres = sum(coe[i]*p[i] for i in range(nf))
+            if not fres.is_zero():
+                cs.insert(fres == 0)
+        d = cs.cone().affine_dimension() #take into consideration the case that all contraints are redundant.
+        for i in range(ne):
+            cs.insert(x[i] >= 0)
+        
+        #check non-empty intersection
+        cone = cs.cone()
+        if (cone.affine_dimension() < d) or (d==0):
+            raise ValueError('the constraints cut a zero dimensional subpace in the Strebel polyhedron of {}'.format(self))
+
+        return cone.rays()

@@ -201,6 +201,9 @@ class LinearExpression(ModuleElement):
 
     def _richcmp_(self, other, op):
         return self.element_class(op, self, other)
+    
+    def __bool__(self):
+        return bool(self._f or self._inhomogeneous_term)
 
     def denominator(self):
         r"""
