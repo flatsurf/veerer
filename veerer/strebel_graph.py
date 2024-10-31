@@ -585,7 +585,12 @@ class StrebelGraph(Constellation):
                 cs.insert(x[j] >= 0)
     
     def _set_residue_constraints(self, cs, coes, L, slope):
-    
+        r"""
+        Return the constraints on the residues.
+
+        The ``coes`` is a list of lists of coefficient. The numbers in each list of coefficients corresponds to the boundary faces of the Strebel graph.
+        """
+
         ep = self._ep
         list_faces = self.faces()
         nf = len(list_faces)
@@ -664,13 +669,18 @@ class StrebelGraph(Constellation):
                 Cone of dimension 2 in ambient dimension 2 made of 1 facets (backend=ppl)
                 sage: G0.residue_constraint_cone([[1,1]], QQ, HORIZONTAL).rays()
                 [[0, 1]]
+                sage: G1 = StrebelGraph("(0,~1)(1)(~0)")
+                sage: G1.residue_constraint_cone([[0,1,1]],QQ,VERTICAL)
+                Cone of dimension 2 in ambient dimension 4 made of 1 facets (backend=ppl)
+                sage: G1.residue_constraint_cone([[0,1,1]],QQ,VERTICAL).rays()
+                [[1, 1, 0, 0]]
                 sage: G2 = StrebelGraph("(0,2,~3,~1)(1)(3,~0)(~2)")
                 sage: G2.residue_constraint_cone([[1,2,0,0]], QQ, VERTICAL)
-                Cone of dimension 7 in ambient dimension 8 made of 3 facets (backend=ppl)
+                Cone of dimension 6 in ambient dimension 8 made of 3 facets (backend=ppl)
                 sage: G2.residue_constraint_cone([[1,2,0,0]], QQ, VERTICAL).rays()
                 [[1, 1, 0, 0, 0, 0, 0, 0], [0, 1, 1, 0, 0, 0, 0, 0], [0, 1, 0, 1, 0, 0, 0, 0]]
                 sage: G2.residue_constraint_cone([[0,1,-1,0],[0,1,0,-1]], QQ, VERTICAL)
-                Cone of dimension 6 in ambient dimension 8 made of 2 facets (backend=ppl)
+                Cone of dimension 4 in ambient dimension 8 made of 2 facets (backend=ppl)
                 sage: G2.residue_constraint_cone([[0,1,-1,0],[0,1,0,-1]], QQ, VERTICAL).rays()
                 [[1, 1, 1, 0, 0, 0, 0, 0], [0, 1, 1, 1, 0, 0, 0, 0]]
             """
@@ -682,7 +692,8 @@ class StrebelGraph(Constellation):
 
             self._set_strebel_constraints(cs, L, slope)
             
-            self._set_residue_constraints(cs, coes, L, slope) 
+            self._set_residue_constraints(cs, coes, L, VERTICAL)
+            self._set_residue_constraints(cs, coes, L, HORIZONTAL) 
             
             #check if the constraints force some x[i] to be zero
             d = cs.cone().affine_dimension()
