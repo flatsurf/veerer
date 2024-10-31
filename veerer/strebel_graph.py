@@ -29,6 +29,7 @@ from .permutation import perm_check, perm_cycles, perm_cycles_to_string, str_to_
 from .triangulation import face_edge_perms_init, boundary_init, Triangulation
 from .constellation import Constellation
 from .constants import *
+from veerer.polyhedron import *
 
 
 def one_edge_completion(t, angle_excess, colouring):
@@ -569,72 +570,126 @@ class StrebelGraph(Constellation):
             if vt.is_delaunay(backend):
                 yield vt
 
-    def residue_constraint_generators(self, coes):
-        r"""
-        return a list generators for the subspace with constraints on residues.
+    def _set_strebel_constraints(self, cs, L, slope):
+    
+        nhe = self._n
+        ne = ZZ(nhe // 2)
         
-        EXAMPLES::
+        x = [L.variable(i) for i in range(nhe)]
         
-            sage: from veerer import *
-            sage: G = StrebelGraph("(0)(~0)")
-            sage: G.residue_constraint_generators([[1,1]])
-            [[1]]
-            sage: StrebelGraphLinearFamily(G, G.residue_constraint_generators([[1,1]]))
-            StrebelGraphLinearFamily("(0:0)(~0:0)", [(1)])
-            sage: G.residue_constraint_generators([[1,-1]])
-            ValueError: the constraints cut a zero dimensional subpace in the Strebel polyhedron of StrebelGraph("(0:0)(~0:0)")
-
-            sage: G = StrebelGraph("(0,2,~3,~1)(1)(3,~0)(~2)")
-            sage: G.residue_constraint_generators([[0,0,0,0]])
-            [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
-            sage: G.residue_constraint_generators([[1,2,0,0]])
-            [[1, 1, 0, 0], [0, 1, 1, 0], [0, 1, 0, 1]]
-            sage: StrebelGraphLinearFamily(G, G.residue_constraint_generators([[1,2,0,0]]))
-            StrebelGraphLinearFamily("(0:0,2:0,~3:0,~1:0)(1:0)(3:0,~0:0)(~2:0)", [(1, 0, 0, -1), (0, 1, 0, 1), (0, 0, 1, -1)])
-            sage: G.residue_constraint_generators([[1,0,1,0],[0,1,0,-1]])
-            [[1, 0, 0, 0], [0, 0, 0, 1]]
-            sage: StrebelGraphLinearFamily(G, G.residue_constraint_generators([[1,0,1,0],[0,1,0,-1]]))
-            StrebelGraphLinearFamily("(0:0,2:0,~3:0,~1:0)(1:0)(3:0,~0:0)(~2:0)", [(1, 0, 0, 0), (0, 0, 0, 1)])
-        """
-        from .polyhedron import LinearExpressions, ConstraintSystem
-        from sage.rings.rational_field import QQ
-        
+        if slope == VERTICAL:
+            for i in range(ne):
+                cs.insert(x[i] >= 0)
+        elif slope == HORIZONTAL:
+            for j in range(ne, nhe):
+                cs.insert(x[j] >= 0)
+    
+    def _set_residue_constraints(self, cs, coes, L, slope):
+    
         ep = self._ep
         list_faces = self.faces()
         nf = len(list_faces)
-        ne = ZZ(self._n // 2)
+        nhe = self._n
+        ne = ZZ(nhe // 2)
         
-        o = [1 if e else -1 for e in self.is_abelian(certificate=True)[1]]
+        x = [L.variable(i) for i in range(nhe)]
         
-        #todo: allow it varies according to the input ``coe``
-        F = LinearExpressions(QQ)
-        x = [F.variable(i) for i in range(ne)]
-        
+        if self.is_abelian():
+            o = [1 if e else -1 for e in self.is_abelian(certificate=True)[1]]
+        else:
+            raise ValueError('{} is not Abelian'.format(self))
+            
         #build expression of residues
         p = []
-        for f in list_faces:
-            pp = 0
-            for e in f:
-                if e < ep[e]:
-                    pp = pp + o[e]*x[e]
-                else:
-                    pp = pp + o[e]*x[ep[e]]
-            p.append(pp)
         
-        #build constraints
-        cs = ConstraintSystem(dim = ne)    
+        if slope == VERTICAL:
+            for f in list_faces:
+                pp = 0
+                for e in f:
+                    if e < ep[e]:
+                        pp = pp + o[e]*x[e]
+                    else:
+                        pp = pp + o[e]*x[ep[e]]
+                p.append(pp)
+        elif slope == HORIZONTAL:
+            for f in list_faces:
+                pp = 0
+                for e in f:
+                    if e < ep[e]:
+                        pp = pp + o[e]*x[ep[e]]
+                    else:
+                        pp = pp + o[e]*x[e]
+                p.append(pp)
+        else:
+            raise ValueError('bad slope parameter')
+            
+        #build constraints    
         for coe in coes:
             assert nf == len(coe)
-            fres = sum(coe[i]*p[i] for i in range(nf))
-            if not fres.is_zero():
-                cs.insert(fres == 0)
-        d = cs.cone().affine_dimension() #take into consideration the case that all contraints are redundant.
-        for i in range(ne):
-            cs.insert(x[i] >= 0)
+            res = sum(coe[i]*p[i] for i in range(nf))
+            if not res.is_zero():
+                cs.insert(res == 0)
         
-        #check non-empty intersection
-        cone = cs.cone()
-        if (cone.affine_dimension() < d) or (d==0):
-            raise ValueError('the constraints cut a zero dimensional subpace in the Strebel polyhedron of {}'.format(self))
+        d = cs.cone().affine_dimension() #the contraints might be redundant
+        if d == 0:
+            raise ValueError('the constraints on the residues of {} have zero-dimensional solution space'.format(self))
 
-        return cone.rays()
+    def residue_constraint_cone(self, coes, K, slope):
+            r"""
+            return a list generators for the subspace with constraints on residues.
+            
+            Question: Are the generators irralevant to the horizontal or vertical Strebel decomposition considered?
+
+            EXAMPLES::
+            
+                sage: from veerer import *
+                sage: from sage.rings.rational_field import QQ
+
+            Here are examples that residue constraints force some coordinate to be zero::
+                sage: G0 = StrebelGraph("(0)(~0)")
+                sage: G0.residue_constraint_cone([[1, -1]], QQ, VERTICAL)
+                Traceback (most recent call last):
+                ...
+                ValueError: the constraints on the residues force some coordinates to be zero 
+                in the Strebel polyhedron of StrebelGraph("(0:0)(~0:0)")
+                sage: G1 = StrebelGraph("(0,~1)(1)(~0)")
+                sage: G1.residue_constraint_cone([[1,1,0]], QQ, HORIZONTAL)
+                Traceback (most recent call last):
+                ...
+                ValueError: the constraints on the residues force some coordinates to be zero in the Strebel polyhedron of StrebelGraph("(0:0,~1:0)(1:0)(~0:0)")
+            
+            Here are valid examples::
+                sage: G0 = StrebelGraph("(0)(~0)")
+                sage: G0.residue_constraint_cone([[1,1]], QQ, HORIZONTAL)
+                Cone of dimension 2 in ambient dimension 2 made of 1 facets (backend=ppl)
+                sage: G0.residue_constraint_cone([[1,1]], QQ, HORIZONTAL).rays()
+                [[0, 1]]
+                sage: G2 = StrebelGraph("(0,2,~3,~1)(1)(3,~0)(~2)")
+                sage: G2.residue_constraint_cone([[1,2,0,0]], QQ, VERTICAL)
+                Cone of dimension 7 in ambient dimension 8 made of 3 facets (backend=ppl)
+                sage: G2.residue_constraint_cone([[1,2,0,0]], QQ, VERTICAL).rays()
+                [[1, 1, 0, 0, 0, 0, 0, 0], [0, 1, 1, 0, 0, 0, 0, 0], [0, 1, 0, 1, 0, 0, 0, 0]]
+                sage: G2.residue_constraint_cone([[0,1,-1,0],[0,1,0,-1]], QQ, VERTICAL)
+                Cone of dimension 6 in ambient dimension 8 made of 2 facets (backend=ppl)
+                sage: G2.residue_constraint_cone([[0,1,-1,0],[0,1,0,-1]], QQ, VERTICAL).rays()
+                [[1, 1, 1, 0, 0, 0, 0, 0], [0, 1, 1, 1, 0, 0, 0, 0]]
+            """
+            
+            L = LinearExpressions(K)
+            nhe = self._n
+            cs = ConstraintSystem(dim = nhe)
+            x = [L.variable(i) for i in range(nhe)]
+
+            self._set_strebel_constraints(cs, L, slope)
+            
+            self._set_residue_constraints(cs, coes, L, slope) 
+            
+            #check if the constraints force some x[i] to be zero
+            d = cs.cone().affine_dimension()
+            for i in range(nhe):
+                cs1 = cs.copy()
+                cs1.insert(x[i] == 0)
+                if cs1.cone().affine_dimension() == d:
+                    raise ValueError('the constraints on the residues force some coordinates to be zero in the Strebel polyhedron of {}'.format(self))
+            
+            return cs.cone()
