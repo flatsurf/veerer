@@ -274,6 +274,8 @@ class VeeringTriangulation(Triangulation):
 
     def as_linear_family(self, mutable=False):
         r"""
+        Return the linear family associated to this veering triangulation.
+
         EXAMPLES::
 
             sage: from veerer import *
@@ -282,7 +284,6 @@ class VeeringTriangulation(Triangulation):
             VeeringTriangulationLinearFamily("(0,1,2)(~2,~0,~1)", "RRB", [(1, 0, -1), (0, 1, 1)])
         """
         from .linear_family import VeeringTriangulationLinearFamily
-        P = self.train_track_linear_space()
         return VeeringTriangulationLinearFamily(self, self.train_track_linear_space().lines(), mutable=mutable)
 
     def triangle(self, a, check=True):
@@ -1011,7 +1012,7 @@ class VeeringTriangulation(Triangulation):
             f = vp[e]
             while True:
                 # compute the orientation of f from the one of e
-                if (((cols[e] == RED or cols[e] == GREEN) and (cols[f] == BLUE or cols[f] == PURPLE)) + self._bdry[e]) % 2:
+                if (((cols[e] == RED or cols[e] == PURPLE) and (cols[f] == BLUE or cols[f] == GREEN)) + self._bdry[e]) % 2:
                     o = not o
 
                 if oris[f] is None:
@@ -1031,7 +1032,7 @@ class VeeringTriangulation(Triangulation):
 
         return (True, oris) if certificate else True
 
-    def abelian_cover(self, mutable=None):
+    def abelian_cover(self, mutable=False):
         r"""
         Return the orientation double cover of this veering triangulation.
 
@@ -1042,73 +1043,67 @@ class VeeringTriangulation(Triangulation):
             sage: V = VeeringTriangulation("(0,1,2)", "BBR")
             sage: V.abelian_cover().stratum()                   # optional - surface_dynamics
             H_1(0)
+            sage: V.abelian_cover().is_connected()
+            True
+            sage: V.abelian_cover().abelian_cover().is_connected()
+            False
 
             sage: V = VeeringTriangulation("(0,2,3)(1,4,~0)(5,6,~1)", "BRRBBBB")
             sage: A = V.abelian_cover()
             sage: A.stratum()                                   # optional - surface_dynamics
             H_2(2)
 
+        The method works as expected with green and purple edges::
+
             sage: W = V.copy(mutable=True)
             sage: W.forgot_forward_flippable_colour()
             sage: B = A.copy(mutable=True)
             sage: B.forgot_forward_flippable_colour()
-            sage: assert W.abelian_cover() == B
+            sage: assert W.abelian_cover() == B, (W.abelian_cover(), B)
 
             sage: W = V.copy(mutable=True)
             sage: W.forgot_backward_flippable_colour()
             sage: B = A.copy(mutable=True)
             sage: B.forgot_backward_flippable_colour()
-            sage: assert W.abelian_cover() == B
+            sage: assert W.abelian_cover() == B, (W.abelian_cover(), B)
+
+        And also with boundaries::
+
+            sage: V = VeeringTriangulation("", boundary="(0:1,2:1,~0:1,~1:1)(1:1)(~2:1)", colouring="RRR")
+            sage: V.stratum()
+            Q_0(1^2, -2^3)
+            sage: V.abelian_cover().stratum()
+            H_0(2^2, -1^6)
         """
+        # As in the method is_abelian we propagate the orientation of half-edges around
+        # vertices and (possibly folded) edges. We use the following conventions in
+        # the covering
+        # {0, ..., n-1} : half-edges positively oriented
+        # {n, ..., 2n-1} : half-edges negatively oriented
         n = self._n
+        vp = self._vp
         ep = self._ep
+        cols = self._colouring
 
-        # edge permutation
-        ep_cov = [None] * (2*n)
+        ep_cov = array('i', [-1] * (2 * n))
+        vp_cov = array('i', [-1] * (2 * n))
         for e in range(n):
-            E = ep[e] + n
-            ep_cov[e] = E
-            ep_cov[E] = e
+            f = ep[e]
+            ep_cov[e] = f + n
+            ep_cov[f + n] = e
 
-        # face permutation
-        seen = [False] * n
-        fp_cov = [None] * (2*n)
-        for a in range(n):
-            if seen[a]:
-                continue
-            col, a, b, c = self.triangle(a, check=False)
-            seen[a] = seen[b] = seen[c] = True
-            a1 = a
-            a2 = a+n
-            if col == PURPLE or col == BLUE:
-                b1 = b+n; b2 = b
-                c1 = c+n; c2 = c
-            elif col == GREEN:
-                b1 = b+n; b2 = b
-                c1 = c; c2 = c+n
-            elif col == RED:
-                b1 = b+n; b2 = b
-                c1 = c; c2 = c+n
-            elif col == RED|PURPLE|GREEN:
-                b1 = b+n; b2 = b
-                c1 = c+n; c2 = c
-            elif col == BLUE|PURPLE|GREEN:
-                b1 = b; b2 = b+n
-                c1 = c+n; c2 = c
+            f = vp[e]
+            if (((cols[e] == RED or cols[e] == PURPLE) and (cols[f] == BLUE or cols[f] == GREEN)) + self._bdry[e]) % 2:
+                vp_cov[e] = f + n
+                vp_cov[e + n] = f
             else:
-                raise RuntimeError
-            fp_cov[a1] = b1; fp_cov[b1] = c1; fp_cov[c1] = a1
-            fp_cov[a2] = b2; fp_cov[b2] = c2; fp_cov[c2] = a2
+                vp_cov[e] = f
+                vp_cov[e + n] = f + n
 
-        colouring_cov = array('i', self._colouring * 2)
-        bdry_cov = array('i', self._bdry * 2)
+        bdry_cov = self._bdry * 2
+        cols_cov = self._colouring * 2
 
-        # TODO: remove the check argument
-        vt = self.from_permutations(None, array('i', ep_cov), array('i', fp_cov), (bdry_cov, colouring_cov), mutable=True, check=True)
-        vt.relabel(vt._relabelling_from(0), check=False)
-        if not mutable:
-            vt.set_immutable()
-        return vt
+        return VeeringTriangulation.from_permutations(vp_cov, ep_cov, None, (bdry_cov, cols_cov), mutable=mutable, check=False)
 
     def stratum(self):
         r"""
@@ -1153,6 +1148,9 @@ class VeeringTriangulation(Triangulation):
             sage: VeeringTriangulation(t, "RBRR").stratum()  # optional - surface_dynamics
             H_1(2, -2)
         """
+        if not self.is_connected():
+            return tuple(component.stratum() for component in self.connected_components())
+
         from .features import surface_dynamics_feature
         surface_dynamics_feature.require()
         from surface_dynamics import Stratum
@@ -1188,7 +1186,14 @@ class VeeringTriangulation(Triangulation):
             sage: assert vt.stratum().dimension() == 2  # optional - surface_dynamics # not tested (not yet in surface_dynamics)
         """
         # each folded edge gives a simple pole
-        return 2 * self.genus() - 2 + self.num_vertices() + self.num_folded_edges() + self.num_boundary_faces() + (self.is_holomorphic() and self.is_abelian())
+        ans = self.num_boundary_faces() + self.num_vertices() + self.num_folded_edges()
+        if self.is_connected():
+            ans += 2 * self.genus() - 2 + (self.is_holomorphic() and self.is_abelian())
+        else:
+            for comp in self.connected_components():
+                G = VeeringTriangulation.subgraph(self, comp)
+                ans += 2 * G.genus() - 2 + (G.is_holomorphic() and G.is_abelian())
+        return ans
 
     stratum_dimension = dimension
 

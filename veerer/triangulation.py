@@ -600,6 +600,9 @@ class Triangulation(Constellation):
             sage: T.genus()
             0
         """
+        if not self.is_connected():
+            raise NotImplementedError
+
         # chi = 2 - 2g - n
         return (2 - self.euler_characteristic() - self.num_boundary_faces()) // 2
 

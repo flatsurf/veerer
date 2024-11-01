@@ -849,6 +849,37 @@ class VeeringTriangulationLinearFamily(LinearFamily, VeeringTriangulation):
         subspace = self._subspace.matrix_from_columns(indices)
         return StrebelGraphLinearFamily(G, subspace)
 
+    def abelian_cover(self, mutable=False):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer.linear_family import VeeringTriangulationLinearFamilies
+            sage: X9 = VeeringTriangulationLinearFamilies.prototype_H1_1(0, 2, 1, -1)
+            sage: Y9 = X9.abelian_cover()
+            sage: Y9.dimension() == X9.dimension()
+            True
+            sage: Y9.stratum()
+            H_2(1^2)
+        """
+        vt = VeeringTriangulation.abelian_cover(self)
+        assert vt._n == 2 * self._n
+        assert vt.num_edges() == 2 * self.num_edges() - self.num_folded_edges() == self._n
+        nr = self._subspace.nrows()
+        subspace = self._subspace.new_matrix(nr, self._n)
+        for i in range(self._subspace.nrows()):
+            for e in range(self._n):
+                if self._ep[e] < e:
+                    subspace[i, e] = self._subspace[i, self._ep[e]]
+                else:
+                    subspace[i, e] = self._subspace[i, e]
+        vl = VeeringTriangulationLinearFamily.from_permutations(vt._vp, vt._ep, vt._fp, (vt._bdry, vt._colouring), mutable=True, check=False)
+        vl._constellation_class_init()
+        vl._subspace = subspace
+        if not mutable:
+            vl.set_immutable()
+        vl._check()
+        return vl
+
 
 class StrebelGraphLinearFamily(LinearFamily, StrebelGraph):
     r"""

@@ -37,7 +37,7 @@ from .permutation import (perm_init, perm_check, perm_cycles, perm_dense_cycles,
                           perm_cycles_to_string, perm_on_list, perm_cycle_type,
                           perm_num_cycles, str_to_cycles, str_to_cycles_and_data, perm_compose, perm_from_base64_str,
                           uint_base64_str, uint_from_base64_str, perm_base64_str,
-                          perms_are_transitive, triangulation_relabelling_from)
+                          perms_are_transitive, perms_orbits, triangulation_relabelling_from)
 
 # TODO: maybe do a class Constellation with boundary?
 class Constellation:
@@ -77,8 +77,9 @@ class Constellation:
             raise error('ep is not permutation: {}'.format(self._ep))
         if not perm_check(self._fp, n):
             raise error('fp is not a permutation: {}'.format(self._fp))
-        if not perms_are_transitive([self._vp, self._ep, self._fp]):
-            raise error('(fp, ep, vp) do not generate a transitive group')
+        # NOTE: we do not necessarily want to assume connectedness of the underlying surface
+        # if not perms_are_transitive([self._vp, self._ep, self._fp]):
+        #     raise error('(fp, ep, vp) do not generate a transitive group')
         for l in self._data:
             if not isinstance(l, collections.abc.Sequence) or len(l) != n:
                 raise error('each data must be a sequence of same length as the underlying permutations got a {} of length {}'.format(type(l).__name__, len(l)))
@@ -766,6 +767,76 @@ class Constellation:
         """
         return perm_num_cycles(self._fp, self._n)
 
+    def is_connected(self):
+        r"""
+        Return whether the constellation is connected.
+
+        EXAMPLES::
+
+            sage: from veerer import Triangulation
+            sage: Triangulation("(0,1,2)(3,4,5)(~0,~3,6)").is_connected()
+            True
+            sage: Triangulation("(0,1,2)(3,4,5)").is_connected()
+            False
+        """
+        return perms_are_transitive((self._vp, self._ep), self._n)
+
+    def connected_components(self):
+        r"""
+        Return the connected components as a list of lists of half-edges.
+
+        EXAMPLES::
+
+            sage: from veerer import Triangulation
+            sage: T = Triangulation("(0,1,3)(~0,~1,~3)(2,4,5)(~2,~4,~5)")
+            sage: T.connected_components()
+            [[0, 1, 3, 8, 10, 11], [2, 4, 5, 6, 7, 9]]
+
+        To construct the triangulation induced on each connected component, one can
+        use the method :meth:`subgraph`::
+
+            sage: c0, c1 = T.connected_components()
+            sage: T.subgraph(c0)
+            Triangulation("(0,1,2)(~2,~0,~1)")
+            sage: T.subgraph(c1)
+            Triangulation("(0,1,2)(~2,~0,~1)")
+        """
+        return perms_orbits((self._vp, self._ep), self._n)
+
+    def subgraph(self, half_edges, mutable=False, check=True):
+        r"""
+        Return the subgraph of this constellation induced on ``half_edges``.
+
+        Note that ``half_edges`` must be invariant under the edge permutation.
+        """
+        if check:
+            half_edges = [self._check_half_edge(e) for e in half_edges]
+            S = set(half_edges)
+            if len(S) != len(half_edges):
+                raise ValueError('redundant half_edges')
+            if any(self._ep[e] not in S for e in S):
+                raise ValueError('half_edges not stable under the edge permutation')
+
+        n = len(half_edges)
+        relabel = [None] * self._n
+        for i, j in enumerate(half_edges):
+            relabel[j] = i
+        vp = array('i', [-1] * n)
+        ep = array('i', [-1] * n)
+
+        for e_induced, e_orig in enumerate(half_edges):
+            ep[e_induced] = relabel[self._ep[e_orig]]
+
+            e = self._vp[e_orig]
+            while relabel[e] is None:
+                e = self._vp[e]
+            vp[e_induced] = relabel[e]
+
+        data = []
+        for l in self._data:
+            data.append(array('i', [l[e] for e in half_edges]))
+        return self.__class__.from_permutations(vp, ep, None, data, mutable=mutable, check=True)
+
     def swap(self, e, check=True):
         r"""
         Change the orientation of the edge ``e``.
@@ -962,7 +1033,7 @@ class Constellation:
 
     def _relabelling_from(self, start_edge):
         r"""
-        Return a canonical relabelling map obtained from walking
+        When connected, return a canonical relabelling map obtained from walking
         along the triangulation starting at ``start_edge``.
 
         The returned relabelling array maps the current edge to the new
@@ -1076,9 +1147,12 @@ class Constellation:
             sage: len(t.automorphisms())
             1
         """
-        best_relabellings = self.best_relabelling(all=True)[0]
-        p0 = perm_invert(best_relabellings[0])
-        return [perm_compose(p, p0) for p in best_relabellings]
+        if self.is_connected():
+            best_relabellings = self.best_relabelling(all=True)[0]
+            p0 = perm_invert(best_relabellings[0])
+            return [perm_compose(p, p0) for p in best_relabellings]
+        else:
+            raise NotImplementedError
 
     def best_relabelling(self, all=False):
         r"""
