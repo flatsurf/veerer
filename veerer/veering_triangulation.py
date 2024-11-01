@@ -4082,54 +4082,6 @@ class VeeringTriangulation(Triangulation):
 
         return parallel_families
 
-    def contraction(self, edges):
-        r"""
-        Return the degeneration obtained by contracting the edges in ``contractions`` and
-        blowing-up the ones in blowups.
-        """
-
-    def blowup(self, edges):
-        n = self._n
-        edges = set(edges)
-        edges.update([self._ep[e] for e in edges])
-
-        kept_half_edges = [e for e in range(self._n) if e not in edges]
-        m = len(kept_half_edges)
-        relabelling = {e: j for j, e in enumerate(kept_half_edges)}
-
-        fp = array('i', [0] * m)
-        ep = array('i', [0] * m)
-        boundary = array('i', [0] * m)
-        colouring = array('i', [0] * m)
-        for e in half_edges:
-            ep[relabelling[e]] = relabelling[self._ep[e]]
-            f = self._fp[e]
-            while f not in relabelling:
-                f = self._fp[f]
-            fp[relabelling[e]] = relabelling[f]
-            # TODO: should be updated
-            boundary[relabelling[e]] = self._bdry[e]
-            colouring[relabelling[e]] = self._colouring[e]
-
-        t = Triangulation.from_permutations(None, ep, fp, (boundary,))
-        return VeeringTriangulation(t, colouring), edge_map
-
-    def codimension_one_horizontal_degenerations(self, i=None):
-        r"""
-        Return codimension one horizontal degenerations.
-        """
-        if i is not None and i != 0:
-            raise ValueError('invalid level specification')
-
-        n = self._n
-        for cyl_family in self.parallel_cylinders():
-            edges = []
-            for cyl in cyl_family[0]:
-                for i, j in enumerate(cyl):
-                    if j:
-                        edges.append(i)
-            yield self.blowup(edges)
-
     def is_half_edge_strebel(self, e, slope=VERTICAL, check=True):
         r"""
         Return whether ``e`` is a Strebel half-edge.
