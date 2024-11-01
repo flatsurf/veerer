@@ -1472,9 +1472,9 @@ def triangulation_relabelling_from(array.array vp, array.array ep, int start_edg
     cdef int k = 0      # current available label at the front.
     cdef int m = n - 1  # current available label at the back.
     cdef array.array relabelling = array.clone(vp, n, False)
-    cdef int i
-    for i in range(n):
-        relabelling.data.as_ints[i] = -1
+    cdef int e, e0
+    for e in range(n):
+        relabelling.data.as_ints[e] = -1
 
     relabelling.data.as_ints[start_edge] = 0
     k += 1
@@ -1490,7 +1490,6 @@ def triangulation_relabelling_from(array.array vp, array.array ep, int start_edg
         to_process.data.as_ints[1] = ep.data.as_ints[start_edge]
         s = 2
 
-    cdef int e, e0
     while s:
         s -= 1
         e0 = to_process.data.as_ints[s]
@@ -1505,5 +1504,15 @@ def triangulation_relabelling_from(array.array vp, array.array ep, int start_edg
                     to_process.data.as_ints[s] = ep.data.as_ints[e]
                     s += 1
             e = vp.data.as_ints[e]
+
+    if k != m:
+        # non transitive case (relabel naively the remaining components)
+        for e in range(n):
+            if relabelling.data.as_ints[e] == -1:
+                relabelling.data.as_ints[e] = k
+                k += 1
+                if ep.data.as_ints[e] != e:
+                    relabelling.data.as_ints[ep.data.as_ints[e]] = m
+                    m -= 1
 
     return relabelling
