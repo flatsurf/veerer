@@ -525,7 +525,8 @@ class StrebelGraph(Constellation):
             vp = t._vp
             ep = t._ep
             fp = t._fp
-            yield VeeringTriangulation.from_permutations(vp, ep, fp, (angle_excess, colouring), mutable=mutable, check=True)
+            cols = array('i', colouring)
+            yield VeeringTriangulation.from_permutations(vp, ep, fp, (angle_excess, cols), mutable=mutable, check=True)
 
     def delaunay_triangulations(self, colouring, slope=VERTICAL, mutable=False, backend=None):
         r"""
@@ -670,7 +671,7 @@ class StrebelGraph(Constellation):
                 sage: G0.residue_constraint_cone([[1,1]], QQ, HORIZONTAL).rays()
                 [[0, 1]]
                 sage: G1 = StrebelGraph("(0,~1)(1)(~0)")
-                sage: G1.residue_constraint_cone([[0,1,1]],QQ,VERTICAL)
+                sage: G1.residue_constraint_cone([[0,1,-1]],QQ,VERTICAL)
                 Cone of dimension 2 in ambient dimension 4 made of 1 facets (backend=ppl)
                 sage: G1.residue_constraint_cone([[0,1,1]],QQ,VERTICAL).rays()
                 [[1, 1, 0, 0]]
