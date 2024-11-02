@@ -217,6 +217,18 @@ class LinearFamily:
             raise ValueError
         self._constellation_class = bases[1]
 
+    def _check(self, error=ValueError):
+        self._constellation_class._check(self, error)
+        subspace = self._subspace
+        if subspace.ncols() != self.num_edges():
+            raise error('subspace matrix has wrong dimension')
+        if subspace.rank() != subspace.nrows():
+            raise error('subspace matrix is not of full rank')
+        if subspace != subspace.echelon_form():
+            raise error('subspace not in echelon form')
+        if self._mutable != self._subspace.is_mutable():
+            raise error('incoherent mutability states')
+
     def __str__(self):
         r"""
         Return a string representation.
@@ -616,19 +628,12 @@ class VeeringTriangulationLinearFamily(LinearFamily, VeeringTriangulation):
             insert(sum(row[i] * x[i] for i in range(ambient_dim)) == 0)
 
     def _check(self, error=ValueError):
-        subspace = self._subspace
-        super()._check(error)
-        if subspace.ncols() != self.num_edges():
-            raise error('subspace matrix has wrong dimension')
-        if subspace.rank() != subspace.nrows():
-            raise error('subspace matrix is not of full rank')
+        LinearFamily._check(self, error)
+
         # test that elements satisfy the switch condition
+        subspace = self._subspace
         for v in subspace.rows():
             self._set_switch_conditions(self._tt_check, v, VERTICAL)
-        if subspace != subspace.echelon_form():
-            raise error('subspace not in echelon form')
-        if self._mutable != self._subspace.is_mutable():
-            raise error('incoherent mutability states')
 
     def train_track_polytope(self, slope=VERTICAL, low_bound=0, backend=None):
         r"""
