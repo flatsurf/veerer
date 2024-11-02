@@ -848,7 +848,7 @@ class VeeringTriangulationLinearFamily(LinearFamily, VeeringTriangulation):
                 else:
                     self.flip_back(e, old_col)
 
-    def strebel_graph(self, slope=VERTICAL):
+    def strebel_graph(self, slope=VERTICAL, mutable=False):
         r"""
         EXAMPLES::
 
@@ -865,11 +865,18 @@ class VeeringTriangulationLinearFamily(LinearFamily, VeeringTriangulation):
             StrebelGraphLinearFamily("(0,1,~1:1,~0,2,~3,4,~4:1,3,~2)", [(1, 0, 1, 0, 1), (0, 0, 0, 1, 1)])
             sage: VeeringTriangulationLinearFamily(vt, [v0, v1 + v2, v3 + v4]).strebel_graph()
             StrebelGraphLinearFamily("(0,1,~1:1,~0,2,~3,4,~4:1,3,~2)", [(1, 0, 1, 0, 1), (0, 1, 0, 0, 0), (0, 0, 0, 1, 1)])
+
+            sage: vt = VeeringTriangulation("(1,4,~2)(2,~6,~3)(3,~5,~4)", boundary="(0:1)(5:1)(6:1)(~1:1,~0:1)", colouring="BBRRBBB")
+            sage: F = VeeringTriangulationLinearFamily(vt, [(1, 2, 0, -1, 2, 1, 1), (0, 0, 1, 1, -1, 0, 0)])
+            sage: F
+            VeeringTriangulationLinearFamily("(1,4,~2)(2,~6,~3)(3,~5,~4)", boundary="(0:1)(5:1)(6:1)(~1:1,~0:1)", colouring="BBRRBBB", [(1, 2, 0, -1, 2, 1, 1), (0, 0, 1, 1, -1, 0, 0)])
+            sage: F.strebel_graph()
+            StrebelGraphLinearFamily("(0)(1,~2)(2,~3,~1,~0)(3)", [(1, 0, 1, 1), (0, 1, -1, 0)])
         """
-        indices = [e for e in range(self._n // 2) if self.is_half_edge_strebel(e, slope)]
-        G = VeeringTriangulation.strebel_graph(self, slope)
-        subspace = self._subspace.matrix_from_columns(indices)
-        return StrebelGraphLinearFamily(G, subspace)
+        indices = [e for e in range(self._n // 2) if self.is_half_edge_strebel(e, slope) and self.is_half_edge_strebel(self._ep[e], slope)]
+        G = VeeringTriangulation.strebel_graph(self, slope, mutable=False)
+        subspace = self.generators_matrix(slope).matrix_from_columns(indices)
+        return StrebelGraphLinearFamily(G, subspace, mutable=mutable)
 
     def abelian_cover(self, mutable=False):
         r"""
@@ -1010,7 +1017,7 @@ class StrebelGraphLinearFamily(LinearFamily, StrebelGraph):
             subspace = []
             for row in self._subspace.rows():
                 subspace.append(sum(x * switch.row(i) for i, x in enumerate(row)))
-            yield VeeringTriangulationLinearFamily(vt, subspace)
+            yield VeeringTriangulationLinearFamily(vt, subspace, mutable=mutable)
 
 
 class VeeringTriangulationLinearFamilies:
