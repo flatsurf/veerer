@@ -257,12 +257,16 @@ class StrebelGraph(Constellation):
 
     def is_abelian(self, certificate=False):
         r"""
-        return whether a strebel graph is abelian
+        Return whether this Strebel graph is Abelian.
 
         EXAMPLES::
 
+            sage: from veerer import StrebelGraph
+            sage: StrebelGraph("(0:1,1:1,2)(~2,~3:1,~4:1)(3,~1,5)(~0,4,~5)").is_abelian()
+            True
+            sage: StrebelGraph("(0:1,1,2)(~2,~3,~4:1)(3,~1:1,5)(~0:1,4,~5)").is_abelian()
+            False
         """
-
         ep = self._ep
         vp = self._vp
 
@@ -369,6 +373,42 @@ class StrebelGraph(Constellation):
             bdry = array('i', boundary)
 
         return StrebelGraph.from_permutations(vp, ep, fp, (bdry,), mutable, check)
+
+    def abelian_cover(self, mutable=False):
+        r"""
+        Return the orientation double cover of this Strebel graph.
+
+        EXAMPLES::
+
+            sage: from veerer import StrebelGraph
+            sage: sg = StrebelGraph("(0:1,1,2)(~2,~3,~4:1)(3,~1:1,5)(~0:1,4,~5)")
+            sage: sg.abelian_cover()
+            StrebelGraph("(0:1,1,2,~11:1,~10,~9)(3,~1:1,~6,~8,10:1,5)(4,6,~0:1,~7,~5,11:1)(7:1,9,8,~4:1,~2,~3)")
+            sage: print(sg.stratum(), sg.abelian_cover().stratum())  # optional - surface_dynamics
+            Q_0(2^4, -3^4) H_1(1^8, -2^4)
+        """
+        n = self._n
+        vp = self._vp
+        ep = self._ep
+
+        ep_cov = array('i', [-1] * (2 * n))
+        vp_cov = array('i', [-1] * (2 * n))
+        for e in range(n):
+            f = ep[e]
+            ep_cov[e] = f + n
+            ep_cov[f + n] = e
+
+            f = vp[e]
+            if self._excess[e] % 2 == 0:
+                vp_cov[e] = f + n
+                vp_cov[e + n] = f
+            else:
+                vp_cov[e] = f
+                vp_cov[e + n] = f + n
+
+        excess_cov = self._excess * 2
+
+        return StrebelGraph.from_permutations(vp_cov, ep_cov, None, (excess_cov,), mutable=mutable, check=False)
 
     def as_linear_family(self):
         r"""
