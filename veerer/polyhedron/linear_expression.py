@@ -227,12 +227,22 @@ class LinearExpression(ModuleElement):
             sage: L = LinearExpressions(QQ)
             sage: (3 * L.variable(2) - 7/2 * L.variable(5) + 1/3).ppl()
             18*x2-21*x5+2
+
+        TESTS::
+
+            sage: L(0).ppl()
+            0
+            sage: type(L(0).ppl())
+            <class 'ppl.linear_algebra.Linear_Expression'>
         """
         from gmpy2 import mpz
         lin = self.integral()
-        # TODO: the line below is too costly : it accounts for 80% of the
-        # geometric automaton computation
-        l = sum(mpz(coeff) * ppl.Variable(i) for i, coeff in lin._f.items()) + mpz(lin._inhomogeneous_term)
+        if lin._f:
+            # TODO: the line below is too costly : it accounts for 80% of the
+            # geometric automaton computation
+            l = sum(mpz(coeff) * ppl.Variable(i) for i, coeff in lin._f.items()) + mpz(lin._inhomogeneous_term)
+        else:
+            l = ppl.Linear_Expression(mpz(lin._inhomogeneous_term))
         if dim is not None:
             l.set_space_dimension(dim)
         return l
@@ -444,10 +454,14 @@ class ConstraintSystem:
     def insert(self, constraint, check=True):
         if check and not isinstance(constraint, LinearConstraint):
             raise TypeError('invalid type; expected LinearConstraint but got {}'.format(type(constraint).__name__))
-        if self._dim is None:
-            self._dim = max(constraint._expression._f) + 1
-        else:
-            self._dim = max(self._dim, max(constraint._expression._f) + 1)
+
+        if constraint._expression._f:
+            m = max(constraint._expression._f) + 1
+            if self._dim is None:
+                self._dim = m
+            else:
+                self._dim = max(self._dim, m)
+
         self._data.append(constraint)
 
     def __iter__(self):
