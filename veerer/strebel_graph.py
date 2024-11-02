@@ -690,7 +690,7 @@ class StrebelGraph(Constellation):
         Return the Strebel graph linear family obtained by adding the given
         linear constraints on the residues.
 
-        Note that the resulting family might not intersect the relative
+        Note that the resulting linear family might not intersect the relative
         interior of the Strebel cone. To check whether this is the case, use
         the method ``is_core``.
 
@@ -699,16 +699,16 @@ class StrebelGraph(Constellation):
             sage: from veerer import StrebelGraph
             sage: G = StrebelGraph("(0,2,~3,~1)(1)(3,~0)(~2)")
 
-            sage: f2 = G.add_residue_constraints([[1, 2, 0, 0]])
-            sage: f2
+            sage: f1 = G.add_residue_constraints([[1, 2, 0, 0]])
+            sage: f1
             StrebelGraphLinearFamily("(0,2,~3,~1)(1)(3,~0)(~2)", [(1, 0, 0, -1), (0, 1, 0, 1), (0, 0, 1, -1)])
-            sage: f2.is_core()
+            sage: f1.is_core()
             True
 
-            sage: f1 = G.add_residue_constraints([[1, 1, 0, 0]])
-            sage: f1
+            sage: f2 = G.add_residue_constraints([[1, 1, 0, 0]])
+            sage: f2
             StrebelGraphLinearFamily("(0,2,~3,~1)(1)(3,~0)(~2)", [(1, 0, 0, -1), (0, 1, 0, 0), (0, 0, 1, -1)])
-            sage: f1.is_core()
+            sage: f2.is_core()
             False
 
             sage: f3 = G.add_residue_constraints([[0, 1, -1, 0], [0, 1, 0, -1]])
