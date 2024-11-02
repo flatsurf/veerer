@@ -23,7 +23,9 @@ from array import array
 import itertools
 import numbers
 
-from sage.rings.all import ZZ
+from sage.rings.integer_ring import ZZ
+from sage.matrix.constructor import matrix
+from sage.matrix.matrix0 import Matrix
 
 from .permutation import perm_check, perm_cycles, perm_cycles_to_string, str_to_cycles_and_data
 from .triangulation import face_edge_perms_init, boundary_init, Triangulation
@@ -292,7 +294,7 @@ class StrebelGraph(Constellation):
             f = vp[e]
             while True:
                 # propagate the orientation from e
-                if self._excess[e] % 2 == 0: #if even, we flip the edge
+                if self._excess[e] % 2 == 0:
                     o = not o
 
                 if oris[f] is None:
@@ -476,25 +478,37 @@ class StrebelGraph(Constellation):
             colouring.extend([colouring[ep[e]] for e in range(m, n)])
             yield colouring
 
+    def _set_strebel_constraints(self, insert, x):
+        for v in x:
+            insert(v >= 0)
+
     def cone(self, backend=None):
         r"""
         EXAMPLES::
 
-            sage: from veerer import StrebelGraph
+            sage: from veerer import StrebelGraph, VERTICAL, HORIZONTAL
+            sage: G = StrebelGraph("(0)(~0)")
+
+            sage: C = G.cone()
+            sage: C
+            Cone of dimension 1 in ambient dimension 1 made of 1 facets (backend=ppl)
+            sage: C.rays()
+            [[1]]
+
             sage: sg = StrebelGraph("(~1:1,~0,1:1,0)")
             sage: sg.cone(backend='ppl')
-            Cone of dimension 4 in ambient dimension 4 made of 2 facets (backend=ppl)
+            Cone of dimension 2 in ambient dimension 2 made of 2 facets (backend=ppl)
             sage: sg.cone(backend='sage')
-            Cone of dimension 4 in ambient dimension 4 made of 2 facets (backend=sage)
+            Cone of dimension 2 in ambient dimension 2 made of 2 facets (backend=sage)
             sage: sg.cone(backend='normaliz-QQ')  # optional - pynormaliz
-            Cone of dimension 4 in ambient dimension 4 made of 2 facets (backend=normaliz-QQ)
+            Cone of dimension 2 in ambient dimension 2 made of 2 facets (backend=normaliz-QQ)
         """
         from .polyhedron import LinearExpressions, ConstraintSystem
         L = LinearExpressions(self.base_ring())
         ne = self.num_edges()
-        cs = ConstraintSystem(2 * ne)
-        for e in range(ne):
-            cs.insert(L.variable(e) >= 0)
+        x = [L.variable(i) for i in range(ne)]
+        cs = ConstraintSystem(ne)
+        self._set_strebel_constraints(cs.insert, x)
         return cs.cone(backend=backend)
 
     def veering_triangulations(self, colouring, slope=VERTICAL, mutable=False):
@@ -611,137 +625,101 @@ class StrebelGraph(Constellation):
             if vt.is_delaunay(backend):
                 yield vt
 
-    def _set_strebel_constraints(self, cs, L, slope):
-    
-        nhe = self._n
-        ne = ZZ(nhe // 2)
-        
-        x = [L.variable(i) for i in range(nhe)]
-        
-        if slope == VERTICAL:
-            for i in range(ne):
-                cs.insert(x[i] >= 0)
-        elif slope == HORIZONTAL:
-            for j in range(ne, nhe):
-                cs.insert(x[j] >= 0)
-    
-    def _set_residue_constraints(self, cs, coes, L, slope):
+    def residue_matrix(self):
         r"""
-        Return the constraints on the residues.
+        Return the residue matrix.
 
-        The ``coes`` is a list of lists of coefficient. The numbers in each list of coefficients corresponds to the boundary faces of the Strebel graph.
+        The residue matrix allows to recover the values of residues given a vector
+        of edge length. The number of rows is equal to the number of faces while
+        the number of columns is the number of edges.
+
+        As the sum of residues is zero, the sum of rows of the matrix vanishes.
+
+        EXAMPLES::
+
+            sage: from veerer import StrebelGraph
+
+            sage: StrebelGraph("(0)(~0)").residue_matrix()
+            [ 1]
+            [-1]
+            sage: StrebelGraph("(0,~1)(1)(~0)").residue_matrix()
+            [ 1  1]
+            [ 0 -1]
+            [-1  0]
+            sage: StrebelGraph("(0,2,~3,~1)(1)(3,~0)(~2)").residue_matrix()
+            [ 1  1  1  1]
+            [ 0 -1  0  0]
+            [-1  0  0 -1]
+            [ 0  0 -1  0]
+
+            sage: StrebelGraph("(0:1,~0:1)").residue_matrix()
+            [0]
+
+            sage: StrebelGraph("(0:1,1:1,2)(~2,~3:1,~4:1)(3,~1,5)(~0,4,~5)").residue_matrix()
+            [ 1 -1 -1  0  0  0]
+            [ 0  1  0  1  0  1]
+            [-1  0  0  0 -1 -1]
+            [ 0  0  1 -1  1  0]
+
+            sage: sg = StrebelGraph("(0:1,1,2)(~2,~3,~4:1)(3,~1:1,5)(~0:1,4,~5)")
+            sage: sg.abelian_cover().residue_matrix()
+            [ 1  1  1  0  0  0  0  0  0 -1 -1 -1]
+            [ 0 -1  0  1  0  1 -1  0 -1  0  1  0]
+            [-1  0  0  0  1 -1  1 -1  0  0  0  1]
+            [ 0  0 -1 -1 -1  0  0  1  1  1  0  0]
         """
-
         ep = self._ep
-        list_faces = self.faces()
-        nf = len(list_faces)
-        nhe = self._n
-        ne = ZZ(nhe // 2)
-        
-        x = [L.variable(i) for i in range(nhe)]
-        
-        if self.is_abelian():
-            o = [1 if e else -1 for e in self.is_abelian(certificate=True)[1]]
-        else:
-            raise ValueError('{} is not Abelian'.format(self))
-            
-        #build expression of residues
-        p = []
-        
-        if slope == VERTICAL:
-            for f in list_faces:
-                pp = 0
-                for e in f:
-                    if e < ep[e]:
-                        pp = pp + o[e]*x[e]
-                    else:
-                        pp = pp + o[e]*x[ep[e]]
-                p.append(pp)
-        elif slope == HORIZONTAL:
-            for f in list_faces:
-                pp = 0
-                for e in f:
-                    if e < ep[e]:
-                        pp = pp + o[e]*x[ep[e]]
-                    else:
-                        pp = pp + o[e]*x[e]
-                p.append(pp)
-        else:
-            raise ValueError('bad slope parameter')
-            
-        #build constraints    
-        for coe in coes:
-            assert nf == len(coe)
-            res = sum(coe[i]*p[i] for i in range(nf))
-            if not res.is_zero():
-                cs.insert(res == 0)
-        
-        d = cs.cone().affine_dimension() #the contraints might be redundant
-        if d == 0:
-            raise ValueError('the constraints on the residues of {} have zero-dimensional solution space'.format(self))
+        nf = self.num_faces()
+        ne = self.num_edges()
+        r = matrix(ZZ, nf, ne)
 
-    def residue_constraint_cone(self, coes, K, slope):
-            r"""
-            return a list generators for the subspace with constraints on residues.
-            
-            Question: Are the generators irralevant to the horizontal or vertical Strebel decomposition considered?
+        ans, orientations = self.is_abelian(certificate=True)
+        if not ans:
+            raise ValueError('not an Abelian differential')
+        orientations = [1 if x else -1 for x in orientations]
 
-            EXAMPLES::
-            
-                sage: from veerer import *
-                sage: from sage.rings.rational_field import QQ
+        for i, f in enumerate(self.faces()):
+            for e in f:
+                j = e if e < ep[e] else ep[e]
+                r[i, j] += orientations[e]
 
-            Here are examples that residue constraints force some coordinate to be zero::
-                sage: G0 = StrebelGraph("(0)(~0)")
-                sage: G0.residue_constraint_cone([[1, -1]], QQ, VERTICAL)
-                Traceback (most recent call last):
-                ...
-                ValueError: the constraints on the residues force some coordinates to be zero 
-                in the Strebel polyhedron of StrebelGraph("(0:0)(~0:0)")
-                sage: G1 = StrebelGraph("(0,~1)(1)(~0)")
-                sage: G1.residue_constraint_cone([[1,1,0]], QQ, HORIZONTAL)
-                Traceback (most recent call last):
-                ...
-                ValueError: the constraints on the residues force some coordinates to be zero in the Strebel polyhedron of StrebelGraph("(0:0,~1:0)(1:0)(~0:0)")
-            
-            Here are valid examples::
-                sage: G0 = StrebelGraph("(0)(~0)")
-                sage: G0.residue_constraint_cone([[1,1]], QQ, HORIZONTAL)
-                Cone of dimension 2 in ambient dimension 2 made of 1 facets (backend=ppl)
-                sage: G0.residue_constraint_cone([[1,1]], QQ, HORIZONTAL).rays()
-                [[0, 1]]
-                sage: G1 = StrebelGraph("(0,~1)(1)(~0)")
-                sage: G1.residue_constraint_cone([[0,1,-1]],QQ,VERTICAL)
-                Cone of dimension 2 in ambient dimension 4 made of 1 facets (backend=ppl)
-                sage: G1.residue_constraint_cone([[0,1,1]],QQ,VERTICAL).rays()
-                [[1, 1, 0, 0]]
-                sage: G2 = StrebelGraph("(0,2,~3,~1)(1)(3,~0)(~2)")
-                sage: G2.residue_constraint_cone([[1,2,0,0]], QQ, VERTICAL)
-                Cone of dimension 6 in ambient dimension 8 made of 3 facets (backend=ppl)
-                sage: G2.residue_constraint_cone([[1,2,0,0]], QQ, VERTICAL).rays()
-                [[1, 1, 0, 0, 0, 0, 0, 0], [0, 1, 1, 0, 0, 0, 0, 0], [0, 1, 0, 1, 0, 0, 0, 0]]
-                sage: G2.residue_constraint_cone([[0,1,-1,0],[0,1,0,-1]], QQ, VERTICAL)
-                Cone of dimension 4 in ambient dimension 8 made of 2 facets (backend=ppl)
-                sage: G2.residue_constraint_cone([[0,1,-1,0],[0,1,0,-1]], QQ, VERTICAL).rays()
-                [[1, 1, 1, 0, 0, 0, 0, 0], [0, 1, 1, 1, 0, 0, 0, 0]]
-            """
-            
-            L = LinearExpressions(K)
-            nhe = self._n
-            cs = ConstraintSystem(dim = nhe)
-            x = [L.variable(i) for i in range(nhe)]
+        return r
 
-            self._set_strebel_constraints(cs, L, slope)
-            
-            self._set_residue_constraints(cs, coes, L, VERTICAL)
-            self._set_residue_constraints(cs, coes, L, HORIZONTAL) 
-            
-            #check if the constraints force some x[i] to be zero
-            d = cs.cone().affine_dimension()
-            for i in range(nhe):
-                cs1 = cs.copy()
-                cs1.insert(x[i] == 0)
-                if cs1.cone().affine_dimension() == d:
-                    raise ValueError('the constraints on the residues force some coordinates to be zero in the Strebel polyhedron of {}'.format(self))
-            
-            return cs.cone()
+    def add_residue_constraints(self, residue_constraints):
+        r"""
+        Return the Strebel graph linear family obtained by adding the given
+        linear constraints on the residues.
+
+        Note that the resulting family might not intersect the relative
+        interior of the Strebel cone. To check whether this is the case, use
+        the method ``is_core``.
+
+        EXAMPLES::
+
+            sage: from veerer import StrebelGraph
+            sage: G = StrebelGraph("(0,2,~3,~1)(1)(3,~0)(~2)")
+
+            sage: f2 = G.add_residue_constraints([[1, 2, 0, 0]])
+            sage: f2
+            StrebelGraphLinearFamily("(0,2,~3,~1)(1)(3,~0)(~2)", [(1, 0, 0, -1), (0, 1, 0, 1), (0, 0, 1, -1)])
+            sage: f2.is_core()
+            True
+
+            sage: f1 = G.add_residue_constraints([[1, 1, 0, 0]])
+            sage: f1
+            StrebelGraphLinearFamily("(0,2,~3,~1)(1)(3,~0)(~2)", [(1, 0, 0, -1), (0, 1, 0, 0), (0, 0, 1, -1)])
+            sage: f1.is_core()
+            False
+
+            sage: f3 = G.add_residue_constraints([[0, 1, -1, 0], [0, 1, 0, -1]])
+            sage: f3
+            StrebelGraphLinearFamily("(0,2,~3,~1)(1)(3,~0)(~2)", [(1, 0, 0, -1), (0, 1, 1, 1)])
+            sage: f3.is_core()
+            True
+        """
+        if not isinstance(residue_constraints, Matrix):
+            residue_constraints = matrix(residue_constraints)
+
+        gens = (residue_constraints * self.residue_matrix()).right_kernel_matrix()
+        from .linear_family import StrebelGraphLinearFamily
+        return StrebelGraphLinearFamily(self, gens)

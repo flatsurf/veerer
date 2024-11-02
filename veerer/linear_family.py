@@ -32,6 +32,7 @@ from sage.structure.element import get_coercion_model, Matrix
 from sage.rings.integer_ring import ZZ
 from sage.rings.rational_field import QQ
 from sage.matrix.constructor import matrix
+from sage.matrix.matrix0 import Matrix
 from sage.modules.free_module import FreeModule
 from sage.geometry.polyhedron.constructor import Polyhedron
 from sage.arith.misc import gcd
@@ -898,6 +899,74 @@ class StrebelGraphLinearFamily(LinearFamily, StrebelGraph):
         2
     """
     __slots__ = ['_constellation_class', '_subspace']
+
+    def is_core(self):
+        r"""
+        Return whether this linear family of Strebel graphs is core.
+
+        A linear family of Strebel graphs is core if it has a positive solution
+        (ie a non-degenerate edge-length vector).
+
+        EXAMPLES::
+
+            sage: from veerer import StrebelGraphLinearFamily
+
+            sage: G = StrebelGraphLinearFamily("(0,1,2)(~0,~1:1,~2:2)", [(1, 1, 0), (-1, 0, 2)])
+            sage: G.is_core()
+            True
+
+            sage: G = StrebelGraphLinearFamily("(0,1,2)(~0,~1:1,~2:2)", [(1, 1, -1), (-1, 0, 1)])
+            sage: G.is_core()
+            False
+        """
+        return self.cone().affine_dimension() == self.dimension()
+
+    def _set_subspace_constraints(self, insert, x):
+        ambient_dim = self._subspace.ncols()
+        subspace = self._subspace
+        for row in subspace.right_kernel_matrix():
+            insert(sum(row[i] * x[i] for i in range(ambient_dim)) == 0)
+
+    def cone(self, backend=None):
+        from .polyhedron import LinearExpressions, ConstraintSystem
+        L = LinearExpressions(self.base_ring())
+        ne = self.num_edges()
+        x = [L.variable(i) for i in range(ne)]
+        cs = ConstraintSystem(ne)
+        self._set_strebel_constraints(cs.insert, x)
+        self._set_subspace_constraints(cs.insert, x)
+        return cs.cone(backend=backend)
+
+    def add_residue_constraints(self, residue_constraints):
+        r"""
+        Return the Strebel graph linear family obtained by adding the given
+        linear constraints on the residues.
+
+        Note that the resulting family might not intersect the relative
+        interior of the Strebel cone. To check whether this is the case, use
+        the method ``is_core``.
+
+        EXAMPLES::
+
+            sage: from veerer import StrebelGraph
+            sage: G = StrebelGraph("(0,2,~3,~1)(1)(3,~0)(~2)")
+            sage: f1 = G.add_residue_constraints([[0, 1, -1, 0]]).add_residue_constraints([[0, 1, 0, -1]])
+            sage: f2 = G.add_residue_constraints([[0, 1, -1, 0], [0, 1, 0, -1]])
+            sage: f1 == f2
+            True
+        """
+        if not isinstance(residue_constraints, Matrix):
+            residue_constraints = matrix(residue_constraints)
+
+        base_ring = cm.common_parent(self.base_ring(), residue_constraints.base_ring())
+        nr = self._subspace.nrows()
+        nc = self._subspace.ncols()
+        constraint_matrix = matrix(base_ring, (nc - nr) + residue_constraints.nrows(), self.num_edges())
+        constraint_matrix[:nc - nr, :] = self._subspace.right_kernel_matrix()
+        constraint_matrix[nc - nr:, :] = residue_constraints * self.residue_matrix()
+        gens = constraint_matrix.right_kernel_matrix()
+        from .linear_family import StrebelGraphLinearFamily
+        return StrebelGraphLinearFamily(self, gens)
 
     def veering_triangulations(self, colouring, slope=VERTICAL, mutable=False):
         r"""
