@@ -32,7 +32,6 @@ from sage.structure.element import get_coercion_model, Matrix
 from sage.rings.integer_ring import ZZ
 from sage.rings.rational_field import QQ
 from sage.matrix.constructor import matrix
-from sage.matrix.matrix0 import Matrix
 from sage.modules.free_module import FreeModule
 from sage.geometry.polyhedron.constructor import Polyhedron
 from sage.arith.misc import gcd
@@ -560,6 +559,17 @@ class VeeringTriangulationLinearFamily(LinearFamily, VeeringTriangulation):
         """
         return VeeringTriangulation.copy(self, mutable, cls=VeeringTriangulation)
 
+    def constraints_matrix(self):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation
+            sage: vt = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
+            sage: vt.as_linear_family().constraints_matrix()
+            [-1  1 -1]
+        """
+        return self._subspace.right_kernel_matrix()
+
     def _horizontal_subspace(self):
         mat = copy(self._subspace)
         ne = self.num_edges()
@@ -572,14 +582,20 @@ class VeeringTriangulationLinearFamily(LinearFamily, VeeringTriangulation):
                     mat[i, j] *= -1
         return mat
 
-    def switch_subspace_generators_matrix(self, slope=VERTICAL):
+    def generators_matrix(self, slope=VERTICAL, mutable=None):
         if slope == VERTICAL:
-            if not self._mutable:
+            if not self._mutable and not mutable:
                 return self._subspace
             else:
-                return self._subspace.__copy__()
+                subspace = self._subspace.__copy__()
+                if not mutable:
+                    subspace.set_immutable()
+                return subspace
         elif slope == HORIZONTAL:
-            return self._horizontal_subspace
+            subspace = self._horizontal_subspace()
+            if not mutable:
+                subspace.set_immutable()
+            return subspace
         else:
             raise ValueError
 
@@ -988,7 +1004,7 @@ class StrebelGraphLinearFamily(LinearFamily, StrebelGraph):
             array('i', [2, 2, 2, 2, 2, 2]) 1 1
         """
         for vt in StrebelGraph.veering_triangulations(self, colouring, slope, mutable):
-            switch = vt.switch_subspace_generators_matrix()
+            switch = vt.generators_matrix(mutable=True)
             switch.echelonize()
             assert switch[:self.num_edges(), :self.num_edges()].is_one()
             subspace = []

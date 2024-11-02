@@ -34,6 +34,7 @@ from random import choice, shuffle
 from array import array
 import ppl
 
+from sage.structure.element import get_coercion_model, Matrix
 from sage.structure.richcmp import op_LT, op_LE, op_EQ, op_NE, op_GT, op_GE, rich_to_bool
 from sage.modules.free_module import FreeModule
 from sage.matrix.constructor import matrix
@@ -46,6 +47,8 @@ from .misc import det2
 from .triangulation import face_edge_perms_init, boundary_init, Triangulation
 from .polyhedron import LinearExpressions, ConstraintSystem
 from .polyhedron.linear_algebra import linear_form_project, vector_normalize
+
+cm = get_coercion_model()
 
 
 class VeeringTriangulation(Triangulation):
@@ -2372,6 +2375,98 @@ class VeeringTriangulation(Triangulation):
 
         return code
 
+    def residue_matrix(self, slope=VERTICAL):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation, StrebelGraph, VERTICAL, HORIZONTAL
+
+            sage: vt = VeeringTriangulation("(0,1,2)(~1,~2,3)", "(~0:1)(~3:1)", "RBRR")
+            sage: r = vt.residue_matrix()
+            sage: r
+            [ 0  0  0  1]
+            [-1  0  0  0]
+
+            sage: G = StrebelGraph("(0,2,~3,~1)(1)(3,~0)(~2)")
+            sage: for colouring in G.colourings():
+            ....:     for vt in G.veering_triangulations(colouring):
+            ....:         for slope in [VERTICAL, HORIZONTAL]:
+            ....:             r = vt.residue_matrix(slope)
+            ....:             for x in vt.generators_matrix(slope).rows():
+            ....:                 assert sum(r * x) == 0, (vt, slope, x)
+       """
+        ep = self._ep
+        nf = self.num_boundary_faces()
+        ne = self.num_edges()
+        r = matrix(ZZ, nf, ne)
+
+        ans, orientations = self.is_abelian(certificate=True)
+        if not ans:
+            raise ValueError('not an Abelian differential')
+
+        if slope == VERTICAL:
+            orientations = [1 if x else -1 for x in orientations]
+        elif slope == HORIZONTAL:
+            orientations = [1 if (x == (col == RED)) else -1 for x, col in zip(orientations, self._colouring)]
+        else:
+            raise ValueError('invalid slope argument; must be VERTICAL or HORIZONTAL')
+
+        for i, f in enumerate(self.boundary_faces()):
+            for e in f:
+                j = e if e < ep[e] else ep[e]
+                r[i, j] += orientations[e]
+
+        return r
+
+    def add_residue_constraints(self, residue_constraints):
+        r"""
+        Return the veering triangulation linear family obtained by adding the
+        given linear constraints on the residues.
+
+        Note that the resulting linear family might not intersect the relative
+        interior of the coordinates (respectively Delaunay) cone. To check
+        whether this is the case, use the method ``is_core`` (resp.
+        ``is_delaunay``).
+
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation
+            sage: vt = VeeringTriangulation("(0,5,~4)(2,6,~5)(3,~0,7)(4,~3,~1)", boundary="(1:1)(~7:1)(~6:1)(~2:1)", colouring="RRRBBBBB")
+            sage: f1 = vt.add_residue_constraints([[1, 1, 1, 0]])
+            sage: f1
+            VeeringTriangulationLinearFamily("(0,5,~4)(2,6,~5)(3,~0,7)(4,~3,~1)", boundary="(1:1)(~7:1)(~6:1)(~2:1)", colouring="RRRBBBBB", [(1, 0, 0, 0, 0, 1, 1, 1), (0, 1, 0, 0, 1, 1, 1, 0), (0, 0, 0, 1, 1, 1, 1, 1)])
+            sage: f1.is_core()
+            True
+            sage: f1.is_delaunay()
+            True
+
+            sage: f2 = vt.add_residue_constraints([[1, 1, 0, 1]])
+            sage: f2
+            VeeringTriangulationLinearFamily("(0,5,~4)(2,6,~5)(3,~0,7)(4,~3,~1)", boundary="(1:1)(~7:1)(~6:1)(~2:1)", colouring="RRRBBBBB", [(1, 0, 0, -1, -1, 0, 0, 0), (0, 1, 0, -1, 0, 0, 0, -1), (0, 0, 1, -1, -1, -1, 0, -1)])
+            sage: f2.is_core()
+            False
+
+        Adding residue constraints commute with taking the Strebel graph::
+
+            sage: G1 = f1.strebel_graph().add_residue_constraints([[1, 1, 1, 0]])
+            sage: G2 = f1.add_residue_constraints([[1, 1, 1, 0]]).strebel_graph()
+            sage: G1 == G2
+            True
+        """
+        if not isinstance(residue_constraints, Matrix):
+            residue_constraints = matrix(residue_constraints)
+
+        base_ring = cm.common_parent(self.base_ring(), residue_constraints.base_ring())
+        orig_constraints_matrix = self.constraints_matrix()
+        n1 = orig_constraints_matrix.nrows()
+        n2 = residue_constraints.nrows()
+        constraints_matrix = matrix(base_ring, n1 + n2, self.num_edges())
+        constraints_matrix[:n1, :] = orig_constraints_matrix
+        constraints_matrix[n1:, :] = residue_constraints * self.residue_matrix()
+        gens = constraints_matrix.right_kernel_matrix()
+        from .linear_family import VeeringTriangulationLinearFamily
+        return VeeringTriangulationLinearFamily(self, gens)
+
     def flip_back(self, e, col, Lx=None, Gx=None, check=True):
         r"""
         Flip backward an edge in place
@@ -3999,13 +4094,70 @@ class VeeringTriangulation(Triangulation):
                 else:
                     self.flip_back(e, old_col)
 
-    def switch_subspace_generators_matrix(self, slope=VERTICAL):
+    def switch_constraints_matrix(self, slope=VERTICAL):
+        if slope == VERTICAL:
+            LAR = PURPLE
+            POS = BLUE
+            NEG = RED
+            ZERO = GREEN
+        elif slope == HORIZONTAL:
+            LAR = GREEN
+            POS = RED
+            NEG = BLUE
+            ZERO = PURPLE
+        else:
+            raise ValueError('bad slope parameter')
+
+        ans = matrix(ZZ, self.num_triangles(), self.num_edges())
+        for s, (i,j,k) in enumerate(self.triangles()):
+            i = self._norm(i)
+            ci = self._colouring[i]
+            j = self._norm(j)
+            cj = self._colouring[j]
+            k = self._norm(k)
+            ck = self._colouring[k]
+
+            if ci == ZERO and cj == NEG and ck == POS:
+                # i is degenerate
+                raise NotImplementedError
+            elif cj == ZERO and ck == NEG and ci == POS:
+                # j is degenerate
+                raise NotImplementedError
+            elif ck == ZERO and ci == NEG and cj == POS:
+                # k is degenerate
+                raise NotImplementedError
+            elif ck == LAR or (ci == POS and cj == NEG):
+                # k is large
+                ans[s, k] += 1
+                ans[s, i] -= 1
+                ans[s, j] -= 1
+            elif ci == LAR or (cj == POS and ck == NEG):
+                # i is large
+                ans[s, i] += 1
+                ans[s, j] -= 1
+                ans[s, k] -= 1
+            elif cj == LAR or (ck == POS and ci == NEG):
+                # j is large
+                ans[s, j] += 1
+                ans[s, k] -= 1
+                ans[s, i] -= 1
+            else:
+                raise ValueError('can not determine the nature of triangle (%s, %s, %s) with colors (%s, %s, %s) in %s direction' %
+                                 (self._edge_rep(i), self._edge_rep(j), self._edge_rep(k),
+                                  colour_to_string(ci), colour_to_string(cj), colour_to_string(ck),
+                                  'horizontal' if slope == HORIZONTAL else 'vertical'))
+
+        return ans
+
+    constraints_matrix = switch_constraints_matrix
+
+    def switch_generators_matrix(self, slope=VERTICAL, mutable=True):
         r"""
         EXAMPLES::
 
             sage: from veerer import VeeringTriangulation
             sage: vt = VeeringTriangulation("(0,1,2)(3,4,5)(6,7,8)(~0,~7,~5)(~3,~4,~2)(~6,~1,~8)", "RRBRRBRRB")
-            sage: m = vt.switch_subspace_generators_matrix()
+            sage: m = vt.switch_generators_matrix()
             sage: m  # random
             sage: m.echelon_form()
             [ 1  0 -1  0 -1 -1  0  0  0]
@@ -4013,7 +4165,7 @@ class VeeringTriangulation(Triangulation):
             [ 0  0  0  1  1  0  0  0  0]
             [ 0  0  0  0  0  0  1  0 -1]
             sage: vt = VeeringTriangulation("", boundary="(0:1,1:1,2:1)(~2:3,~0:1,~1:2)", colouring="RRR")
-            sage: m = vt.switch_subspace_generators_matrix()  # random
+            sage: m = vt.switch_generators_matrix()  # random
             sage: m  # random
             [1 0 0]
             [0 1 0]
@@ -4023,7 +4175,12 @@ class VeeringTriangulation(Triangulation):
             [0 1 0]
             [0 0 1]
         """
-        return matrix(self.base_ring(), self.train_track_switch_constraints(slope).cone().lines())
+        subspace = self.switch_constraints_matrix(slope).right_kernel_matrix()
+        if not mutable:
+            return subspace
+        return subspace.__copy__()
+
+    generators_matrix = switch_generators_matrix
 
     def parallel_cylinders(self, col=RED):
         r"""
@@ -4057,7 +4214,7 @@ class VeeringTriangulation(Triangulation):
 
         # take intersection of the cylinder twists in the tangent space
         F = FreeModule(self.base_ring(), self.num_edges())
-        U = F.submodule(self.switch_subspace_generators_matrix())
+        U = F.submodule(self.generators_matrix())
         T = F.submodule(C)
 
         # what would be even nicer are the equations on the coefficients of C
