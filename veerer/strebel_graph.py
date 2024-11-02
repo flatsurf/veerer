@@ -23,9 +23,10 @@ from array import array
 import itertools
 import numbers
 
+from sage.structure.element import Matrix
 from sage.rings.integer_ring import ZZ
 from sage.matrix.constructor import matrix
-from sage.matrix.matrix0 import Matrix
+from sage.matrix.special import identity_matrix
 
 from .permutation import perm_check, perm_cycles, perm_cycles_to_string, str_to_cycles_and_data
 from .triangulation import face_edge_perms_init, boundary_init, Triangulation
@@ -237,6 +238,9 @@ class StrebelGraph(Constellation):
 
     def _set_data_pointers(self):
         self._excess = self._data[0]
+
+    boundary_faces = Constellation.faces
+    num_boundary_faces = Constellation.num_faces
 
     def base_ring(self):
         from sage.rings.integer_ring import ZZ
@@ -684,6 +688,28 @@ class StrebelGraph(Constellation):
                 r[i, j] += orientations[e]
 
         return r
+
+    def constraints_matrix(self):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import StrebelGraph
+            sage: G = StrebelGraph("(0)(~0)")
+            sage: G.constraints_matrix()
+            []
+        """
+        return matrix(ZZ, 0, self.num_edges())
+
+    def generators_matrix(self):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import StrebelGraph
+            sage: G = StrebelGraph("(0)(~0)")
+            sage: G.generators_matrix()
+            [1]
+        """
+        return identity_matrix(ZZ, self.num_edges())
 
     def add_residue_constraints(self, residue_constraints):
         r"""

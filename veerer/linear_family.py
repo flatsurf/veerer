@@ -457,6 +457,61 @@ class LinearFamily:
         """
         return self._subspace.nrows()
 
+    def constraints_matrix(self, mutable=None):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation
+            sage: vt = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
+            sage: vt.as_linear_family().constraints_matrix()
+            [-1  1 -1]
+        """
+        return self._subspace.right_kernel_matrix()
+
+    def generators_matrix(self, mutable=None):
+        if not self._mutable and not mutable:
+            return self._subspace
+        else:
+            subspace = self._subspace.__copy__()
+            if not mutable:
+                subspace.set_immutable()
+            return subspace
+
+    def residue_constraints(self):
+        r"""
+        Return the linear constraints on residues.
+
+        EXAMPLES::
+
+            sage: from veerer import StrebelGraph, VeeringTriangulation
+
+            sage: G = StrebelGraph("(0,2,~3,~1)(1)(3,~0)(~2)")
+            sage: G.as_linear_family().residue_constraints().echelon_form()
+            [1 1 1 1]
+
+            sage: F = G.add_residue_constraints([[1, 2, 0, 0]])
+            sage: F.residue_constraints().echelon_form()
+            [ 1  0  2  2]
+            [ 0  1 -1 -1]
+
+            sage: V = VeeringTriangulation("(0,5,~4)(2,6,~5)(3,~0,7)(4,~3,~1)", boundary="(1:1)(~7:1)(~6:1)(~2:1)", colouring="RRRBBBBR")
+
+            sage: V.as_linear_family().residue_constraints().echelon_form()
+            [1 1 1 1]
+
+            sage: F = V.add_residue_constraints([[1, 2, 0, 0]])
+            sage: F.residue_constraints().echelon_form()
+            [ 1  0  2  2]
+            [ 0  1 -1 -1]
+        """
+        # We want vectors that are linear combinations of self.residue_matrix()
+        # and self.constraints_matrix().
+        residue_matrix = self.residue_matrix()
+        intersection = residue_matrix.row_module().intersection(self.constraints_matrix().row_module()).matrix()
+        nr = intersection.nrows() + residue_matrix.nrows() - residue_matrix.rank()
+        nc = self.num_boundary_faces()
+        return matrix(self.base_ring(), nr,  nc, [residue_matrix.solve_left(v) for v in intersection.rows()] + residue_matrix.left_kernel_matrix().rows())
+
     def relabel(self, p, check=True):
         r"""
         Relabel inplace the veering triangulation linear family according to the permutation ``p``.
@@ -558,17 +613,6 @@ class VeeringTriangulationLinearFamily(LinearFamily, VeeringTriangulation):
             True
         """
         return VeeringTriangulation.copy(self, mutable, cls=VeeringTriangulation)
-
-    def constraints_matrix(self):
-        r"""
-        EXAMPLES::
-
-            sage: from veerer import VeeringTriangulation
-            sage: vt = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
-            sage: vt.as_linear_family().constraints_matrix()
-            [-1  1 -1]
-        """
-        return self._subspace.right_kernel_matrix()
 
     def _horizontal_subspace(self):
         mat = copy(self._subspace)
