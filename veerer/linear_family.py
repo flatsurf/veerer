@@ -315,7 +315,7 @@ class LinearFamily:
         if not self._mutable:
             self._subspace.set_immutable()
 
-    def copy(self, mutable=None):
+    def copy(self, mutable=None, cls=None):
         r"""
         Return a copy of this linear family.
 
@@ -337,9 +337,15 @@ class LinearFamily:
         if mutable is None:
             mutable = self._mutable
 
-        if not self._mutable and not mutable:
+        if cls is None:
+            cls = self.__class__
+
+        if cls is self.__class__ and (not self._mutable and not mutable):
             # avoid copies of immutable objects
             return self
+
+        if cls is not self.__class__:
+            return super().copy(mutable, cls)
 
         L = self._constellation_class.copy(self, mutable=True, cls=self.__class__)
         L._constellation_class = self._constellation_class
@@ -459,16 +465,39 @@ class LinearFamily:
 
     def constraints_matrix(self, mutable=None):
         r"""
+        Return a basis of constraints on x-coordinates as a matrix.
+
         EXAMPLES::
 
-            sage: from veerer import VeeringTriangulation
+            sage: from veerer import VeeringTriangulation, StrebelGraph
             sage: vt = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
-            sage: vt.as_linear_family().constraints_matrix()
-            [-1  1 -1]
+            sage: vt.as_linear_family().constraints_matrix().echelon_form()
+            [ 1 -1  1]
+
+            sage: F = StrebelGraph("(0,2,~3,~1)(1)(3,~0)(~2)").add_residue_constraints([[1, 2, 0, 0]])
+            sage: F.constraints_matrix().echelon_form()
+            [ 1 -1  1  1]
         """
         return self._subspace.right_kernel_matrix()
 
     def generators_matrix(self, mutable=None):
+        r"""
+        Return a basis of generators of x-coordinates as a matrix.
+
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation, StrebelGraph
+            sage: vt = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
+            sage: vt.as_linear_family().generators_matrix().echelon_form()
+            [ 1  0 -1]
+            [ 0  1  1]
+
+            sage: F = StrebelGraph("(0,2,~3,~1)(1)(3,~0)(~2)").add_residue_constraints([[1, 2, 0, 0]])
+            sage: F.generators_matrix().echelon_form()
+            [ 1  0  0 -1]
+            [ 0  1  0  1]
+            [ 0  0  1 -1]
+        """
         if not self._mutable and not mutable:
             return self._subspace
         else:
@@ -479,7 +508,12 @@ class LinearFamily:
 
     def residue_constraints(self):
         r"""
-        Return the linear constraints on residues.
+        Return a basis of residue constraints.
+
+        If the family is not made of Abelian differentials, a ``ValueError`` is raised.
+
+        For meromorphic differentials, the space of residue constraints is at
+        least one-dimensional since the sum of residues is zero.
 
         EXAMPLES::
 
@@ -503,6 +537,14 @@ class LinearFamily:
             sage: F.residue_constraints().echelon_form()
             [ 1  0  2  2]
             [ 0  1 -1 -1]
+
+        For holomorphic differentials, there is no residue constraint::
+
+            sage: fp = "(0,1,2)(~0,~4,~2)(3,4,5)(~3,~1,~5)"
+            sage: cols = "BRRBRR"
+            sage: f = VeeringTriangulation(fp, cols).as_linear_family(mutable=True)
+            sage: f.residue_constraints()
+            []
         """
         # We want vectors that are linear combinations of self.residue_matrix()
         # and self.constraints_matrix().
@@ -512,9 +554,14 @@ class LinearFamily:
         nc = self.num_boundary_faces()
         return matrix(self.base_ring(), nr,  nc, [residue_matrix.solve_left(v) for v in intersection.rows()] + residue_matrix.left_kernel_matrix().rows())
 
+    def stratum(self):
+        return self.copy(self, cls=self._constellation_class).stratum()
+
     def relabel(self, p, check=True):
         r"""
         Relabel inplace the veering triangulation linear family according to the permutation ``p``.
+
+        EXAMPLES:
 
         Relabelling the subspace as well::
 
@@ -550,6 +597,9 @@ class LinearFamily:
         self._check()
 
     def best_relabelling(self, all=False):
+        r"""
+        Return the smallest relabelling of this linear family.
+        """
         n = self.num_half_edges()
         m = self.num_edges()
 
@@ -592,6 +642,47 @@ class LinearFamily:
         if not mutable and not self._mutable:
             return self
         return self.copy(mutable)
+
+    def abelian_cover(self, mutable=False):
+        r"""
+        Return the Abelian double cover.
+
+        EXAMPLES::
+
+            sage: from veerer.linear_family import VeeringTriangulationLinearFamilies, StrebelGraphLinearFamily
+
+            sage: X9 = VeeringTriangulationLinearFamilies.prototype_H1_1(0, 2, 1, -1)
+            sage: Y9 = X9.abelian_cover()
+            sage: Y9.dimension() == X9.dimension()
+            True
+            sage: Y9.stratum()  # optional - surface_dynamics
+            H_2(1^2)
+
+            sage: F = StrebelGraphLinearFamily("(0,1:1,~0,~1:1)", [[2, 1]])
+            sage: Fab = F.abelian_cover()
+            sage: Fab
+            StrebelGraphLinearFamily("(0,~2:1,~0,2:1)(1:1,3,~1:1,~3)", [(2, 1, 1, 2)])
+            sage: print(F.stratum(), Fab.stratum())  # optional - surface_dynamics
+            H_1(2, -2) (H_1(2, -2), H_1(2, -2))
+        """
+        t = self._constellation_class.abelian_cover(self)
+        assert t._n == 2 * self._n
+        assert t.num_edges() == 2 * self.num_edges() - self.num_folded_edges() == self._n
+        nr = self._subspace.nrows()
+        subspace = self._subspace.new_matrix(nr, self._n)
+        for i in range(self._subspace.nrows()):
+            for e in range(self._n):
+                if self._ep[e] < e:
+                    subspace[i, e] = self._subspace[i, self._ep[e]]
+                else:
+                    subspace[i, e] = self._subspace[i, e]
+        f = self.__class__.from_permutations(t._vp, t._ep, t._fp, t._data, mutable=True, check=False)
+        f._constellation_class_init()
+        f._subspace = subspace
+        if not mutable:
+            f.set_immutable()
+        f._check()
+        return f
 
 
 class VeeringTriangulationLinearFamily(LinearFamily, VeeringTriangulation):
@@ -642,9 +733,6 @@ class VeeringTriangulationLinearFamily(LinearFamily, VeeringTriangulation):
             return subspace
         else:
             raise ValueError
-
-    def conjugate(self):
-        raise NotImplementedError
 
     def rotate(self):
         r"""
@@ -928,36 +1016,6 @@ class VeeringTriangulationLinearFamily(LinearFamily, VeeringTriangulation):
         subspace = self.generators_matrix(slope).matrix_from_columns(indices)
         return StrebelGraphLinearFamily(G, subspace, mutable=mutable)
 
-    def abelian_cover(self, mutable=False):
-        r"""
-        EXAMPLES::
-
-            sage: from veerer.linear_family import VeeringTriangulationLinearFamilies
-            sage: X9 = VeeringTriangulationLinearFamilies.prototype_H1_1(0, 2, 1, -1)
-            sage: Y9 = X9.abelian_cover()
-            sage: Y9.dimension() == X9.dimension()
-            True
-            sage: Y9.stratum()
-            H_2(1^2)
-        """
-        vt = VeeringTriangulation.abelian_cover(self)
-        assert vt._n == 2 * self._n
-        assert vt.num_edges() == 2 * self.num_edges() - self.num_folded_edges() == self._n
-        nr = self._subspace.nrows()
-        subspace = self._subspace.new_matrix(nr, self._n)
-        for i in range(self._subspace.nrows()):
-            for e in range(self._n):
-                if self._ep[e] < e:
-                    subspace[i, e] = self._subspace[i, self._ep[e]]
-                else:
-                    subspace[i, e] = self._subspace[i, e]
-        vl = VeeringTriangulationLinearFamily.from_permutations(vt._vp, vt._ep, vt._fp, (vt._bdry, vt._colouring), mutable=True, check=False)
-        vl._constellation_class_init()
-        vl._subspace = subspace
-        if not mutable:
-            vl.set_immutable()
-        vl._check()
-        return vl
 
 
 class StrebelGraphLinearFamily(LinearFamily, StrebelGraph):
@@ -1001,6 +1059,20 @@ class StrebelGraphLinearFamily(LinearFamily, StrebelGraph):
             insert(sum(row[i] * x[i] for i in range(ambient_dim)) == 0)
 
     def cone(self, backend=None):
+        r"""
+        Return the cone of of x-coordinates for this linear family.
+
+        EXAMPLES::
+
+            sage: from veerer import StrebelGraph
+            sage: F = StrebelGraph("(0,2,~3,~1)(1)(3,~0)(~2)").add_residue_constraints([[0, 1, -1, 0], [0, 1, 0, -1]])
+            sage: F.cone(backend='ppl')
+            Cone of dimension 2 in ambient dimension 4 made of 2 facets (backend=ppl)
+            sage: F.cone(backend='sage')
+            Cone of dimension 2 in ambient dimension 4 made of 2 facets (backend=sage)
+            sage: F.cone(backend='normaliz-QQ')  # optional - pynormaliz
+            Cone of dimension 2 in ambient dimension 4 made of 2 facets (backend=normaliz-QQ)
+        """
         from .polyhedron import LinearExpressions, ConstraintSystem
         L = LinearExpressions(self.base_ring())
         ne = self.num_edges()

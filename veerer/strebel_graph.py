@@ -1,3 +1,6 @@
+r"""
+Strebel graphs
+"""
 # ****************************************************************************
 #  This file is part of veerer
 #
@@ -213,7 +216,10 @@ class StrebelGraph(Constellation):
 
     A Strebel graph encodes a specific saddle connection configuration
     associated to a meromorphic Abelian or quadratic differential on a Riemann
-    surface.
+    surface. It is encoded as an embedded graph on a surface (ie a triple of
+    permutations ``vp``, ``ep`` and ``fp`` for respectively the vertex, edge
+    and face permutations) together with a half plane excess in each corner (a
+    non-negative integer).
 
     EXAMPLES::
 
@@ -248,6 +254,8 @@ class StrebelGraph(Constellation):
 
     def __str__(self):
         r"""
+        Return the string representation.
+
         EXAMPLES::
 
             sage: from veerer import StrebelGraph
@@ -276,20 +284,20 @@ class StrebelGraph(Constellation):
         ep = self._ep
         vp = self._vp
 
-        # The code attempt to give a coherent holonomy with signs for each half
-        # edge. For that purpose, it is enough to store a boolean for each edge:
-        #   True: +
-        #   False: -
-        # In other words, the half edge is stored with True if its x-coordinate
-        # is positive.
-        #
-        # The propagation of half-edge orientations is done by walking around
-        # vertices
+        if any(e == ep[e] for e in range(self._n)):
+            return (False, None) if certificate else False
+
+        # Try to give a coherent holonomy with signs for each half edge. To
+        # each half edge is associated a boolean
+        #   True: for positive coordinates
+        #   False: for negative coordinates
+        # The half-edge orientations is propagated walking along edges and
+        # vertices.
 
         oris = [None] * self._n  # list of orientations decided so far
         oris[0] = True
         oris[ep[0]] = False
-        q = [0, ep[0]] # queue of half-edges to be treated
+        q = [0, ep[0]]  # queue of half-edges to be treated
 
         while q:
             e = q.pop()
@@ -297,7 +305,7 @@ class StrebelGraph(Constellation):
             assert o is not None
             f = vp[e]
             while True:
-                # propagate the orientation from e
+                # propagate orientation
                 if self._excess[e] % 2 == 0:
                     o = not o
 
@@ -322,7 +330,22 @@ class StrebelGraph(Constellation):
         EXAMPLES::
 
             sage: from veerer import StrebelGraph
+            sage: StrebelGraph("(0,1,2)(~0,~1:1,~2:2)").stratum()  # optional - surface_dynamics
+            Q_1(7, -2, -5)
+            sage: StrebelGraph("(0,1)").stratum()  # optional - surface_dynamics
+            Q_0(0, -1^2, -2)
+
+        A non-connected example::
+
+            sage: StrebelGraph("(0,~2:1,~0,2:1)(1:1,3,~1:1,~3)").stratum()  # optional - surface_dynamics
+            (H_1(2, -2), H_1(2, -2))
         """
+        if not self.is_connected():
+            return tuple(component.stratum() for component in self.connected_components_subgraphs())
+
+        # folded edges
+        num_folded_edges = self.num_folded_edges()
+
         # degrees of holomorphic part
         hol = [len(v) - 2 + sum(self._excess[i] for i in v) for v in self.vertices()]
 
@@ -330,7 +353,7 @@ class StrebelGraph(Constellation):
         mer = [-2 - sum(self._excess[i] for i in f) for f in self.faces()]
 
         # Determine whether it is Abelian (k=1) or quadratic (k=2) stratum
-        if any(x % 2 for x in hol) or any(x % 2 for x in mer) or not self.is_abelian():
+        if num_folded_edges or any(x % 2 for x in hol) or any(x % 2 for x in mer) or not self.is_abelian():
             k  = 2
         else:
             hol = [x // 2 for x in hol]
@@ -338,18 +361,14 @@ class StrebelGraph(Constellation):
             k = 1
 
         from surface_dynamics import Stratum
-        return Stratum(hol + mer, k)
+        return Stratum(hol + [-1] * num_folded_edges + mer, k)
 
-    # TODO: deprecate
     @staticmethod
     def from_face_edge_perms(vp, ep, fp=None, boundary=None, mutable=False, check=True):
         r"""
-        INPUT:
+        Deprecated methods.
 
-        - ``fp``, ``ep``, ``vp`` -- the face, edge and vertex permutation
-
-        - ``check`` - boolean (default: ``True``) - if set to ``False`` no
-          check are performed
+        Use the classmethod ``Constellation.from_permutations`` instead.
 
         EXAMPLES::
 
@@ -435,6 +454,10 @@ class StrebelGraph(Constellation):
         r"""
         Return the angle excess of the corners of the associated colouring.
 
+        This function is mostly intended to be a technical steps in
+        constructing the veering triangulations associated to a Strebel graph.
+        See :meth:`veering_triangulations`.
+
         EXAMPLES::
 
             sage: from veerer import StrebelGraph
@@ -472,6 +495,17 @@ class StrebelGraph(Constellation):
         Run through the red, blue colourings of this Strebel graph.
 
         Each colouring consists of an array of length the number of half-edges.
+
+        EXAMPLES::
+
+            sage: from veerer import StrebelGraph
+            sage: G = StrebelGraph("(0,1,2)(~0,~1:1,~2:2)")
+            sage: list(G.colourings())
+            [array('i', [1, 1, 1, 1, 1, 1]),
+             array('i', [1, 1, 2, 2, 1, 1]),
+             ...
+             array('i', [2, 2, 1, 1, 2, 2]),
+             array('i', [2, 2, 2, 2, 2, 2])]
         """
         n = self._n
         m = n // 2
@@ -488,6 +522,8 @@ class StrebelGraph(Constellation):
 
     def cone(self, backend=None):
         r"""
+        Return the cone of x-coordinates for this Strebel graph.
+
         EXAMPLES::
 
             sage: from veerer import StrebelGraph, VERTICAL, HORIZONTAL
@@ -588,7 +624,8 @@ class StrebelGraph(Constellation):
 
     def delaunay_triangulations(self, colouring, slope=VERTICAL, mutable=False, backend=None):
         r"""
-        Run through the Delaunay Strebel-veering triangulations
+        Run through the Delaunay Strebel-veering triangulations obtained by completing
+        this Strebel graph given the ``colouring`` of its edges.
 
         EXAMPLES::
 
@@ -689,19 +726,30 @@ class StrebelGraph(Constellation):
 
         return r
 
-    def constraints_matrix(self):
+    def constraints_matrix(self, mutable=None):
         r"""
+        Return a basis of constraints on x-coordinates as a matrix.
+
+        As there is no constraints for a Strebel graph, the answer has no row.
+
         EXAMPLES::
 
             sage: from veerer import StrebelGraph
             sage: G = StrebelGraph("(0)(~0)")
             sage: G.constraints_matrix()
             []
+            sage: G.constraints_matrix().ncols()
+            1
         """
         return matrix(ZZ, 0, self.num_edges())
 
-    def generators_matrix(self):
+    def generators_matrix(self, mutable=None):
         r"""
+        Return a basis of generators of x-coordinates as a matrix.
+
+        As for a Strebel graph there is no constraints on coordinates, the
+        answer is always the identity matrix.
+
         EXAMPLES::
 
             sage: from veerer import StrebelGraph

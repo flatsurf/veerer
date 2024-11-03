@@ -837,6 +837,20 @@ class Constellation:
             data.append(array('i', [l[e] for e in half_edges]))
         return self.__class__.from_permutations(vp, ep, None, data, mutable=mutable, check=True)
 
+    def connected_components_subgraphs(self, mutable=False):
+        r"""
+        Run through the connected components as graphs.
+
+        EXAMPLES::
+
+            sage: from veerer import Triangulation
+            sage: T = Triangulation("(0,1,3)(~0,~1,~3)(2,4,5)(~2,~4,~5)")
+            sage: list(T.connected_components_subgraphs())
+             [Triangulation("(0,1,2)(~2,~0,~1)"), Triangulation("(0,1,2)(~2,~0,~1)")]
+        """
+        for comp in self.connected_components():
+            yield self.subgraph(comp)
+
     def swap(self, e, check=True):
         r"""
         Change the orientation of the edge ``e``.

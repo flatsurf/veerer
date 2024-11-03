@@ -1150,9 +1150,15 @@ class VeeringTriangulation(Triangulation):
             sage: t = Triangulation("(0,1,2)(3,~0,~1)", "(~3:2,~2:2)")
             sage: VeeringTriangulation(t, "RBRR").stratum()  # optional - surface_dynamics
             H_1(2, -2)
+
+        A non-connected example::
+
+            sage: vt = VeeringTriangulation("(0,~6,~5)(1,2,~7)(3,~0,6)(7,~1,~4)", boundary="(4:2,~2:2)(5:2,~3:2)", colouring="RBRRRRBR")
+            sage: vt.stratum()
+            (H_1(2, -2), H_1(2, -2))
         """
         if not self.is_connected():
-            return tuple(component.stratum() for component in self.connected_components())
+            return tuple(component.stratum() for component in self.connected_components_subgraphs())
 
         from .features import surface_dynamics_feature
         surface_dynamics_feature.require()
