@@ -1073,9 +1073,9 @@ class VeeringTriangulation(Triangulation):
         And also with boundaries::
 
             sage: V = VeeringTriangulation("", boundary="(0:1,2:1,~0:1,~1:1)(1:1)(~2:1)", colouring="RRR")
-            sage: V.stratum()
+            sage: V.stratum()  # optional - surface_dynamics
             Q_0(1^2, -2^3)
-            sage: V.abelian_cover().stratum()
+            sage: V.abelian_cover().stratum()  # optional - surface_dynamics
             H_0(2^2, -1^6)
         """
         # As in the method is_abelian we propagate the orientation of half-edges around
@@ -1154,7 +1154,7 @@ class VeeringTriangulation(Triangulation):
         A non-connected example::
 
             sage: vt = VeeringTriangulation("(0,~6,~5)(1,2,~7)(3,~0,6)(7,~1,~4)", boundary="(4:2,~2:2)(5:2,~3:2)", colouring="RBRRRRBR")
-            sage: vt.stratum()
+            sage: vt.stratum()  # optional - surface_dynamics
             (H_1(2, -2), H_1(2, -2))
         """
         if not self.is_connected():
