@@ -1490,6 +1490,18 @@ class DelaunayStrebelAutomaton(Automaton):
         StrebelGraph("(0:2,2,~1)(1,~0)(~2)")
         Delaunay-Strebel automaton with 126 vertices
         6 6 114
+
+    An example with linear constraints::
+
+        sage: G = StrebelGraph("(0,2,~3,~1)(1)(3,~0)(~2)")
+        sage: F = G.add_residue_constraints([[1, 1, 1, 0]])
+        sage: A = DelaunayStrebelAutomaton(backward=True)
+        sage: A.add_seed(F)
+        1
+        sage: A.run()
+        0
+        sage: A
+        Delaunay-Strebel automaton with 250 vertices
     """
     _name = 'Delaunay-Strebel'
 

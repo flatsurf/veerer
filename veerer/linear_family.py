@@ -916,6 +916,12 @@ class VeeringTriangulationLinearFamily(LinearFamily, VeeringTriangulation):
             VeeringTriangulationLinearFamily("(1,4,~2)(2,~6,~3)(3,~5,~4)", boundary="(0:1)(5:1)(6:1)(~1:1,~0:1)", colouring="BBRRBBB", [(1, 2, 0, -1, 2, 1, 1), (0, 0, 1, 1, -1, 0, 0)])
             sage: F.strebel_graph()
             StrebelGraphLinearFamily("(0)(1,~2)(2,~3,~1,~0)(3)", [(1, 0, 1, 1), (0, 1, -1, 0)])
+
+            sage: vt = VeeringTriangulation("(0,5,~4)(2,6,~5)(3,~0,7)(4,~3,~1)", boundary="(1:1)(~7:1)(~6:1)(~2:1)", colouring="RRRBBBBB")
+            sage: f1 = vt.add_residue_constraints([[1, 1, 1, 0]])
+            sage: f1.strebel_graph().residue_constraints().echelon_form()
+            [1 1 1 0]
+            [0 0 0 1]
         """
         indices = [e for e in range(self._n // 2) if self.is_half_edge_strebel(e, slope) and self.is_half_edge_strebel(self._ep[e], slope)]
         G = VeeringTriangulation.strebel_graph(self, slope, mutable=False)
