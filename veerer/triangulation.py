@@ -259,12 +259,10 @@ class Triangulation(Constellation):
         ...
         ValueError: immutable triangulation; use a mutable copy instead
 
-    The surface must be connected::
+    Non-connected surfaces are allowed::
 
         sage: Triangulation("(0,1,2)(3,4,5)")
-        Traceback (most recent call last):
-        ...
-        ValueError: (fp, ep, vp) do not generate a transitive group
+        Triangulation("(0,1,2)(3,4,5)")
 
     Examples with boundaries::
 
