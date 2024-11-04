@@ -4367,19 +4367,15 @@ class VeeringTriangulation(Triangulation):
 
             sage: from veerer import VeeringTriangulation
 
-            sage: fp = "(0,2,1)(~0,3,~1)"
-            sage: bdry = "(~2:2,~3:2)"
-            sage: cols = "BRRR"
-            sage: VeeringTriangulation(fp, bdry, cols).strebel_edges()
-
-        An example with folded edges::
-
             sage: VeeringTriangulation("", boundary="(0:1,1:1,2:1,3:1)", colouring="RRRR").strebel_edges()
+            [0, 1, 2, 3]
+            sage: VeeringTriangulation("", boundary="(0:1,1:1,2:1)(~0:1)", colouring="RRR").strebel_edges()
             [0, 1, 2, 3]
         """
         n = self._n
         ep = self._ep
         dim = VeeringTriangulation.dimension(self)
+        m = 2 * dim - self.num_folded_edges() # number of half-edges
 
         index_strebel = [-1] * n
         j = k = 0
@@ -4392,11 +4388,8 @@ class VeeringTriangulation(Triangulation):
             if e < ep[e]:
                 if self.is_half_edge_strebel(e, slope=slope) and self.is_half_edge_strebel(E, slope=slope):
                     index_strebel[e] = j + k
-                    index_strebel[E] = 2 * dim - j - 1
+                    index_strebel[E] = m - j - 1
                     j += 1
-
-        if j + k != dim:
-            raise RuntimeError('not as many half-edges as expected; j = {} k = {} dim = {} index_strebel = {}'.format(j, k, dim, index_strebel))
 
         return index_strebel
 
@@ -4457,12 +4450,17 @@ class VeeringTriangulation(Triangulation):
             sage: sg = vt.strebel_graph()
             sage: assert vt.stratum() == sg.stratum() == Stratum((2, 0, 0, 0, 0, 0, 0, -4), 1) # optional - surface_dynamics
 
-        Example with folded edges::
+        Examples with folded edges::
 
             sage: VeeringTriangulation("", boundary="(0:1,1:1,2:1,3:1)", colouring="RRRR").strebel_graph()
             StrebelGraph("(0,1,2,3)")
             sage: VeeringTriangulation("(0,1,4)(2,3,5)", boundary="(~5:1,~4:1)", colouring="BRBRBB").strebel_graph()
             StrebelGraph("(0,1,2,3)")
+
+            sage: G = StrebelGraph("(0,1,2)(~0)")
+            sage: for cols in G.colourings():
+            ....:     for vt in G.veering_triangulations(cols):
+            ....:         assert vt.is_strebel() and vt.strebel_graph() == G
         """
         if not self.is_strebel(slope=slope):
             raise ValueError('triangulation is not Strebel')
