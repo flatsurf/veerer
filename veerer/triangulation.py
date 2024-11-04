@@ -127,6 +127,28 @@ def face_edge_perms_init(faces):
 
 
 def boundary_init(fp, ep, boundary):
+    r"""
+    Initialize boundary data given face and edge permutation.
+
+    EXAMPLES:
+
+    A test with folded edges::
+
+        sage: from array import array
+        sage: from veerer.triangulation import boundary_init
+        sage: fp = array('i', [1, 2, 0, 4, 3])
+        sage: ep = array('i', [0, 4, 3, 2, 1])
+        sage: boundary_init(fp, ep, {0: 1})
+        array('i', [1, 0, 0, 0, 0])
+        sage: boundary_init(fp, ep, {1: 1})
+        array('i', [0, 1, 0, 0, 0])
+        sage: boundary_init(fp, ep, {2: 1})
+        array('i', [0, 0, 1, 0, 0])
+        sage: boundary_init(fp, ep, {-2: 1})
+        array('i', [0, 0, 0, 0, 1])
+        sage: boundary_init(fp, ep, {-3: 1})
+        array('i', [0, 0, 0, 1, 0])
+    """
     n = len(ep)
 
     if boundary is None:
@@ -136,6 +158,16 @@ def boundary_init(fp, ep, boundary):
             raise ValueError('invalid input argument')
         return array('i', boundary)
     elif isinstance(boundary, dict):
+        edge_to_half_edge = {}
+        for j, c in enumerate(perm_cycles(ep, n)):
+            if len(c) == 1:
+                edge_to_half_edge[j] = c[0]
+            elif len(c) == 2:
+                edge_to_half_edge[j] = c[0]
+                edge_to_half_edge[~j] = c[1]
+            else:
+                raise ValueError
+
         output = array('i', [0] * n)
         for e, v in boundary.items():
             if isinstance(e, str):
@@ -149,7 +181,7 @@ def boundary_init(fp, ep, boundary):
                 e = int(e)
             if e > n:
                 raise ValueError('keys must be valid edges, got {!r}'.format(e))
-            output[e] = v
+            output[edge_to_half_edge[e]] = v
         return output
     else:
         raise TypeError('invalid boundary data')
@@ -273,12 +305,18 @@ class Triangulation(Constellation):
         sage: Triangulation("(0,1,2)(~0,~1,~2)", boundary={"~0": 0})
         Triangulation("(0,1,2)(~2,~0,~1)")
 
+    Example with boundary and folded edges::
+
+        sage: Triangulation("(0,1,2)", boundary="(~1:1,~2:1)")
+        Triangulation("(0,1,2)", boundary="(~2:1,~1:1)")
+
     Examples with invalid boundaries::
 
         sage: Triangulation("(0,1,2)(~0,~1,~2)", boundary={"~0": 1, "~1": 1, "~2": 0})
         Traceback (most recent call last):
         ...
         ValueError: invalid boundary data
+
     """
     __slots__ = ['_bdry']
 
