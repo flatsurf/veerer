@@ -243,10 +243,11 @@ class TriangulationCover(object):
         """
         if mutable is None:
             mutable = self._t._mutable
-        return Triangulation.from_face_edge_perms(
-                fp=self.face_permutation(),
-                ep=self.edge_permutation(),
-                vp=self.vertex_permutation(),
+        return Triangulation.from_permutations(
+                self.vertex_permutation(),
+                self.edge_permutation(),
+                self.face_permutation(),
+                (array('i', [0] * (self._d * self._t._n)),),
                 mutable=mutable)
 
     def num_folded_edges(self):

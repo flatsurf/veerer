@@ -19,7 +19,7 @@
 
 import pytest
 
-from veerer import VeeringTriangulation, CoreAutomaton, ReducedCoreAutomaton, GeometricAutomaton
+from veerer import VeeringTriangulation, CoreAutomaton, ReducedCoreAutomaton, DelaunayAutomaton
 
 @pytest.mark.parametrize("fp, cols",
 [("(0,2,~1)(1,~0,~2)", "RBB"),
@@ -30,10 +30,15 @@ from veerer import VeeringTriangulation, CoreAutomaton, ReducedCoreAutomaton, Ge
  ("(0,~9,8)(1,10,~2)(2,~6,~3)(3,5,~4)(4,9,~5)(6,11,~7)(7,~10,~8)(~11,~1,~0)", "RBBBBRRBBBRB")])
 def test_automata(fp, cols):
     V = VeeringTriangulation(fp, cols)
-    assert V.is_geometric()
-    C = CoreAutomaton(V)
+    assert V.is_delaunay()
+    C = CoreAutomaton()
+    C.add_seed(V)
+    C.run()
 
-    R = ReducedCoreAutomaton(V)
+    R = ReducedCoreAutomaton()
+    R.add_seed(V)
+    R.run()
+
     assert len(R) <= len(C)
     reduced = set()
     for x in C:
@@ -44,6 +49,9 @@ def test_automata(fp, cols):
         reduced.add(x)
     assert set(R) == reduced
 
-    G = GeometricAutomaton(V)
+    G = DelaunayAutomaton()
+    G.add_seed(V)
+    G.run()
+
     assert len(G) <= len(C)
-    assert set(G) == set(x for x in C if x.is_geometric())
+    assert set(G) == set(x for x in C if x.is_delaunay())

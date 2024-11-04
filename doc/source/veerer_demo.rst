@@ -212,7 +212,7 @@ Core vs not core
 
     sage: FS = S.flat_structure_min()
     sage: FS.plot()
-    Graphics object consisting of 37 graphics primitives
+    Graphics object consisting of ... graphics primitives
 
 ::
 
@@ -247,7 +247,7 @@ some flat structure
 ::
 
     sage: # triangulation of some flat structure
-    sage: T0.is_geometric()
+    sage: T0.is_delaunay()
     True
 
 The geometric polytope that parametrizes the geometric vectors is a sub-polytope
@@ -255,9 +255,9 @@ of the product of the two train-track polytopes.
 
 ::
 
-    sage: print(T1.is_geometric())
+    sage: print(T1.is_delaunay())
     True
-    sage: print(T1.geometric_polytope())
+    sage: print(T1.delaunay_cone())
     Cone of dimension 8 in ambient dimension 18 made of 13 facets (backend=ppl)
 
 Core automaton
@@ -272,7 +272,11 @@ from `T_i` by a flip.
 
     sage: # T0 was the torus example
     sage: from veerer import CoreAutomaton
-    sage: A0 = CoreAutomaton(T0)
+    sage: A0 = CoreAutomaton()
+    sage: A0.add_seed(T0)
+    1
+    sage: A0.run()
+    0
     sage: A0
     Core veering automaton with 2 vertices
 
@@ -280,7 +284,7 @@ from `T_i` by a flip.
 
     sage: print(A0.num_states(), A0.num_transitions())
     2 4
-    sage: print(sum(vt.is_geometric() for vt in A0))
+    sage: print(sum(vt.is_delaunay() for vt in A0))
     2
     sage: print(sum(vt.is_cylindrical() for vt in A0))
     2
@@ -288,13 +292,17 @@ from `T_i` by a flip.
 ::
 
     sage: # T1 was the genus 2 example in H(2)
-    sage: A1 = CoreAutomaton(T1)
+    sage: A1 = CoreAutomaton()
+    sage: A1.add_seed(T1)
+    1
+    sage: A1.run()
+    0
 
 ::
 
     sage: print(A1.num_states(), A1.num_transitions())
     86 300
-    sage: print(sum(vt.is_geometric() for vt in A1))
+    sage: print(sum(vt.is_delaunay() for vt in A1))
     54
     sage: print(sum(vt.is_cylindrical() for vt in A1))
     24
@@ -302,10 +310,14 @@ from `T_i` by a flip.
 ::
 
     sage: # T2 was the genus 1 example in Q(1^2, -1^2)
-    sage: A2 = CoreAutomaton(T2)
+    sage: A2 = CoreAutomaton()
+    sage: A2.add_seed(T2)
+    1
+    sage: A2.run()
+    0
     sage: print(A2.num_states(), A2.num_transitions())
     1074 3620
-    sage: print(sum(vt.is_geometric() for vt in A2))
+    sage: print(sum(vt.is_delaunay() for vt in A2))
     270
     sage: print(sum(vt.is_cylindrical() for vt in A2))
     196
@@ -343,12 +355,16 @@ filtering cylindrical (single test is cheap) ~2 sec for H(4)^hyp
 
 ::
 
-    sage: H = Stratum([4], 1).hyperelliptic_component()  # optional - surface_dynamics
-    sage: V = VeeringTriangulation.from_stratum(H)         # optional - surface_dynamics
-    sage: AV = CoreAutomaton(V)                          # long time - ~21 secs # optional - surface_dynamics
+    sage: H = Stratum([4], 1).hyperelliptic_component()   # optional - surface_dynamics
+    sage: V = VeeringTriangulation.from_stratum(H)        # optional - surface_dynamics
+    sage: AV = CoreAutomaton()
+    sage: AV.add_seed(V)                                 # optional - surface_dynamics
+    1
+    sage: AV.run()                                       # long time - ~21 secs # optional - surface_dynamics
+    0
     sage: print(AV.num_states())                         # long time - ~150 µs # optional - surface_dynamics
     9116
-    sage: sum(v.is_geometric() for v in AV)              # long time - ~21 secs # optional - surface_dynamics
+    sage: sum(v.is_delaunay() for v in AV)               # long time - ~21 secs # optional - surface_dynamics
     2916
     sage: sum(v.is_cylindrical() for v in AV)            # long time - ~1.5 secs # optional - surface_dynamics
     636

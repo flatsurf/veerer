@@ -167,6 +167,17 @@ class Cone_ppl(Cone):
     def _new(base_ring, ieqs, eqns):
         raise TypeError('do not use Cone_ppl._new')
 
+    @staticmethod
+    def vector_space(dim=None):
+        import ppl
+        if dim is None:
+            dim = 0
+        gs = ppl.Generator_System()
+        gs.insert(ppl.point())
+        for i in range(dim):
+            gs.insert(ppl.line(ppl.Variable(i)))
+        return Cone_ppl(ZZ, ppl.C_Polyhedron(gs))
+
     def __hash__(self):
         ieqs, eqns = self.ieqs_eqns()
         ieqs.sort()
@@ -247,6 +258,15 @@ class Cone_sage(Cone):
         from sage.geometry.polyhedron.constructor import Polyhedron
         P = Polyhedron(ieqs=ieqs, eqns=eqns)
         return Cone_sage(P.base_ring(), P)
+
+    @staticmethod
+    def vector_space(dim=None):
+        if dim is None:
+            dim = 0
+        from sage.geometry.polyhedron.constructor import Polyhedron
+        V = ZZ**dim
+        P = Polyhedron(vertices=[V.zero()], lines=((ZZ**dim).basis()))
+        return Cone_sage(ZZ, P)
 
     def __hash__(self):
         return hash(self._cone)
@@ -345,6 +365,16 @@ class Cone_normalizQQ(Cone_normaliz):
         from PyNormaliz import NmzCone
         return Cone_normalizQQ(QQ, NmzCone(inequalities=ieqs, equations=eqns))
 
+    @staticmethod
+    def vector_space(dim=None):
+        if dim is None:
+            dim = 0
+        basis = [[0] * dim for _ in range(dim)]
+        for i in range(dim):
+            basis[i][i] = 1
+        from PyNormaliz import NmzCone
+        return Cone_normalizQQ(QQ, NmzCone(subspace=basis))
+
     def add_constraints(self, cs):
         ieqs = self._nmz_result_raw("SupportHyperplanes")
         eqns = self._nmz_result_raw("Equations")
@@ -367,6 +397,21 @@ class Cone_normalizNF(Cone_normaliz):
         ans = Cone_normalizNF(base_ring, NmzCone(number_field=nf_data, inequalities=ieqs, equations=eqns))
         ans._nf_data = nf_data
         return ans
+
+    @staticmethod
+    def vector_space(dim=None):
+        if dim is None:
+            dim = 0
+        basis = [[0] * dim for _ in range(dim)]
+        for i in range(dim):
+            basis[i][i] = 1
+        from PyNormaliz import NmzCone
+        base_ring = embedded_nf([x for l in (ieqs + eqns) for x in l])
+        nf_data = nmz_number_field_data(base_ring)
+        ans = Cone_normalizNF(base_ring, NmzCone(number_field=nf_data, subspace=basis))
+        ans._nf_data = nf_data
+        return ans
+
 
     def add_constraints(self, cs):
         from PyNormaliz import NmzCone

@@ -40,6 +40,7 @@ from sage.categories.number_fields import NumberFields
 from .constants import VERTICAL, HORIZONTAL, BLUE, RED
 from .permutation import perm_cycle_string, perm_cycles, perm_check, perm_conjugate, perm_on_list
 from .polyhedron import LinearExpressions, ConstraintSystem
+from .strebel_graph import StrebelGraph
 from .veering_triangulation import VeeringTriangulation
 
 cm = get_coercion_model()
@@ -183,21 +184,21 @@ def matrix_permutation(mat, perm):
             mat.swap_columns(c[0], c[i])
 
 
-class VeeringTriangulationLinearFamily(VeeringTriangulation):
+class LinearFamily:
     r"""
-    Veering triangulation together with a subspace of H^1(S, Sigma; \bR) that
-    describes a (piece of a) linear GL(2,R)-invariant immersed sub-orbifold.
-    """
-    __slots__ = ['_subspace']
+    Abstract class to handle linear coordinates on either veering triangulation
+    or Strebel graph.
 
+    The subspace is given by generators.
+    """
     def __init__(self, *args, mutable=False, check=True):
-        if len(args) == 2:
-            vt, subspace = args
-            t = vt
-            colouring = vt._colouring
-        elif len(args) == 3:
-            t, colouring, subspace = args
-        VeeringTriangulation.__init__(self, t, colouring, mutable=mutable, check=False)
+        self._constellation_class_init()
+
+        if len(args) < 2:
+            raise ValueError('require at least two arguments')
+        constellation_args = args[:-1]
+        subspace = args[-1]
+        self._constellation_class.__init__(self, *constellation_args, mutable=mutable, check=False)
 
         if not isinstance(subspace, Matrix):
             subspace = matrix(subspace)
@@ -210,12 +211,45 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
         if check:
             self._check(ValueError)
 
+    def _constellation_class_init(self):
+        bases = self.__class__.__bases__
+        if len(bases) != 2 or bases[0] != LinearFamily:
+            raise ValueError
+        self._constellation_class = bases[1]
+
+    def _check(self, error=ValueError):
+        self._constellation_class._check(self, error)
+        subspace = self._subspace
+        if subspace.ncols() != self.num_edges():
+            raise error('subspace matrix has wrong dimension')
+        if subspace.rank() != subspace.nrows():
+            raise error('subspace matrix is not of full rank')
+        if subspace != subspace.echelon_form():
+            raise error('subspace not in echelon form')
+        if self._mutable != self._subspace.is_mutable():
+            raise error('incoherent mutability states')
+
+    def __str__(self):
+        r"""
+        Return a string representation.
+
+        TESTS::
+
+            sage: from veerer import *
+            sage: vt = VeeringTriangulation("(0,1,2)(~0,~1,~2)", [RED, RED, BLUE])
+            sage: str(vt.as_linear_family())
+            'VeeringTriangulationLinearFamily("(0,1,2)(~2,~0,~1)", "RRB", [(1, 0, -1), (0, 1, 1)])'
+        """
+        cls_name = self._constellation_class.__name__
+        s = str(self._constellation_class.__str__(self))
+        i = s.find('(')
+        return s[:i] + 'LinearFamily' + s[i:-1] + ', ' + str(self._subspace.rows()) + ')'
+
+    def __repr__(self):
+        return str(self)
+
     def __getstate__(self):
         R = self.base_ring()
-        a = list(self._fp[:])
-        a.extend(self._ep)
-        a.extend(self._colouring)
-        a.append(self._mutable)
         # NOTE: here we know that all entries have the same parent
         if R is ZZ:
             entries = list(map(int, self._subspace.list()))
@@ -233,7 +267,7 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
                 entries.append(int(d))
         else:
             entries = self._subspace.list()
-        return a, R, entries
+        return self._constellation_class.__getstate__(self), R, entries
 
     def __setstate__(self, arg):
         r"""
@@ -256,14 +290,10 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
             sage: assert lf == lf2
             sage: lf2._check()
         """
+        self._constellation_class_init()
         a, R, raw_entries = arg
-        n = (len(a) - 1) // 3
-        self._n = n
-        self._fp = array('i', a[:n])
-        self._ep = array('i', a[n:2*n])
-        self._colouring = array('i', a[2*n:3*n])
-        self._mutable = a[-1]
-        self._vp = array('i', [-1] * n)
+        self._constellation_class.__setstate__(self, a)
+        n = self._n
         for i in range(n):
             self._vp[self._fp[self._ep[i]]] = i
 
@@ -285,162 +315,70 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
         if not self._mutable:
             self._subspace.set_immutable()
 
-    def veering_triangulation(self, mutable=False):
+    def copy(self, mutable=None, cls=None):
         r"""
-        Return the underlying veering triangulation.
-
-        EXAMPLES::
-
-            sage: from veerer import VeeringTriangulation
-            sage: vt = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
-            sage: vt.as_linear_family().veering_triangulation()
-            VeeringTriangulation("(0,1,2)(~2,~0,~1)", "RRB")
-        """
-        return VeeringTriangulation.copy(self, mutable)
-
-    def _horizontal_subspace(self):
-        mat = copy(self._subspace)
-        ne = self.num_edges()
-        ep = self._ep
-        for j in range(ne):
-            if ep[j] < j:
-                raise ValueError('not in standard form')
-            if self._colouring[j] == BLUE:
-                for i in range(mat.nrows()):
-                    mat[i, j] *= -1
-        return mat
-
-    def as_linear_family(self):
-        return self
-
-    def conjugate(self):
-        raise NotImplementedError
-
-    def rotate(self):
-        r"""
-        Conjugate this family.
+        Return a copy of this linear family.
 
         EXAMPLES::
 
             sage: from veerer import *
-
             sage: fp = "(0,1,2)(~0,~4,~2)(3,4,5)(~3,~1,~5)"
             sage: cols = "BRRBRR"
-            sage: f = VeeringTriangulation(fp, cols).as_linear_family(mutable=True)
-            sage: f.rotate()
+            sage: f = VeeringTriangulation(fp, cols).as_linear_family(mutable=False)
             sage: f
-            VeeringTriangulationLinearFamily("(0,1,2)(3,4,5)(~5,~3,~1)(~4,~2,~0)", "RBBRBB", [(1, 0, -1, 0, 0, 0), (0, 1, 1, 0, 1, 1), (0, 0, 0, 1, 0, -1)])
-
-            sage: fp = "(0,12,~11)(1,13,~12)(2,14,~13)(3,15,~14)(4,17,~16)(5,~10,11)(6,~3,~17)(7,~2,~6)(8,~5,~7)(9,~0,~8)(10,~4,~9)(16,~15,~1)"
-            sage: cols = "RRRRRRBBBBBBBBBBBB"
-            sage: f = VeeringTriangulation(fp, cols).as_linear_family(mutable=True)
-            sage: f.rotate()
-            sage: f
-            VeeringTriangulationLinearFamily("(0,12,~11)(1,13,~12)(2,14,~13)(3,15,~14)(4,17,~16)(5,~10,11)(6,~3,~17)(7,~2,~6)(8,~5,~7)(9,~0,~8)(10,~4,~9)(16,~15,~1)", "BBBBBBRRRRRRRRRRRR", [(1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0), (0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 2, 2, 1, 1, 1, 0, 0), (0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0), (0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1), (0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0), (0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)])
-        """
-        if not self._mutable:
-            raise ValueError('immutable veering triangulation family; use a mutable copy instead')
-
-        subspace = self._horizontal_subspace()
-        subspace.echelonize()
-        VeeringTriangulation.rotate(self)
-        self._subspace = subspace
-
-        # TODO: remove check
-        self._check()
-
-    def _set_subspace_constraints(self, insert, x, slope):
-        ambient_dim = self._subspace.ncols()
-        if slope == VERTICAL:
-            subspace = self._subspace
-        elif slope == HORIZONTAL:
-            subspace = self._horizontal_subspace()
-        for row in subspace.right_kernel_matrix():
-            insert(sum(row[i] * x[i] for i in range(ambient_dim)) == 0)
-
-    def copy(self, mutable=None):
-        r"""
-        Return a copy of this linear family.
+            VeeringTriangulationLinearFamily("(0,1,2)(3,4,5)(~5,~3,~1)(~4,~2,~0)", "BRRBRR", [(1, 0, 1, 0, 0, 0), (0, 1, 1, 0, 1, 1), (0, 0, 0, 1, 0, 1)])
+            sage: f2 = f.copy(mutable=True)
+            sage: f2
+            VeeringTriangulationLinearFamily("(0,1,2)(3,4,5)(~5,~3,~1)(~4,~2,~0)", "BRRBRR", [(1, 0, 1, 0, 0, 0), (0, 1, 1, 0, 1, 1), (0, 0, 0, 1, 0, 1)])
+            sage: f2._check()
+            sage: f2._mutable
+            True
         """
         if mutable is None:
             mutable = self._mutable
 
-        if not self._mutable and not mutable:
+        if cls is None:
+            cls = self.__class__
+
+        if cls is self.__class__ and (not self._mutable and not mutable):
             # avoid copies of immutable objects
             return self
 
-        L = VeeringTriangulationLinearFamily.__new__(VeeringTriangulationLinearFamily)
-        L._n = self._n
-        L._vp = self._vp[:]
-        L._ep = self._ep[:]
-        L._fp = self._fp[:]
-        L._colouring = self._colouring[:]
+        if cls is not self.__class__:
+            return super().copy(mutable, cls)
+
+        L = self._constellation_class.copy(self, mutable=True, cls=self.__class__)
+        L._constellation_class = self._constellation_class
         L._subspace = copy(self._subspace)
-        L._mutable = mutable
         if not mutable:
             L._subspace.set_immutable()
         return L
 
     def base_ring(self):
+        r"""
+        Return the underlying base ring of the linear family.
+        """
         return self._subspace.base_ring()
 
     def set_immutable(self):
-        VeeringTriangulation.set_immutable(self)
+        self._constellation_class.set_immutable(self)
         self._subspace.set_immutable()
 
     def __hash__(self):
         r"""
         TESTS::
 
-            sage: from veerer import *
+            sage: from veerer import VeeringTriangulation
             sage: vt = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
             sage: h = hash(vt.as_linear_family())
         """
         if self._mutable:
             raise ValueError('mutable veering triangulation linear family not hashable')
 
-        x = 140737488617563
-        x = ((x ^ hash(self._vp.tobytes())) * 2147483693) + 82520 + self._n + self._n
-        x = ((x ^ hash(self._ep.tobytes())) * 2147483693) + 82520 + self._n + self._n
-        x = ((x ^ hash(self._fp.tobytes())) * 2147483693) + 82520 + self._n + self._n
-        x = ((x ^ hash(self._colouring.tobytes())) * 2147483693) + 82520 + self._n + self._n
+        x = self._constellation_class.__hash__(self)
         x = ((x ^ hash(self._subspace) * 2147483693)) + 82520 + self._n + self._n
 
         return x
-
-    def __str__(self):
-        r"""
-        Return a string representation.
-
-        TESTS::
-
-            sage: from veerer import *
-            sage: vt = VeeringTriangulation("(0,1,2)(~0,~1,~2)", [RED, RED, BLUE])
-            sage: str(vt.as_linear_family())
-            'VeeringTriangulationLinearFamily("(0,1,2)(~2,~0,~1)", "RRB", [(1, 0, -1), (0, 1, 1)])'
-        """
-        return "VeeringTriangulationLinearFamily(\"{}\", \"{}\", {})".format(
-               perm_cycle_string(self._fp, False, self._n, self._ep),
-               self._colouring_string(short=True),
-               self._subspace.rows())
-
-    def __repr__(self):
-        return str(self)
-
-    def _check(self, error=ValueError):
-        subspace = self._subspace
-        VeeringTriangulation._check(self, error)
-        if subspace.ncols() != self.num_edges():
-            raise error('subspace matrix has wrong dimension')
-        if subspace.rank() != subspace.nrows():
-            raise error('subspace matrix is not of full rank')
-        # test that elements satisfy the switch condition
-        for v in subspace.rows():
-            self._set_switch_conditions(self._tt_check, v, VERTICAL)
-        if subspace != subspace.echelon_form():
-            raise error('subspace not in echelon form')
-        if self._mutable != self._subspace.is_mutable():
-            raise error('incoherent mutability states')
 
     def __eq__(self, other):
         r"""
@@ -465,7 +403,7 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
         """
         if type(self) is not type(other):
             raise TypeError
-        return VeeringTriangulation.__eq__(self, other) and self._subspace == other._subspace
+        return self._constellation_class.__eq__(self, other) and self._subspace == other._subspace
 
     def __ne__(self, other):
         r"""
@@ -490,7 +428,7 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
         """
         if type(self) is not type(other):
             raise TypeError
-        return VeeringTriangulation.__ne__(self, other) or self._subspace != other._subspace
+        return self._constellation_class.__ne__(self, other) or self._subspace != other._subspace
 
     def _richcmp_(self, other, op):
         c = (self._n > other._n) - (self._n < other._n)
@@ -512,42 +450,118 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
         c = subspace_cmp(self._subspace, other._subspace)
         return rich_to_bool(op, c)
 
-    def train_track_polytope(self, slope=VERTICAL, low_bound=0, backend=None):
-        r"""
-        Return the polytope of non-negative elements in the subspace.
-
-        EXAMPLES::
-
-            sage: from veerer import *
-            sage: vt, s, t = VeeringTriangulations.L_shaped_surface(1, 3, 1, 1)
-            sage: f = VeeringTriangulationLinearFamily(vt, [s, t])
-            sage: f.train_track_polytope(VERTICAL)
-            Cone of dimension 2 in ambient dimension 7 made of 2 facets (backend=ppl)
-            sage: f.train_track_polytope(HORIZONTAL)
-            Cone of dimension 2 in ambient dimension 7 made of 2 facets (backend=ppl)
-
-            sage: sorted(f.train_track_polytope(VERTICAL).rays())
-            [[0, 1, 3, 3, 1, 1, 0], [1, 0, 0, 1, 1, 1, 1]]
-            sage: sorted(f.train_track_polytope(HORIZONTAL).rays())
-            [[1, 0, 0, 1, 1, 1, 1], [3, 1, 3, 0, 2, 2, 3]]
-        """
-        ne = self.num_edges()
-        L = LinearExpressions(self.base_ring())
-        cs = ConstraintSystem()
-        for i in range(ne):
-            cs.insert(L.variable(i) >= low_bound)
-        self._set_subspace_constraints(cs.insert, [L.variable(i) for i in range(ne)], slope)
-        return cs.cone(backend)
-
     def dimension(self):
         r"""
         Return the dimension of the linear family.
+
+        EXAMPLES::
+
+            sage: from veerer import StrebelGraphLinearFamily
+            sage: G = StrebelGraphLinearFamily("(0,1,2)(~0,~1:1,~2:2)", [(1, 1, 0), (1, 0, 1)])
+            sage: G.dimension()
+            2
         """
         return self._subspace.nrows()
+
+    def constraints_matrix(self, mutable=None):
+        r"""
+        Return a basis of constraints on x-coordinates as a matrix.
+
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation, StrebelGraph
+            sage: vt = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
+            sage: vt.as_linear_family().constraints_matrix().echelon_form()
+            [ 1 -1  1]
+
+            sage: F = StrebelGraph("(0,2,~3,~1)(1)(3,~0)(~2)").add_residue_constraints([[1, 2, 0, 0]])
+            sage: F.constraints_matrix().echelon_form()
+            [ 1 -1  1  1]
+        """
+        return self._subspace.right_kernel_matrix()
+
+    def generators_matrix(self, mutable=None):
+        r"""
+        Return a basis of generators of x-coordinates as a matrix.
+
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation, StrebelGraph
+            sage: vt = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
+            sage: vt.as_linear_family().generators_matrix().echelon_form()
+            [ 1  0 -1]
+            [ 0  1  1]
+
+            sage: F = StrebelGraph("(0,2,~3,~1)(1)(3,~0)(~2)").add_residue_constraints([[1, 2, 0, 0]])
+            sage: F.generators_matrix().echelon_form()
+            [ 1  0  0 -1]
+            [ 0  1  0  1]
+            [ 0  0  1 -1]
+        """
+        if not self._mutable and not mutable:
+            return self._subspace
+        else:
+            subspace = self._subspace.__copy__()
+            if not mutable:
+                subspace.set_immutable()
+            return subspace
+
+    def residue_constraints(self):
+        r"""
+        Return a basis of residue constraints.
+
+        If the family is not made of Abelian differentials, a ``ValueError`` is raised.
+
+        For meromorphic differentials, the space of residue constraints is at
+        least one-dimensional since the sum of residues is zero.
+
+        EXAMPLES::
+
+            sage: from veerer import StrebelGraph, VeeringTriangulation
+
+            sage: G = StrebelGraph("(0,2,~3,~1)(1)(3,~0)(~2)")
+            sage: G.as_linear_family().residue_constraints().echelon_form()
+            [1 1 1 1]
+
+            sage: F = G.add_residue_constraints([[1, 2, 0, 0]])
+            sage: F.residue_constraints().echelon_form()
+            [ 1  0  2  2]
+            [ 0  1 -1 -1]
+
+            sage: V = VeeringTriangulation("(0,5,~4)(2,6,~5)(3,~0,7)(4,~3,~1)", boundary="(1:1)(~7:1)(~6:1)(~2:1)", colouring="RRRBBBBR")
+
+            sage: V.as_linear_family().residue_constraints().echelon_form()
+            [1 1 1 1]
+
+            sage: F = V.add_residue_constraints([[1, 2, 0, 0]])
+            sage: F.residue_constraints().echelon_form()
+            [ 1  0  2  2]
+            [ 0  1 -1 -1]
+
+        For holomorphic differentials, there is no residue constraint::
+
+            sage: fp = "(0,1,2)(~0,~4,~2)(3,4,5)(~3,~1,~5)"
+            sage: cols = "BRRBRR"
+            sage: f = VeeringTriangulation(fp, cols).as_linear_family(mutable=True)
+            sage: f.residue_constraints()
+            []
+        """
+        # We want vectors that are linear combinations of self.residue_matrix()
+        # and self.constraints_matrix().
+        residue_matrix = self.residue_matrix()
+        intersection = residue_matrix.row_module().intersection(self.constraints_matrix().row_module()).matrix()
+        nr = intersection.nrows() + residue_matrix.nrows() - residue_matrix.rank()
+        nc = self.num_boundary_faces()
+        return matrix(self.base_ring(), nr,  nc, [residue_matrix.solve_left(v) for v in intersection.rows()] + residue_matrix.left_kernel_matrix().rows())
+
+    def stratum(self):
+        return self.copy(self, cls=self._constellation_class).stratum()
 
     def relabel(self, p, check=True):
         r"""
         Relabel inplace the veering triangulation linear family according to the permutation ``p``.
+
+        EXAMPLES:
 
         Relabelling the subspace as well::
 
@@ -577,12 +591,15 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
         rr = relabel_on_edges(self._ep, p, n, m)
         matrix_permutation(self._subspace, rr)
         self._subspace.echelonize()
-        VeeringTriangulation.relabel(self, p, False)
+        self._constellation_class.relabel(self, p, False)
 
         # TODO: remove check
         self._check()
 
     def best_relabelling(self, all=False):
+        r"""
+        Return the smallest relabelling of this linear family.
+        """
         n = self.num_half_edges()
         m = self.num_edges()
 
@@ -594,16 +611,18 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
             relabelling = self._relabelling_from(start_edge)
             rr = relabel_on_edges(self._ep, relabelling, n, m)
 
-            fp = perm_conjugate(self._fp, relabelling)
-            ep = perm_conjugate(self._ep, relabelling)
-            cols = self._colouring[:]
-            perm_on_list(relabelling, cols)
-            subspace = copy(self._subspace)
-            matrix_permutation(subspace, rr)
-            subspace.echelonize()
-            subspace.set_immutable()
+            fp_new = perm_conjugate(self._fp, relabelling)
+            ep_new = perm_conjugate(self._ep, relabelling)
+            data_new = [l[:] for l in self._data]
+            for l in data_new:
+                perm_on_list(relabelling, l, self._n)
 
-            T = (cols, fp, ep, subspace)
+            subspace_new = copy(self._subspace)
+            matrix_permutation(subspace_new, rr)
+            subspace_new.echelonize()
+            subspace_new.set_immutable()
+
+            T = (fp_new, ep_new, data_new, subspace_new)
             if best is None or T < best:
                 best = T
                 best_relabelling = relabelling
@@ -615,11 +634,182 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
 
         return (relabellings, best) if all else (best_relabelling, best)
 
-    # TODO: change to canonicalize ? Since we also need to canonicalize the subspace
-    # it is not only about labels
     def _non_isom_easy(self, other):
-        return (VeeringTriangulation._non_isom_easy(self, other) or
+        return (self._constellation_class._non_isom_easy(self, other) or
                 self._subspace.nrows() != other._subspace.nrows())
+
+    def as_linear_family(self, mutable=False):
+        if not mutable and not self._mutable:
+            return self
+        return self.copy(mutable)
+
+    def abelian_cover(self, mutable=False):
+        r"""
+        Return the Abelian double cover.
+
+        EXAMPLES::
+
+            sage: from veerer.linear_family import VeeringTriangulationLinearFamilies, StrebelGraphLinearFamily
+
+            sage: X9 = VeeringTriangulationLinearFamilies.prototype_H1_1(0, 2, 1, -1)
+            sage: Y9 = X9.abelian_cover()
+            sage: Y9.dimension() == X9.dimension()
+            True
+            sage: Y9.stratum()  # optional - surface_dynamics
+            H_2(1^2)
+
+            sage: F = StrebelGraphLinearFamily("(0,1:1,~0,~1:1)", [[2, 1]])
+            sage: Fab = F.abelian_cover()
+            sage: Fab
+            StrebelGraphLinearFamily("(0,~2:1,~0,2:1)(1:1,3,~1:1,~3)", [(2, 1, 1, 2)])
+            sage: print(F.stratum(), Fab.stratum())  # optional - surface_dynamics
+            H_1(2, -2) (H_1(2, -2), H_1(2, -2))
+        """
+        t = self._constellation_class.abelian_cover(self)
+        assert t._n == 2 * self._n
+        assert t.num_edges() == 2 * self.num_edges() - self.num_folded_edges() == self._n
+        nr = self._subspace.nrows()
+        subspace = self._subspace.new_matrix(nr, self._n)
+        for i in range(self._subspace.nrows()):
+            for e in range(self._n):
+                if self._ep[e] < e:
+                    subspace[i, e] = self._subspace[i, self._ep[e]]
+                else:
+                    subspace[i, e] = self._subspace[i, e]
+        f = self.__class__.from_permutations(t._vp, t._ep, t._fp, t._data, mutable=True, check=False)
+        f._constellation_class_init()
+        f._subspace = subspace
+        if not mutable:
+            f.set_immutable()
+        f._check()
+        return f
+
+
+class VeeringTriangulationLinearFamily(LinearFamily, VeeringTriangulation):
+    r"""
+    Veering triangulation together with a subspace of H^1(S, Sigma; \bR) that
+    describes a (piece of a) linear GL(2,R)-invariant immersed sub-orbifold.
+    """
+    __slots__ = ['_constellation_class', '_subspace']
+
+    def veering_triangulation(self, mutable=False):
+        r"""
+        Return the underlying veering triangulation.
+
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation
+            sage: vt = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
+            sage: vt.as_linear_family().veering_triangulation() == vt
+            True
+        """
+        return VeeringTriangulation.copy(self, mutable, cls=VeeringTriangulation)
+
+    def _horizontal_subspace(self):
+        mat = copy(self._subspace)
+        ne = self.num_edges()
+        ep = self._ep
+        for j in range(ne):
+            if ep[j] < j:
+                raise ValueError('not in standard form')
+            if self._colouring[j] == BLUE:
+                for i in range(mat.nrows()):
+                    mat[i, j] *= -1
+        return mat
+
+    def generators_matrix(self, slope=VERTICAL, mutable=None):
+        if slope == VERTICAL:
+            if not self._mutable and not mutable:
+                return self._subspace
+            else:
+                subspace = self._subspace.__copy__()
+                if not mutable:
+                    subspace.set_immutable()
+                return subspace
+        elif slope == HORIZONTAL:
+            subspace = self._horizontal_subspace()
+            if not mutable:
+                subspace.set_immutable()
+            return subspace
+        else:
+            raise ValueError
+
+    def rotate(self):
+        r"""
+        Conjugate this family.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: fp = "(0,1,2)(~0,~4,~2)(3,4,5)(~3,~1,~5)"
+            sage: cols = "BRRBRR"
+            sage: f = VeeringTriangulation(fp, cols).as_linear_family(mutable=True)
+            sage: f.rotate()
+            sage: f
+            VeeringTriangulationLinearFamily("(0,1,2)(3,4,5)(~5,~3,~1)(~4,~2,~0)", "RBBRBB", [(1, 0, -1, 0, 0, 0), (0, 1, 1, 0, 1, 1), (0, 0, 0, 1, 0, -1)])
+
+            sage: fp = "(0,12,~11)(1,13,~12)(2,14,~13)(3,15,~14)(4,17,~16)(5,~10,11)(6,~3,~17)(7,~2,~6)(8,~5,~7)(9,~0,~8)(10,~4,~9)(16,~15,~1)"
+            sage: cols = "RRRRRRBBBBBBBBBBBB"
+            sage: f = VeeringTriangulation(fp, cols).as_linear_family(mutable=True)
+            sage: f.rotate()
+            sage: f
+            VeeringTriangulationLinearFamily("(0,12,~11)(1,13,~12)(2,14,~13)(3,15,~14)(4,17,~16)(5,~10,11)(6,~3,~17)(7,~2,~6)(8,~5,~7)(9,~0,~8)(10,~4,~9)(16,~15,~1)", "BBBBBBRRRRRRRRRRRR", [(1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0), (0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 2, 2, 1, 1, 1, 0, 0), (0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0), (0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1), (0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0), (0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)])
+        """
+        if not self._mutable:
+            raise ValueError('immutable veering triangulation family; use a mutable copy instead')
+
+        subspace = self._horizontal_subspace()
+        subspace.echelonize()
+        super().rotate()
+        self._subspace = subspace
+
+        # TODO: remove check
+        self._check()
+
+    def _set_subspace_constraints(self, insert, x, slope):
+        ambient_dim = self._subspace.ncols()
+        if slope == VERTICAL:
+            subspace = self._subspace
+        elif slope == HORIZONTAL:
+            subspace = self._horizontal_subspace()
+        for row in subspace.right_kernel_matrix():
+            insert(sum(row[i] * x[i] for i in range(ambient_dim)) == 0)
+
+    def _check(self, error=ValueError):
+        LinearFamily._check(self, error)
+
+        # test that elements satisfy the switch condition
+        subspace = self._subspace
+        for v in subspace.rows():
+            self._set_switch_conditions(self._tt_check, v, VERTICAL)
+
+    def train_track_polytope(self, slope=VERTICAL, low_bound=0, backend=None):
+        r"""
+        Return the polytope of non-negative elements in the subspace.
+
+        EXAMPLES::
+
+            sage: from veerer import *
+            sage: vt, s, t = VeeringTriangulations.L_shaped_surface(1, 3, 1, 1)
+            sage: f = VeeringTriangulationLinearFamily(vt, [s, t])
+            sage: f.train_track_polytope(VERTICAL)
+            Cone of dimension 2 in ambient dimension 7 made of 2 facets (backend=ppl)
+            sage: f.train_track_polytope(HORIZONTAL)
+            Cone of dimension 2 in ambient dimension 7 made of 2 facets (backend=ppl)
+
+            sage: sorted(f.train_track_polytope(VERTICAL).rays())
+            [[0, 1, 3, 3, 1, 1, 0], [1, 0, 0, 1, 1, 1, 1]]
+            sage: sorted(f.train_track_polytope(HORIZONTAL).rays())
+            [[1, 0, 0, 1, 1, 1, 1], [3, 1, 3, 0, 2, 2, 3]]
+        """
+        ne = self.num_edges()
+        L = LinearExpressions(self.base_ring())
+        cs = ConstraintSystem()
+        for i in range(ne):
+            cs.insert(L.variable(i) >= low_bound)
+        self._set_subspace_constraints(cs.insert, [L.variable(i) for i in range(ne)], slope)
+        return cs.cone(backend)
 
     def flip(self, e, col, check=True):
         r"""
@@ -653,11 +843,11 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
             sage: L
             VeeringTriangulationLinearFamily("(0,3,2)(1,~0,4)(5,~1,6)", "BRRBBBB", [(1, 0, 0, 1, 1, 1, 1), (0, 1, 1, -1, -1, -1, 0)])
         """
-        VeeringTriangulation.flip(self, e, col, Gx=self._subspace, check=check)
+        super().flip(e, col, Gx=self._subspace, check=check)
         self._subspace.echelonize()
 
     def flip_back(self, e, col, check=True):
-        VeeringTriangulation.flip_back(self, e, col, Gx=self._subspace, check=check)
+        super().flip_back(e, col, Gx=self._subspace, check=check)
         self._subspace.echelonize()
 
     def is_cylindrical(self, col=None):
@@ -684,7 +874,7 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
             return self.is_cylindrical(BLUE) or self.is_cylindrical(RED)
         if col != RED and col != BLUE:
             raise ValueError("'col' must be one of RED or BLUE")
-        if not VeeringTriangulation.is_cylindrical(self, col):
+        if not super().is_cylindrical(col):
             return False
         cylinders = list(self.cylinders(col))
 
@@ -706,7 +896,7 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
                     mid_edges.discard(i)
         return not mid_edges
 
-    def geometric_polytope(self, x_low_bound=0, y_low_bound=0, hw_bound=0, backend=None):
+    def delaunay_cone(self, x_low_bound=0, y_low_bound=0, hw_bound=0, backend=None):
         r"""
         Return the geometric polytope.
 
@@ -715,18 +905,18 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
             sage: from veerer import *
 
             sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
-            sage: T.geometric_polytope()
+            sage: T.delaunay_cone()
             Cone of dimension 4 in ambient dimension 6 made of 6 facets (backend=ppl)
-            sage: T.as_linear_family().geometric_polytope(backend='ppl')
+            sage: T.as_linear_family().delaunay_cone(backend='ppl')
             Cone of dimension 4 in ambient dimension 6 made of 6 facets (backend=ppl)
-            sage: T.as_linear_family().geometric_polytope(backend='sage')
+            sage: T.as_linear_family().delaunay_cone(backend='sage')
             Cone of dimension 4 in ambient dimension 6 made of 6 facets (backend=sage)
 
         An example in genus 2 involving a linear constraint::
 
             sage: vt, s, t = VeeringTriangulations.L_shaped_surface(1, 1, 1, 1)
             sage: f = VeeringTriangulationLinearFamily(vt, [s, t])
-            sage: PG = f.geometric_polytope(backend='ppl')
+            sage: PG = f.delaunay_cone(backend='ppl')
             sage: PG
             Cone of dimension 4 in ambient dimension 14 made of 6 facets (backend=ppl)
             sage: sorted(PG.rays())
@@ -749,16 +939,8 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
             cs.insert(y[i] >= y_low_bound)
         self._set_subspace_constraints(cs.insert, x, VERTICAL)
         self._set_subspace_constraints(cs.insert, y, HORIZONTAL)
-        self._set_geometric_constraints(cs.insert, x, y, hw_bound=hw_bound)
+        self._set_delaunay_constraints(cs.insert, x, y, hw_bound=hw_bound)
         return cs.cone(backend)
-
-    def geometric_automaton(self, run=True, backend=None):
-        from .automaton import GeometricAutomatonSubspace
-        A = GeometricAutomatonSubspace(backend=backend)
-        A.set_seed(self)
-        if run:
-            A.run()
-        return A
 
     def random_forward_flip(self, repeat=1):
         r"""
@@ -775,9 +957,9 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
             sage: X = VeeringTriangulationLinearFamilies.prototype_H1_1(0, 4, 1, 0, mutable=True)
             sage: X.is_core()
             True
-            sage: X.is_geometric()
+            sage: X.is_delaunay()
             False
-            sage: while not X.is_geometric():
+            sage: while not X.is_delaunay():
             ....:     X.random_forward_flip()
         """
         if not self._mutable:
@@ -797,6 +979,168 @@ class VeeringTriangulationLinearFamily(VeeringTriangulation):
                     break
                 else:
                     self.flip_back(e, old_col)
+
+    def strebel_graph(self, slope=VERTICAL, mutable=False):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: triangles = "(0,1,2)(~1,3,4)(~3,5,6)(~6,7,8)"
+            sage: boundary = "(~0:1,~2:1,~4:1,~8:1,~7:1,~5:1)"
+            sage: colours = "BBRRRRBRB"
+            sage: vt = VeeringTriangulation(triangles, boundary, colours)
+            sage: v0,v1,v2,v3,v4 = vt.as_linear_family()._subspace.rows()
+            sage: VeeringTriangulationLinearFamily(vt, [v0 + v1 + v2 + v3 + v4]).strebel_graph()
+            StrebelGraphLinearFamily("(0,1,~1:1,~0,2,~3,4,~4:1,3,~2)", [(1, 0, 1, 0, 1)])
+            sage: VeeringTriangulationLinearFamily(vt, [v0 + v1 + v2, v3 + v4]).strebel_graph()
+            StrebelGraphLinearFamily("(0,1,~1:1,~0,2,~3,4,~4:1,3,~2)", [(1, 0, 1, 0, 1), (0, 0, 0, 1, 1)])
+            sage: VeeringTriangulationLinearFamily(vt, [v0, v1 + v2, v3 + v4]).strebel_graph()
+            StrebelGraphLinearFamily("(0,1,~1:1,~0,2,~3,4,~4:1,3,~2)", [(1, 0, 1, 0, 1), (0, 1, 0, 0, 0), (0, 0, 0, 1, 1)])
+
+            sage: vt = VeeringTriangulation("(1,4,~2)(2,~6,~3)(3,~5,~4)", boundary="(0:1)(5:1)(6:1)(~1:1,~0:1)", colouring="BBRRBBB")
+            sage: F = VeeringTriangulationLinearFamily(vt, [(1, 2, 0, -1, 2, 1, 1), (0, 0, 1, 1, -1, 0, 0)])
+            sage: F
+            VeeringTriangulationLinearFamily("(1,4,~2)(2,~6,~3)(3,~5,~4)", boundary="(0:1)(5:1)(6:1)(~1:1,~0:1)", colouring="BBRRBBB", [(1, 2, 0, -1, 2, 1, 1), (0, 0, 1, 1, -1, 0, 0)])
+            sage: F.strebel_graph()
+            StrebelGraphLinearFamily("(0)(1,~2)(2,~3,~1,~0)(3)", [(1, 0, 1, 1), (0, 1, -1, 0)])
+
+            sage: vt = VeeringTriangulation("(0,5,~4)(2,6,~5)(3,~0,7)(4,~3,~1)", boundary="(1:1)(~7:1)(~6:1)(~2:1)", colouring="RRRBBBBB")
+            sage: f1 = vt.add_residue_constraints([[1, 1, 1, 0]])
+            sage: f1.strebel_graph().residue_constraints().echelon_form()
+            [1 1 1 0]
+            [0 0 0 1]
+        """
+        indices = [e for e in range(self._n // 2) if self.is_half_edge_strebel(e, slope) and self.is_half_edge_strebel(self._ep[e], slope)]
+        G = VeeringTriangulation.strebel_graph(self, slope, mutable=False)
+        subspace = self.generators_matrix(slope).matrix_from_columns(indices)
+        return StrebelGraphLinearFamily(G, subspace, mutable=mutable)
+
+
+
+class StrebelGraphLinearFamily(LinearFamily, StrebelGraph):
+    r"""
+    EXAMPLES::
+
+        sage: from veerer import StrebelGraphLinearFamily
+        sage: G = StrebelGraphLinearFamily("(0,1,2)(~0,~1:1,~2:2)", [(1, 1, 0), (1, 0, 1)])
+        sage: G
+        StrebelGraphLinearFamily("(0,1,2)(~2:2,~0,~1:1)", [(1, 0, 1), (0, 1, -1)])
+        sage: G.dimension()
+        2
+    """
+    __slots__ = ['_constellation_class', '_subspace']
+
+    def is_core(self):
+        r"""
+        Return whether this linear family of Strebel graphs is core.
+
+        A linear family of Strebel graphs is core if it has a positive solution
+        (ie a non-degenerate edge-length vector).
+
+        EXAMPLES::
+
+            sage: from veerer import StrebelGraphLinearFamily
+
+            sage: G = StrebelGraphLinearFamily("(0,1,2)(~0,~1:1,~2:2)", [(1, 1, 0), (-1, 0, 2)])
+            sage: G.is_core()
+            True
+
+            sage: G = StrebelGraphLinearFamily("(0,1,2)(~0,~1:1,~2:2)", [(1, 1, -1), (-1, 0, 1)])
+            sage: G.is_core()
+            False
+        """
+        return self.cone().affine_dimension() == self.dimension()
+
+    def _set_subspace_constraints(self, insert, x):
+        ambient_dim = self._subspace.ncols()
+        subspace = self._subspace
+        for row in subspace.right_kernel_matrix():
+            insert(sum(row[i] * x[i] for i in range(ambient_dim)) == 0)
+
+    def cone(self, backend=None):
+        r"""
+        Return the cone of of x-coordinates for this linear family.
+
+        EXAMPLES::
+
+            sage: from veerer import StrebelGraph
+            sage: F = StrebelGraph("(0,2,~3,~1)(1)(3,~0)(~2)").add_residue_constraints([[0, 1, -1, 0], [0, 1, 0, -1]])
+            sage: F.cone(backend='ppl')
+            Cone of dimension 2 in ambient dimension 4 made of 2 facets (backend=ppl)
+            sage: F.cone(backend='sage')
+            Cone of dimension 2 in ambient dimension 4 made of 2 facets (backend=sage)
+            sage: F.cone(backend='normaliz-QQ')  # optional - pynormaliz
+            Cone of dimension 2 in ambient dimension 4 made of 2 facets (backend=normaliz-QQ)
+        """
+        from .polyhedron import LinearExpressions, ConstraintSystem
+        L = LinearExpressions(self.base_ring())
+        ne = self.num_edges()
+        x = [L.variable(i) for i in range(ne)]
+        cs = ConstraintSystem(ne)
+        self._set_strebel_constraints(cs.insert, x)
+        self._set_subspace_constraints(cs.insert, x)
+        return cs.cone(backend=backend)
+
+    def add_residue_constraints(self, residue_constraints):
+        r"""
+        Return the Strebel graph linear family obtained by adding the given
+        linear constraints on the residues.
+
+        Note that the resulting family might not intersect the relative
+        interior of the Strebel cone. To check whether this is the case, use
+        the method ``is_core``.
+
+        EXAMPLES::
+
+            sage: from veerer import StrebelGraph
+            sage: G = StrebelGraph("(0,2,~3,~1)(1)(3,~0)(~2)")
+            sage: f1 = G.add_residue_constraints([[0, 1, -1, 0]]).add_residue_constraints([[0, 1, 0, -1]])
+            sage: f2 = G.add_residue_constraints([[0, 1, -1, 0], [0, 1, 0, -1]])
+            sage: f1 == f2
+            True
+        """
+        if not isinstance(residue_constraints, Matrix):
+            residue_constraints = matrix(residue_constraints)
+
+        base_ring = cm.common_parent(self.base_ring(), residue_constraints.base_ring())
+        nr = self._subspace.nrows()
+        nc = self._subspace.ncols()
+        constraint_matrix = matrix(base_ring, (nc - nr) + residue_constraints.nrows(), self.num_edges())
+        constraint_matrix[:nc - nr, :] = self._subspace.right_kernel_matrix()
+        constraint_matrix[nc - nr:, :] = residue_constraints * self.residue_matrix()
+        gens = constraint_matrix.right_kernel_matrix()
+        from .linear_family import StrebelGraphLinearFamily
+        return StrebelGraphLinearFamily(self, gens)
+
+    def veering_triangulations(self, colouring, slope=VERTICAL, mutable=False):
+        r"""
+        EXAMPLES::
+
+            sage: from veerer import StrebelGraphLinearFamily
+            sage: G = StrebelGraphLinearFamily("(0,1,2)(~0,~1:1,~2:2)", [(1, 1, 0), (1, 0, 1)])
+            sage: for colouring in G.colourings():
+            ....:     print(colouring, sum(1 for _ in G.veering_triangulations(colouring)), sum(1 for _ in G.delaunay_triangulations(colouring)))
+            ....:     assert all(vt.strebel_graph() == G for vt in G.veering_triangulations(colouring))
+            ....:     assert all(vt.strebel_graph() == G for vt in G.delaunay_triangulations(colouring))
+            array('i', [1, 1, 1, 1, 1, 1]) 1 1
+            array('i', [1, 1, 2, 2, 1, 1]) 6 2
+            array('i', [1, 2, 1, 1, 2, 1]) 3 1
+            array('i', [1, 2, 2, 2, 2, 1]) 6 0
+            array('i', [2, 1, 1, 1, 1, 2]) 3 0
+            array('i', [2, 1, 2, 2, 1, 2]) 3 2
+            array('i', [2, 2, 1, 1, 2, 2]) 3 1
+            array('i', [2, 2, 2, 2, 2, 2]) 1 1
+        """
+        for vt in StrebelGraph.veering_triangulations(self, colouring, slope, mutable):
+            switch = vt.generators_matrix(mutable=True)
+            switch.echelonize()
+            assert switch[:self.num_edges(), :self.num_edges()].is_one()
+            subspace = []
+            for row in self._subspace.rows():
+                subspace.append(sum(x * switch.row(i) for i, x in enumerate(row)))
+            yield VeeringTriangulationLinearFamily(vt, subspace, mutable=mutable)
+
 
 class VeeringTriangulationLinearFamilies:
     r"""
@@ -882,39 +1226,41 @@ class VeeringTriangulationLinearFamilies:
         EXAMPLES::
 
             sage: from veerer.linear_family import VeeringTriangulationLinearFamilies
-            sage: from veerer.automaton import GeometricAutomatonSubspace
 
             sage: X9 = VeeringTriangulationLinearFamilies.prototype_H2(0, 2, 1, -1)
             sage: X9.base_ring()
             Rational Field
-            sage: X9.is_geometric()
+            sage: X9.is_delaunay()
             True
-            sage: GeometricAutomatonSubspace(X9)
-            Geometric veering linear constraint automaton with 6 vertices
+            sage: X9.delaunay_automaton()
+            Delaunay automaton with 6 vertices
 
             sage: X17 = VeeringTriangulationLinearFamilies.prototype_H2(0, 2, 2, -1)
             sage: X17.base_ring()
             Number Field in sqrt17 with defining polynomial x^2 - 17 with sqrt17 = 4.123105625617660?
-            sage: X17.is_geometric()
+            sage: X17.is_delaunay()
             True
-            sage: GeometricAutomatonSubspace(X17)  # long time
-            Geometric veering linear constraint automaton with 210 vertices
+            sage: X17.delaunay_automaton() # long time
+            Delaunay automaton with 210 vertices
 
         We check below part of McMullen theorem about connectedness::
 
             sage: a0, b0, c0, e0 = next(VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=0))
             sage: X17_0 = VeeringTriangulationLinearFamilies.prototype_H2(a0, b0, c0, e0)
-            sage: A0 = GeometricAutomatonSubspace(X17_0, backend='sage')  # long time
+            sage: A0 = X17_0.delaunay_automaton()  # long time
             sage: for a, b, c, e in VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=0):  # long time
             ....:     X = VeeringTriangulationLinearFamilies.prototype_H2(a, b, c, e, mutable=True)
             ....:     X.set_canonical_labels()
+            ....:     X.set_immutable()
             ....:     assert X in A0
+
             sage: a1, b1, c1, e1 = next(VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=1))
             sage: X17_1 = VeeringTriangulationLinearFamilies.prototype_H2(a1, b1, c1, e1)
-            sage: A1 = GeometricAutomatonSubspace(X17_1, backend='sage')  # long time
+            sage: A1 = X17_1.delaunay_automaton()  # long time
             sage: for a, b, c, e in VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=1):  # long time
             ....:     X = VeeringTriangulationLinearFamilies.prototype_H2(a, b, c, e, mutable=True)
             ....:     X.set_canonical_labels()
+            ....:     X.set_immutable()
             ....:     assert X in A1
         """
         #         (a,c)
@@ -969,13 +1315,12 @@ class VeeringTriangulationLinearFamilies:
         EXAMPLES::
 
             sage: from veerer.linear_family import VeeringTriangulationLinearFamilies
-            sage: from veerer.automaton import GeometricAutomatonSubspace
 
             sage: X9 = VeeringTriangulationLinearFamilies.prototype_H1_1(0, 2, 1, -1)
             sage: X9.base_ring()
             Rational Field
-            sage: X9.geometric_automaton()  # long time
-            Geometric veering linear constraint automaton with 1244 vertices
+            sage: X9.delaunay_automaton()  # long time
+            Delaunay automaton with 1244 vertices
         """
         #         (a+r,c)         (a+b,c)
         #           x-------x------o--x  (a+b+r,c)
