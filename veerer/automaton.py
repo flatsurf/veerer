@@ -1501,6 +1501,18 @@ class DelaunayStrebelAutomaton(Automaton):
         0
         sage: A
         Delaunay-Strebel automaton with 250 vertices
+
+    An example with folded edges (quadratic differential with simple poles on
+    edges)::
+
+        sage: G = StrebelGraph("(0,1,2)")
+        sage: A = DelaunayStrebelAutomaton(backward=True)
+        sage: A.add_seed(G)
+        1
+        sage: A.run()
+        0
+        sage: A
+        Delaunay-Strebel automaton with 46 vertices
     """
     _name = 'Delaunay-Strebel'
 

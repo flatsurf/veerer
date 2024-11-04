@@ -82,13 +82,12 @@ def one_edge_completion(t, angle_excess, colouring):
     #   x-----------x-----------x
     #             E           B
 
+    n = t._n
     vp = t._vp
     ep = t._ep
     fp = t._fp
     bdry = t._bdry
-    angle_excess = angle_excess
-    n = t._n
-    m = n // 2
+    m = t.num_edges()
     M = m + 1
 
     found = False
@@ -339,6 +338,11 @@ class StrebelGraph(Constellation):
 
             sage: StrebelGraph("(0,~2:1,~0,2:1)(1:1,3,~1:1,~3)").stratum()  # optional - surface_dynamics
             (H_1(2, -2), H_1(2, -2))
+
+        Example with folded edges::
+
+            sage: StrebelGraph("(0,1,2,3)").stratum()  # optional - surface_dynamics
+            Q_0(2, -1^4, -2)
         """
         if not self.is_connected():
             return tuple(component.stratum() for component in self.connected_components_subgraphs())
@@ -499,6 +503,7 @@ class StrebelGraph(Constellation):
         EXAMPLES::
 
             sage: from veerer import StrebelGraph
+
             sage: G = StrebelGraph("(0,1,2)(~0,~1:1,~2:2)")
             sage: list(G.colourings())
             [array('i', [1, 1, 1, 1, 1, 1]),
@@ -506,14 +511,23 @@ class StrebelGraph(Constellation):
              ...
              array('i', [2, 2, 1, 1, 2, 2]),
              array('i', [2, 2, 2, 2, 2, 2])]
+
+
+            sage: G = StrebelGraph("(0,1,2,3)")
+            sage: list(G.colourings())
+            [array('i', [1, 1, 1, 1]),
+             array('i', [1, 1, 1, 2]),
+             ...
+             array('i', [2, 2, 2, 1]),
+             array('i', [2, 2, 2, 2])]
         """
-        n = self._n
-        m = n // 2
+        ne = self.num_edges()
+        m = self.num_folded_edges()
         ep = self._ep
 
-        for colouring in itertools.product([RED, BLUE], repeat=m):
+        for colouring in itertools.product([RED, BLUE], repeat=ne):
             colouring = array('i', colouring)
-            colouring.extend([colouring[ep[e]] for e in range(m, n)])
+            colouring.extend([colouring[ep[e]] for e in range(ne, self._n)])
             yield colouring
 
     def _set_strebel_constraints(self, insert, x):

@@ -102,6 +102,11 @@ class VeeringTriangulation(Triangulation):
         VeeringTriangulation("(0,1,2)(3,4,~0)", boundary="(~4:1)(~3:1)(~2:1)(~1:1)", colouring="RBRBR")
         sage: VeeringTriangulation("(0,1,2)(~0,3,4)", boundary="(~1:1)(~2:1)(~3:1)(~4:1)", colouring="RBRBR")
         VeeringTriangulation("(0,1,2)(3,4,~0)", boundary="(~4:1)(~3:1)(~2:1)(~1:1)", colouring="RBRBR")
+
+    Triangulations with boundary and folded edges::
+
+        sage: VeeringTriangulation("(0,1,2)", boundary="(~1:1,~2:1)", colouring="RBR")
+        VeeringTriangulation("(0,1,2)", boundary="(~2:1,~1:1)", colouring="RBR")
     """
     __slots__ = ['_colouring']
 
@@ -4292,29 +4297,45 @@ class VeeringTriangulation(Triangulation):
 
     def strebel_edges(self, slope=VERTICAL):
         r"""
-        return a list of indices of the half-edges of the Strebel veering triangulation
+        Return a list of indices of the half-edges of the Strebel veering triangulation
+
         The half-edge belongs to the Strebel graph if and only if the index is not -1.
         The index of the half-edge in the Strebel graph is the corresponding label of the half-edge in the Strebel graph
+
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation
+
+            sage: fp = "(0,2,1)(~0,3,~1)"
+            sage: bdry = "(~2:2,~3:2)"
+            sage: cols = "BRRR"
+            sage: VeeringTriangulation(fp, bdry, cols).strebel_edges()
+
+        An example with folded edges::
+
+            sage: VeeringTriangulation("", boundary="(0:1,1:1,2:1,3:1)", colouring="RRRR").strebel_edges()
+            [0, 1, 2, 3]
         """
         n = self._n
         ep = self._ep
-        # NOTE: here we want the dimension of the ambient stratum
         dim = VeeringTriangulation.dimension(self)
 
         index_strebel = [-1] * n
-        j = 0
+        j = k = 0
         for e in range(n):
             E = ep[e]
             if e == E:
-                raise NotImplementedError('folded edge')
+                if self.is_half_edge_strebel(e, slope=slope):
+                    index_strebel[e] = j + k
+                    k += 1
             if e < ep[e]:
                 if self.is_half_edge_strebel(e, slope=slope) and self.is_half_edge_strebel(E, slope=slope):
-                    index_strebel[e] = j
+                    index_strebel[e] = j + k
                     index_strebel[E] = 2 * dim - j - 1
-                    j = j + 1
+                    j += 1
 
-        if j != dim:
-            raise RuntimeError('not as many half-edges as expected; j = {} dim = {} index_strebel = {}'.format(j, dim, index_strebel))
+        if j + k != dim:
+            raise RuntimeError('not as many half-edges as expected; j = {} k = {} dim = {} index_strebel = {}'.format(j, k, dim, index_strebel))
 
         return index_strebel
 
@@ -4374,6 +4395,13 @@ class VeeringTriangulation(Triangulation):
             sage: vt = VeeringTriangulation("(0,1,2)(3,4,5)(6,7,8)", "(~8:1,~7:1,~6:2,~5:1,~4:2,~3:1,~2:2,~1:1,~0:1)", "RBRRBBRRB")
             sage: sg = vt.strebel_graph()
             sage: assert vt.stratum() == sg.stratum() == Stratum((2, 0, 0, 0, 0, 0, 0, -4), 1) # optional - surface_dynamics
+
+        Example with folded edges::
+
+            sage: VeeringTriangulation("", boundary="(0:1,1:1,2:1,3:1)", colouring="RRRR").strebel_graph()
+            StrebelGraph("(0,1,2,3)")
+            sage: VeeringTriangulation("(0,1,4)(2,3,5)", boundary="(~5:1,~4:1)", colouring="BRBRBB").strebel_graph()
+            StrebelGraph("(0,1,2,3)")
         """
         if not self.is_strebel(slope=slope):
             raise ValueError('triangulation is not Strebel')
@@ -4385,9 +4413,8 @@ class VeeringTriangulation(Triangulation):
         bdry = self._bdry
         colouring = self._colouring
 
-        # NOTE: here we want the dimension of the ambient stratum
         dim = VeeringTriangulation.dimension(self)
-        m = 2 * dim # number of half-edges
+        m = 2 * dim - self.num_folded_edges() # number of half-edges
 
         # list of half-edges in the strebel graph
         index_strebel = self.strebel_edges(slope=slope)
