@@ -4332,6 +4332,23 @@ class VeeringTriangulation(Triangulation):
     def is_half_edge_strebel(self, e, slope=VERTICAL, check=True):
         r"""
         Return whether ``e`` is a Strebel half-edge.
+
+        A half-edge is vertical Strebel (resp. horizontal strebel), if the
+        vertical (resp. horizontal) band that is based on this half-edge does
+        not hit a conical singularity (ie all trajectories are infinite and
+        converge to a common pole).
+
+        EXAMPLES::
+
+            sage: from veerer import *
+
+            sage: vt = VeeringTriangulation("(0,~3,2)(1,3,~2)", boundary="(~1:2,~0:2)", colouring="BBRR")
+            sage: for (e0, e1) in vt.edges():
+            ....:     print(e0, vt.is_half_edge_strebel(e0), e1, vt.is_half_edge_strebel(e1))
+            0 True 7 True
+            1 True 6 True
+            2 False 5 False
+            3 True 4 True
         """
         if check:
             e = self._check_half_edge(e)
