@@ -664,8 +664,6 @@ class Automaton:
 
     # TODO: it is a bit absurd to have this in the generic class since this does not make
     # sense for triangulations
-    # TODO: this is broken for DelaunayAutomaton with QuadraticStratum(8)
-    # TODO: one should be more careful whether one wants the poles to be half edges or vertices
     @classmethod
     def from_stratum(self, stratum, **kwds):
         r"""
@@ -701,7 +699,8 @@ class Automaton:
         Add the seed ``state`` to the search.
 
         Return ``0`` if the state is already present in the graph and ``1``
-        otherwise.
+        otherwise. Once a seed is added, one should call the method
+        :meth:`run` in order to launch the exploration.
         """
         if setup:
             state = self._seed_setup(state)
