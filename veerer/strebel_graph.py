@@ -811,3 +811,31 @@ class StrebelGraph(Constellation):
         gens = (residue_constraints * self.residue_matrix()).right_kernel_matrix()
         from .linear_family import StrebelGraphLinearFamily
         return StrebelGraphLinearFamily(self, gens)
+
+    def delaunay_strebel_automaton(self, run=True, backend=None):
+        r"""
+        Return the Delaunay-Strebel automaton containing this Strebel graph.
+
+        INPUT:
+
+        - ``run`` -- optional boolean (default ``True``) -- whether to run the exploration
+          of the automaton
+
+        - ``backend`` -- an optional string -- a choice of backend for cone computations.
+          A reasonable default choice is made based upon your installation and the base
+          ring of the family.
+
+        EXAMPLES::
+
+            sage: from veerer import StrebelGraph
+
+            sage: G = StrebelGraph("(0,1,2,3)")
+            sage: G.delaunay_strebel_automaton()
+            Delaunay-Strebel automaton with 328 vertices
+        """
+        from .automaton import DelaunayStrebelAutomaton
+        A = DelaunayStrebelAutomaton(backward=True, backend=backend)
+        A.add_seed(self)
+        if run:
+            A.run()
+        return A

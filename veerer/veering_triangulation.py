@@ -3068,7 +3068,42 @@ class VeeringTriangulation(Triangulation):
 
     def delaunay_automaton(self, run=True, backward=None, backend=None):
         r"""
-        Return the Delaunay automaton containing this veering triangulation.
+        Return the Delaunay automaton containing this veering triangulation or family.
+
+        INPUT:
+
+        - ``run`` -- optional boolean (default ``True``) -- whether to run the exploration
+          of the automaton
+
+        - ``backward`` -- optional boolean -- whether to run the search both forward and
+          backward. By default, it is turn to ``False`` for holomorphic differentials and
+          to ``True`` for meromorphic differentials.
+
+        - ``backend`` -- an optional string -- a choice of backend for cone computations.
+          A reasonable default choice is made based upon your installation and the base
+          ring of the family.
+
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation
+
+
+            sage: fp = "(0,~7,6)(1,~8,~2)(2,~6,~3)(3,5,~4)(4,8,~5)(7,~1,~0)"
+            sage: cols = "RBRBRBBBB"
+            sage: vt = VeeringTriangulation(fp, cols)
+            sage: vt.delaunay_automaton()
+            Delaunay automaton with 54 vertices
+
+        Meromorphic example (with a non strongly connected automaton)::
+
+            sage: fp = "(0,2,1)(~0,3,~1)"
+            sage: bdry = "(~2:2,~3:2)"
+            sage: cols = "RBRR"
+            sage: vt = VeeringTriangulation(fp, bdry, cols)
+            sage: vt.delaunay_automaton()
+            Delaunay automaton with 3 vertices
+            sage: vt.delaunay_automaton(backward=False)
+            Delaunay automaton with 1 vertex
         """
         from .automaton import DelaunayAutomaton
         if backward is None:
@@ -3080,6 +3115,9 @@ class VeeringTriangulation(Triangulation):
         return A
 
     def geometric_automaton(self, *args, **kwds):
+        r"""
+        Deprecated method.
+        """
         from warnings import warn
         warn('geometric_automaton is deprecated; use delaunay_automaton instead')
         return self.delaunay_automaton(self, *args, **kwds)
@@ -3087,6 +3125,30 @@ class VeeringTriangulation(Triangulation):
     def delaunay_strebel_automaton(self, run=True, backward=None, backend=None):
         r"""
         Return the Delaunay-Strebel automaton containing this veering triangulation.
+
+        INPUT:
+
+        - ``run`` -- optional boolean (default ``True``) -- whether to run the exploration
+          of the automaton
+
+        - ``backward`` -- optional boolean -- whether to run the search both forward and
+          backward. By default, it is turn to ``False`` for holomorphic differentials and
+          to ``True`` for meromorphic differentials.
+
+        - ``backend`` -- an optional string -- a choice of backend for cone computations.
+          A reasonable default choice is made based upon your installation and the base
+          ring of the family.
+
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation
+
+            sage: fp = "(0,2,1)(~0,3,~1)"
+            sage: bdry = "(~2:2,~3:2)"
+            sage: cols = "RBRR"
+            sage: vt = VeeringTriangulation(fp, bdry, cols)
+            sage: vt.delaunay_strebel_automaton()
+            Delaunay-Strebel automaton with 11 vertices
         """
         from .automaton import DelaunayStrebelAutomaton
         if backward is None:
@@ -4273,7 +4335,6 @@ class VeeringTriangulation(Triangulation):
         """
         if check:
             e = self._check_half_edge(e)
-
 
         if self._bdry[e]:
             # boundary half-edge

@@ -1226,7 +1226,6 @@ class VeeringTriangulationLinearFamilies:
         EXAMPLES::
 
             sage: from veerer.linear_family import VeeringTriangulationLinearFamilies
-            sage: from veerer.automaton import DelaunayAutomaton
 
             sage: X9 = VeeringTriangulationLinearFamilies.prototype_H2(0, 2, 1, -1)
             sage: X9.base_ring()
