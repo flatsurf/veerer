@@ -717,11 +717,12 @@ class Automaton:
         self._seeds.append(state)
         return 1
 
-    def next_seed(self):
+    def _next_seed(self):
         r"""
         Return the next seed or ``None`` if there is none.
 
-        This function modifies the `_seeds` and `_backward_flip_queue` attributes.
+        Note that this function modifies the `_seeds` and
+        `_backward_flip_queue` attributes.
         """
         while self._seeds or self._backward_flip_queue:
             while self._seeds:
@@ -735,10 +736,10 @@ class Automaton:
 
             state = self._backward_flip_queue.pop()
             if self._verbosity >= 2:
-                print('[next_seed] found state to feed backward_flip_queue %s' % (state,))
+                print('[_next_seed] found state to feed backward_flip_queue %s' % (state,))
             for back_neighbor, label in self._in_neighbors(state):
                 if self._verbosity >= 2:
-                    print('[next_seed] add back_neighbor %s' % (back_neighbor,))
+                    print('[_next_seed] add back_neighbor %s' % (back_neighbor,))
                 self.add_seed(back_neighbor, setup=False)
 
     def run(self, max_size=None):
@@ -839,7 +840,7 @@ class Automaton:
 
             while not branch:
                 # forward search is over... find a new seed
-                state = self.next_seed()
+                state = self._next_seed()
                 if state is None:
                     # no seed available anymore
                     if self._verbosity >= 2:
