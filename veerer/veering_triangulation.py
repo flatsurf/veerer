@@ -2368,7 +2368,7 @@ class VeeringTriangulation(Triangulation):
             code |= RED
         if self.is_cylindrical(BLUE):
             code |= BLUE
-        if self.is_geometric():
+        if self.is_delaunay():
             code |= GEOMETRIC
 
         if code & BLUE and code & RED:
@@ -3631,9 +3631,9 @@ class VeeringTriangulation(Triangulation):
 
             sage: vt1 = VeeringTriangulation("(0,~6,~3)(1,7,~2)(2,~1,~0)(3,5,~4)(4,8,~5)(6,~8,~7)", "RBBBRBBRB")
             sage: vt2 = VeeringTriangulation("(0,~8,~3)(1,6,~2)(2,~1,~0)(3,7,~4)(4,8,~5)(5,~7,~6)", "RBBBRBRBB")
-            sage: vt1.is_geometric()
+            sage: vt1.is_delaunay()
             True
-            sage: vt2.is_geometric()
+            sage: vt2.is_delaunay()
             False
 
         An example in genus 2 involving a linear subspace::
@@ -3641,7 +3641,7 @@ class VeeringTriangulation(Triangulation):
             sage: from veerer import VeeringTriangulations, VeeringTriangulationLinearFamily
             sage: T, s, t = VeeringTriangulations.L_shaped_surface(1, 1, 1, 1)
             sage: f = VeeringTriangulationLinearFamily(T, [s, t])
-            sage: f.is_geometric()
+            sage: f.is_delaunay()
             True
         """
         dim = self.dimension()
@@ -3651,7 +3651,24 @@ class VeeringTriangulation(Triangulation):
         return Pdim == 2 * dim
 
     # TODO: deprecate
-    is_geometric = is_delaunay
+    def is_geometric(self, *args, **kwds):
+        r"""
+        Deprecated method.
+
+        TESTS::
+
+            sage: from veerer import VeeringTriangulation
+
+            sage: vt1 = VeeringTriangulation("(0,~6,~3)(1,7,~2)(2,~1,~0)(3,5,~4)(4,8,~5)(6,~8,~7)", "RBBBRBBRB")
+            sage: vt1.is_geometric()
+            doctest:warning
+            ...
+            UserWarning: is_geometric is deprecated; use is_delaunay instead
+            True
+        """
+        from warnings import warn
+        warn('is_geometric is deprecated; use is_delaunay instead')
+        return self.is_delaunay(*args, **kwds)
 
     def balanced_polytope(self, slope=VERTICAL, homogeneous=False, backend=None):
         r"""

@@ -279,7 +279,7 @@ class Automaton:
             1
             sage: A.run()
             0
-            sage: sum(T.is_geometric() for T in A)
+            sage: sum(T.is_delaunay() for T in A)
             54
             sage: sum(T.is_cylindrical() for T in A)
             24
@@ -1145,7 +1145,6 @@ class ReducedCoreAutomaton(Automaton):
     # TODO: implement in_neighbors
 
 
-# TODO: this should be renamed DelaunayAutomaton
 class DelaunayAutomaton(Automaton):
     r"""
     Automaton of Delaunay (veering) triangulations.
@@ -1542,7 +1541,7 @@ class DelaunayStrebelAutomaton(Automaton):
             self._backend = default_backend(state.base_ring())
 
         if kind == 'delaunay':
-            if not state.is_geometric(backend=self._backend):
+            if not state.is_delaunay(backend=self._backend):
                 raise ValueError('invalid seed: non-Delaunay veering triangulation {}'.format(state))
 
         state = state.copy(mutable=True)

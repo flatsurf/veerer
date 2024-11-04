@@ -957,9 +957,9 @@ class VeeringTriangulationLinearFamily(LinearFamily, VeeringTriangulation):
             sage: X = VeeringTriangulationLinearFamilies.prototype_H1_1(0, 4, 1, 0, mutable=True)
             sage: X.is_core()
             True
-            sage: X.is_geometric()
+            sage: X.is_delaunay()
             False
-            sage: while not X.is_geometric():
+            sage: while not X.is_delaunay():
             ....:     X.random_forward_flip()
         """
         if not self._mutable:
@@ -1231,7 +1231,7 @@ class VeeringTriangulationLinearFamilies:
             sage: X9 = VeeringTriangulationLinearFamilies.prototype_H2(0, 2, 1, -1)
             sage: X9.base_ring()
             Rational Field
-            sage: X9.is_geometric()
+            sage: X9.is_delaunay()
             True
             sage: A = DelaunayAutomaton()
             sage: A.add_seed(X9)
@@ -1244,7 +1244,7 @@ class VeeringTriangulationLinearFamilies:
             sage: X17 = VeeringTriangulationLinearFamilies.prototype_H2(0, 2, 2, -1)
             sage: X17.base_ring()
             Number Field in sqrt17 with defining polynomial x^2 - 17 with sqrt17 = 4.123105625617660?
-            sage: X17.is_geometric()
+            sage: X17.is_delaunay()
             True
             sage: A = DelaunayAutomaton()
             sage: A.add_seed(X17)
