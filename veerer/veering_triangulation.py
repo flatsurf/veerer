@@ -4356,43 +4356,6 @@ class VeeringTriangulation(Triangulation):
             else:
                 raise ValueError('invalid slope parameter')
 
-    def strebel_edges(self, slope=VERTICAL):
-        r"""
-        Return a list of indices of the half-edges of the Strebel veering triangulation
-
-        The half-edge belongs to the Strebel graph if and only if the index is not -1.
-        The index of the half-edge in the Strebel graph is the corresponding label of the half-edge in the Strebel graph
-
-        EXAMPLES::
-
-            sage: from veerer import VeeringTriangulation
-
-            sage: VeeringTriangulation("", boundary="(0:1,1:1,2:1,3:1)", colouring="RRRR").strebel_edges()
-            [0, 1, 2, 3]
-            sage: VeeringTriangulation("", boundary="(0:1,1:1,2:1)(~0:1)", colouring="RRR").strebel_edges()
-            [0, 1, 2, 3]
-        """
-        n = self._n
-        ep = self._ep
-        dim = VeeringTriangulation.dimension(self)
-        m = 2 * dim - self.num_folded_edges() # number of half-edges
-
-        index_strebel = [-1] * n
-        j = k = 0
-        for e in range(n):
-            E = ep[e]
-            if e == E:
-                if self.is_half_edge_strebel(e, slope=slope):
-                    index_strebel[e] = j + k
-                    k += 1
-            if e < ep[e]:
-                if self.is_half_edge_strebel(e, slope=slope) and self.is_half_edge_strebel(E, slope=slope):
-                    index_strebel[e] = j + k
-                    index_strebel[E] = m - j - 1
-                    j += 1
-
-        return index_strebel
-
     def strebel_graph(self, slope=VERTICAL, mutable=False):
         r"""
         Return the Strebel graph associated to this veering triangulation.
@@ -4475,8 +4438,20 @@ class VeeringTriangulation(Triangulation):
         dim = VeeringTriangulation.dimension(self)
         m = 2 * dim - self.num_folded_edges() # number of half-edges
 
-        # list of half-edges in the strebel graph
-        index_strebel = self.strebel_edges(slope=slope)
+        # index of half-edges that remain in the strebel graph
+        index_strebel = [-1] * n
+        j = k = 0
+        for e in range(n):
+            E = ep[e]
+            if e == E:
+                if self.is_half_edge_strebel(e, slope=slope):
+                    index_strebel[e] = j + k
+                    k += 1
+            if e < ep[e]:
+                if self.is_half_edge_strebel(e, slope=slope) and self.is_half_edge_strebel(E, slope=slope):
+                    index_strebel[e] = j + k
+                    index_strebel[E] = m - j - 1
+                    j += 1
 
         # build vertex permutation, edge permutation, and boundary array
         vertex_permutation = array('i', [-1] * m)
