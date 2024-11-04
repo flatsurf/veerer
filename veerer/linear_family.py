@@ -1233,12 +1233,7 @@ class VeeringTriangulationLinearFamilies:
             Rational Field
             sage: X9.is_delaunay()
             True
-            sage: A = DelaunayAutomaton()
-            sage: A.add_seed(X9)
-            1
-            sage: A.run()
-            0
-            sage: A
+            sage: X9.delaunay_automaton()
             Delaunay automaton with 6 vertices
 
             sage: X17 = VeeringTriangulationLinearFamilies.prototype_H2(0, 2, 2, -1)
@@ -1246,23 +1241,14 @@ class VeeringTriangulationLinearFamilies:
             Number Field in sqrt17 with defining polynomial x^2 - 17 with sqrt17 = 4.123105625617660?
             sage: X17.is_delaunay()
             True
-            sage: A = DelaunayAutomaton()
-            sage: A.add_seed(X17)
-            1
-            sage: A.run()  # long time
-            0
-            sage: A  # long time
+            sage: X17.delaunay_automaton() # long time
             Delaunay automaton with 210 vertices
 
         We check below part of McMullen theorem about connectedness::
 
             sage: a0, b0, c0, e0 = next(VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=0))
             sage: X17_0 = VeeringTriangulationLinearFamilies.prototype_H2(a0, b0, c0, e0)
-            sage: A0 = DelaunayAutomaton(backend='sage')
-            sage: A0.add_seed(X17_0)
-            1
-            sage: A0.run()  # long time
-            0
+            sage: A0 = X17_0.delaunay_automaton()  # long time
             sage: for a, b, c, e in VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=0):  # long time
             ....:     X = VeeringTriangulationLinearFamilies.prototype_H2(a, b, c, e, mutable=True)
             ....:     X.set_canonical_labels()
@@ -1271,11 +1257,7 @@ class VeeringTriangulationLinearFamilies:
 
             sage: a1, b1, c1, e1 = next(VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=1))
             sage: X17_1 = VeeringTriangulationLinearFamilies.prototype_H2(a1, b1, c1, e1)
-            sage: A1 = DelaunayAutomaton(backend='sage')
-            sage: A1.add_seed(X17_1)
-            1
-            sage: A1.run()  # long time
-            0
+            sage: A1 = X17_1.delaunay_automaton()  # long time
             sage: for a, b, c, e in VeeringTriangulationLinearFamilies.H2_prototype_parameters(17, spin=1):  # long time
             ....:     X = VeeringTriangulationLinearFamilies.prototype_H2(a, b, c, e, mutable=True)
             ....:     X.set_canonical_labels()
@@ -1334,7 +1316,6 @@ class VeeringTriangulationLinearFamilies:
         EXAMPLES::
 
             sage: from veerer.linear_family import VeeringTriangulationLinearFamilies
-            sage: from veerer.automaton import DelaunayAutomaton
 
             sage: X9 = VeeringTriangulationLinearFamilies.prototype_H1_1(0, 2, 1, -1)
             sage: X9.base_ring()
