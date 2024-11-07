@@ -4378,7 +4378,7 @@ class VeeringTriangulation(Triangulation):
         Note that when we degenerate two cylinders, the residue condition becomes codimension one
         in the associated stratum::
 
-            sage: f_low.dimension() == f_low.stratum().dimension() - 1
+            sage: f_low.dimension() == f_low.stratum().dimension() - 1  # optional - surface_dynamics
             True
             sage: f_low.residue_constraints().echelon_form()
             [1 0 0 1]
