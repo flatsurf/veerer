@@ -593,9 +593,6 @@ class LinearFamily:
         self._subspace.echelonize()
         self._constellation_class.relabel(self, p, False)
 
-        # TODO: remove check
-        self._check()
-
     def best_relabelling(self, all=False):
         r"""
         Return the smallest relabelling of this linear family.
@@ -603,7 +600,9 @@ class LinearFamily:
         n = self.num_half_edges()
         m = self.num_edges()
 
-        best = None
+        t_best = None
+        subspace_best = None
+        best_relabelling = None
         if all:
             relabellings = []
 
@@ -617,22 +616,24 @@ class LinearFamily:
             for l in data_new:
                 perm_on_list(relabelling, l, self._n)
 
-            subspace_new = copy(self._subspace)
-            matrix_permutation(subspace_new, rr)
-            subspace_new.echelonize()
-            subspace_new.set_immutable()
-
-            T = (fp_new, ep_new, data_new, subspace_new)
-            if best is None or T < best:
-                best = T
-                best_relabelling = relabelling
-                if all:
-                    del relabellings[:]
+            # first compare the combinatorial data to avoid echelonization
+            t_new = (fp_new, ep_new, data_new)
+            if t_best is None or t_new <= t_best:
+                subspace_new = copy(self._subspace)
+                matrix_permutation(subspace_new, rr)
+                subspace_new.echelonize()
+                subspace_new.set_immutable()
+                if subspace_best is None or (t_new < t_best or (t_new == t_best and subspace_new < subspace_best)):
+                    t_best = t_new
+                    subspace_best = subspace_new
+                    best_relabelling = relabelling
+                    if all:
+                        del relabellings[:]
+                        relabellings.append(relabelling)
+                elif all and t_new == t_best and subspace_new == subspace_best:
                     relabellings.append(relabelling)
-            elif all and T == best:
-                relabellings.append(relabelling)
 
-        return (relabellings, best) if all else (best_relabelling, best)
+        return (relabellings, best) if all else (best_relabelling, t_best + (subspace_best,))
 
     def _non_isom_easy(self, other):
         return (self._constellation_class._non_isom_easy(self, other) or
@@ -776,6 +777,18 @@ class VeeringTriangulationLinearFamily(LinearFamily, VeeringTriangulation):
         for row in subspace.right_kernel_matrix():
             insert(sum(row[i] * x[i] for i in range(ambient_dim)) == 0)
 
+    def _set_subspace_constraints_fast(self, cs, L, slope):
+        zero = L.base_ring().zero()
+        if slope == VERTICAL:
+            subspace = self._subspace
+            for row in subspace.right_kernel_matrix():
+                cs.insert(L.element_class(L, row.dict(), zero) == zero, check=False)
+        elif slope == HORIZONTAL:
+            subspace = self._horizontal_subspace()
+            shift = self.num_edges()
+            for row in subspace.right_kernel_matrix():
+                cs.insert(L.element_class(L, {key + shift: value for key, value in row.dict().items()}, zero) == zero, check=False)
+
     def _check(self, error=ValueError):
         LinearFamily._check(self, error)
 
@@ -895,52 +908,6 @@ class VeeringTriangulationLinearFamily(LinearFamily, VeeringTriangulation):
                 if j:
                     mid_edges.discard(i)
         return not mid_edges
-
-    def delaunay_cone(self, x_low_bound=0, y_low_bound=0, hw_bound=0, backend=None):
-        r"""
-        Return the geometric polytope.
-
-        EXAMPLES::
-
-            sage: from veerer import *
-
-            sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
-            sage: T.delaunay_cone()
-            Cone of dimension 4 in ambient dimension 6 made of 6 facets (backend=ppl)
-            sage: T.as_linear_family().delaunay_cone(backend='ppl')
-            Cone of dimension 4 in ambient dimension 6 made of 6 facets (backend=ppl)
-            sage: T.as_linear_family().delaunay_cone(backend='sage')
-            Cone of dimension 4 in ambient dimension 6 made of 6 facets (backend=sage)
-
-        An example in genus 2 involving a linear constraint::
-
-            sage: vt, s, t = VeeringTriangulations.L_shaped_surface(1, 1, 1, 1)
-            sage: f = VeeringTriangulationLinearFamily(vt, [s, t])
-            sage: PG = f.delaunay_cone(backend='ppl')
-            sage: PG
-            Cone of dimension 4 in ambient dimension 14 made of 6 facets (backend=ppl)
-            sage: sorted(PG.rays())
-            [[0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1],
-             [0, 1, 1, 1, 1, 1, 0, 2, 0, 0, 2, 2, 2, 2],
-             [0, 1, 1, 1, 1, 1, 0, 2, 2, 2, 0, 0, 0, 2],
-             [0, 2, 2, 2, 2, 2, 0, 1, 1, 1, 0, 0, 0, 1],
-             [1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1],
-             [1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1],
-             [2, 0, 0, 2, 2, 2, 2, 1, 1, 1, 0, 0, 0, 1]]
-        """
-        ne = self._subspace.ncols()
-        L = LinearExpressions(self.base_ring())
-        x = [L.variable(i) for i in range(ne)]
-        y = [L.variable(ne + i) for i in range(ne)]
-        cs = ConstraintSystem()
-        for i in range(ne):
-            cs.insert(x[i] >= x_low_bound)
-        for i in range(ne):
-            cs.insert(y[i] >= y_low_bound)
-        self._set_subspace_constraints(cs.insert, x, VERTICAL)
-        self._set_subspace_constraints(cs.insert, y, HORIZONTAL)
-        self._set_delaunay_constraints(cs.insert, x, y, hw_bound=hw_bound)
-        return cs.cone(backend)
 
     def random_forward_flip(self, repeat=1):
         r"""

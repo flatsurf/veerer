@@ -1966,6 +1966,17 @@ class VeeringTriangulation(Triangulation):
             sage: V = VeeringTriangulation("(0,12,~11)(1,13,~12)(2,3,14)(4,10,9)(5,~10,11)(6,~5,~17)(7,~0,~6)(8,~4,~7)(15,~13,~14)(16,17,~2)(~16,~3,~15)(~9,~8,~1)", "RRRBRRBBBBPBBBRRPB")
             sage: V.cylinders(BLUE)
             []
+
+        Some examples with boundaries::
+
+            sage: fp = "(0,2,1)(~0,3,~1)"
+            sage: bdry = "(~2:2,~3:2)"
+            sage: for cols in ["BRRR", "BBRR", "RBRR"]:
+            ....:     vt = VeeringTriangulation(fp, bdry, cols)
+            ....:     print(cols, vt.cylinders(RED), vt.cylinders(BLUE))
+            BRRR [] []
+            BBRR [] [([1, 7], [2], [3], False)]
+            RBRR [] []
         """
         if col != RED and col != BLUE:
             raise ValueError("'col' must be RED or BLUE")
@@ -1981,7 +1992,7 @@ class VeeringTriangulation(Triangulation):
 
         seen = [False] * n
         for a in range(n):
-            if seen[a]:
+            if seen[a] or self._bdry[a]:
                 continue
 
             # triangle (a,b,c)
@@ -2026,7 +2037,7 @@ class VeeringTriangulation(Triangulation):
             lbdry = [] # left boundary
             half_turn = False # whether the cylinder is a folded cylinder
             cyl = True
-            while not seen[a]:
+            while not seen[a] and not self._bdry[a]:
                 assert cols[a] == col or cols[a] == PURPLE, (typ, a, colour_to_string(cols[a]), b, colour_to_string(cols[b]), c, colour_to_string(cols[c]))
                 seen[a] = seen[ep[a]] = True
                 cc.append(a)
@@ -2058,22 +2069,26 @@ class VeeringTriangulation(Triangulation):
 
                 # go to triangle across the door
                 a = ep[a]
-                b = fp[a]
-                c = fp[b]
-                assert cols[a] == col or cols[a] == PURPLE, (self, a, colour_to_string(cols[a]), b, colour_to_string(cols[b]), c, colour_to_string(cols[c]))
-                if cols[b] == col or cols[b] == PURPLE:
-                    assert cols[c] == opcol, (self, a, colour_to_string(cols[a]), b, colour_to_string(cols[b]), c, colour_to_string(cols[c]))
-                    # LEFT type, next door is  b
-                    a, b, c = b, c, a
-                    typ = LEFT
-                elif cols[c] == col or cols[c] == PURPLE:
-                    assert cols[b] == opcol, (self, a, colour_to_string(cols[a]), b, colour_to_string(cols[b]), c, colour_to_string(cols[c]))
-                    # RIGHT type, next door is c
-                    a, b, c = c, a, b
-                    typ = RIGHT
-                else:
+                if self._bdry[a]:
                     cyl = False
                     break
+                else:
+                    b = fp[a]
+                    c = fp[b]
+                    assert cols[a] == col or cols[a] == PURPLE, (self, a, colour_to_string(cols[a]), b, colour_to_string(cols[b]), c, colour_to_string(cols[c]))
+                    if cols[b] == col or cols[b] == PURPLE:
+                        assert cols[c] == opcol, (self, a, colour_to_string(cols[a]), b, colour_to_string(cols[b]), c, colour_to_string(cols[c]))
+                        # LEFT type, next door is  b
+                        a, b, c = b, c, a
+                        typ = LEFT
+                    elif cols[c] == col or cols[c] == PURPLE:
+                        assert cols[b] == opcol, (self, a, colour_to_string(cols[a]), b, colour_to_string(cols[b]), c, colour_to_string(cols[c]))
+                        # RIGHT type, next door is c
+                        a, b, c = c, a, b
+                        typ = RIGHT
+                    else:
+                        cyl = False
+                        break
 
             if cyl and (a == a0 or half_turn):
                 cylinders.append((cc, rbdry, lbdry, half_turn))
@@ -2623,6 +2638,8 @@ class VeeringTriangulation(Triangulation):
             if self._colouring[e] != ZERO:
                 cs.insert(L.element_class(L, {shift + e: one}, zero) >= zero, check=False)
 
+    _set_subspace_constraints_fast = _set_train_track_constraints_fast
+
     def _set_switch_conditions(self, insert, x, slope=VERTICAL):
         r"""
         These are the linear parts of the train-track equations
@@ -2828,6 +2845,8 @@ class VeeringTriangulation(Triangulation):
 
     def _set_delaunay_constraints_fast(self, cs, L):
         zero = L.base_ring().zero()
+        one = L.base_ring().one()
+        minus_one = -one
         ne = self.num_edges()
         for e in self.forward_flippable_edges():
             a, _, _, d = self.square_about_edge(e, check=False)
@@ -2835,7 +2854,7 @@ class VeeringTriangulation(Triangulation):
             d = self._norm(d)
             e = self._norm(e)
             # y[a] + y[d] - x[e] >= 0
-            l = L.element_class(L, {ne + a: 1, ne + d: 1, e: -1}, zero)
+            l = L.element_class(L, {ne + a: one, ne + d: one, e: minus_one}, zero)
             cs.insert(l >= 0, check=False)
         for e in self.backward_flippable_edges():
             a, _, _, d = self.square_about_edge(e, check=False)
@@ -2843,7 +2862,7 @@ class VeeringTriangulation(Triangulation):
             d = self._norm(d)
             e = self._norm(e)
             # x[a] + x[d] - y[e] >= 0
-            l = L.element_class(L, {a: 1, d: 1, ne + e: -1}, zero)
+            l = L.element_class(L, {a: one, d: one, ne + e: minus_one}, zero)
             cs.insert(l >= 0, check=False)
 
     def _set_delaunay_constraints(self, insert, x, y, hw_bound=0):
@@ -3049,16 +3068,45 @@ class VeeringTriangulation(Triangulation):
 
             sage: T.delaunay_cone(backend='sage')
             Cone of dimension 4 in ambient dimension 6 made of 6 facets (backend=sage)
+
+            sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
+            sage: T.delaunay_cone()
+            Cone of dimension 4 in ambient dimension 6 made of 6 facets (backend=ppl)
+            sage: T.as_linear_family().delaunay_cone(backend='ppl')
+            Cone of dimension 4 in ambient dimension 6 made of 6 facets (backend=ppl)
+            sage: T.as_linear_family().delaunay_cone(backend='sage')
+            Cone of dimension 4 in ambient dimension 6 made of 6 facets (backend=sage)
+
+        An example in genus 2 involving a linear constraint::
+
+            sage: vt, s, t = VeeringTriangulations.L_shaped_surface(1, 1, 1, 1)
+            sage: f = VeeringTriangulationLinearFamily(vt, [s, t])
+            sage: PG = f.delaunay_cone(backend='ppl')
+            sage: PG
+            Cone of dimension 4 in ambient dimension 14 made of 6 facets (backend=ppl)
+            sage: sorted(PG.rays())
+            [[0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1],
+             [0, 1, 1, 1, 1, 1, 0, 2, 0, 0, 2, 2, 2, 2],
+             [0, 1, 1, 1, 1, 1, 0, 2, 2, 2, 0, 0, 0, 2],
+             [0, 2, 2, 2, 2, 2, 0, 1, 1, 1, 0, 0, 0, 1],
+             [1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1],
+             [1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1],
+             [2, 0, 0, 2, 2, 2, 2, 1, 1, 1, 0, 0, 0, 1]]
         """
         if x_low_bound or y_low_bound or hw_bound:
             raise NotImplementedError
 
-        L = LinearExpressions(ZZ)
+        R = self.base_ring()
+        L = LinearExpressions(R)
+        zero = R.zero()
+        one = R.one()
         ne = self.num_edges()
         cs = ConstraintSystem()
-        self._set_train_track_constraints_fast(cs, L, VERTICAL)
-        self._set_train_track_constraints_fast(cs, L, HORIZONTAL)
+        for i in range(2 * ne):
+            cs.insert(L.element_class(L, {i : one}, zero) >= zero, check=False)
         self._set_delaunay_constraints_fast(cs, L)
+        self._set_subspace_constraints_fast(cs, L, VERTICAL)
+        self._set_subspace_constraints_fast(cs, L, HORIZONTAL)
         return cs.cone(backend)
 
     def geometric_polytope(self, *args, **kwds):
@@ -4328,6 +4376,269 @@ class VeeringTriangulation(Triangulation):
             parallel_families.append((parallel_cylinders, [u[i] for i in pos]))
 
         return parallel_families
+
+    def degeneration(self, edges_low=None, edges_up=None, mutable=False, mapping=False):
+        r"""
+        Return the veering triangulation obtained by blowing-up the given subset of ``edges``.
+
+        This corresponds to a a two levels degeneration in the BCGGM compactification.
+
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation
+
+        Horizontal degeneration (cylinder blowup)::
+
+            sage: vt = VeeringTriangulation("(0,1,2)(3,4,5)(6,7,8)(~2,~3,~7)(~1,~8,~6)(~5,~0,~4)", "RBRRBBRBR")
+            sage: f_up, f_low = vt.degeneration(edges_low=[0, 1, 2, 3, 4, 5, 7], edges_up=[6, 8])
+            sage: f_up is None
+            True
+            sage: f_low.stratum()  # optional - surface_dynamics
+            H_1(2, -1^2)
+
+            sage: f_up, f_low = vt.degeneration(edges_low=[0, 1, 2, 3, 6, 7, 8], edges_up=[4, 5])
+            sage: f_up is None
+            True
+            sage: f_low.stratum()  # optional - surface_dynamics
+            H_1(2, -1^2)
+
+            sage: f_up, f_low = vt.degeneration(edges_low=[0, 1, 2, 3, 7], edges_up=[4, 5, 6, 8])
+            sage: f_up is None
+            True
+            sage: f_low.stratum()  # optional - surface_dynamics
+            H_0(2, -1^4)
+
+        Note that when we degenerate two cylinders, the residue condition becomes codimension one
+        in the associated stratum::
+
+            sage: f_low.dimension() == f_low.stratum().dimension() - 1  # optional - surface_dynamics
+            True
+            sage: f_low.residue_constraints().echelon_form()
+            [1 0 0 1]
+            [0 1 1 0]
+
+        Collapsing the two marked point of a torus in H(0,0)::
+
+            sage: vt = VeeringTriangulation("(0,1,2)(~1,3,~0)(~3,4,5)(~5,~2,~4)", "BRRRRB")
+            sage: f_up, f_low = vt.degeneration(edges_low=[5], edges_up=[0, 1, 2, 3, 4])
+            sage: f_up.stratum()  # optional - surface_dynamics
+            H_1(0)
+            sage: f_low.stratum()  # optional - surface_dynamics
+            H_0(0^2, -2)
+        """
+        # We distinguish three kinds of triangles
+        # - up triangles: when the three edges are in the up partition
+        # - down triangles: when the three edges are in the down partition
+        # - mixed triangles: when the triangle has one down edge and two up edges
+        n = self._n
+        m = self.num_edges()
+        ep = self._ep
+        vp = self._vp
+        fp = self._fp
+        bdry = self._bdry
+        colouring = self._colouring
+
+        if edges_low is None and edges_up is None:
+            raise ValueError('must specify at least one of edges_low and edges_up')
+
+        if edges_low is None:
+            edges_up = set(edges_up)
+            edges_low = set(range(m)).difference(edges_up)
+        if edges_up is None:
+            edges_up = set(edges_up)
+            edges_low = set(range(m)).difference(edges_low)
+        else:
+            edges_low = set(edges_low)
+            edges_up = set(edges_up)
+
+        if edges_low.intersection(edges_up) or edges_low.union(edges_up) != set(range(m)):
+            raise ValueError('invalid arguments: edges_low={} edges_up={}'.format(edges_low, edges_up))
+
+        half_edges_up = edges_up.union([ep[e] for e in edges_up])
+        half_edges_low = edges_low.union([ep[e] for e in edges_low])
+
+        n_mix = 0
+        mix_p = array('i', [-1] * n)
+        for (a, b, c) in self.triangles():
+            n_up = (a in half_edges_up) + (b in half_edges_up) + (c in half_edges_up)
+            if n_up == 1:
+                raise ValueError('invalid set of edges: {} is a up-down-down triangle'.format(t))
+            elif n_up == 2:
+                n_mix += 1
+                if a not in half_edges_up:
+                    down = a
+                    mix1, mix2 = b,c
+                if b not in half_edges_up:
+                    down = b
+                    mix1, mix2 = c,a
+                if c not in half_edges_up:
+                    down = c
+                    mix1, mix2 = a,b
+                if colouring[mix1] != colouring[mix2]:
+                    raise ValueError('invalid mixed triangle ({}, {}, {}) with colouring ({}, {}, {})'.format(
+                        down, mix1, mix2,
+                        colour_to_string(down),
+                        colour_to_string(colouring[mix1]),
+                        colour_to_string(colouring[mix2])))
+                mix_p[mix1] = mix2
+                mix_p[mix2] = mix1
+
+        n_low = len(half_edges_low)
+        n_up = len(half_edges_up) - 2 * n_mix
+
+        # build the upper level: we construct only the edge permutation ep_up
+        # and the face permutation fp_up
+        if n_up:
+            ep_up = array('i', [-1] * n_up)
+            fp_up = array('i', [-1] * n_up)
+            angle_excess_up = array('i', [0] * n_up)
+            colouring_up = array('i', [0] * n_up)
+
+            # If we only blow-up cylinders (horizontal degenerations) there is no
+            # upper level
+            relabelling_up = {}
+            j = k = 0
+            for a in half_edges_up:
+                if mix_p[a] != -1 or a in relabelling_up:
+                    continue
+
+                # build ep
+                A = ep[a]
+                if a == A:
+                    relabelling_up[a] = j + k
+                    ep_up[j + k] = j + k
+                    k += 1
+                else:
+                    relabelling_up[a] = j + k
+                    # to find the matching half-edge we go through all mixed triangles
+                    A = ep[a]
+                    while mix_p[A] != -1:
+                        A = ep[mix_p[A]]
+                    relabelling_up[A] = n_up - j - 1
+                    ep_up[j + k] = n_up - j - 1
+                    ep_up[n_up - j - 1] = j + k
+                    j += 1
+
+            assert 2 * j + k == n_up, (n_up, j, k)
+
+            for e in half_edges_up:
+                if mix_p[e] != -1:
+                    continue
+
+                colouring_up[relabelling_up[e]] = colouring[e]
+
+                excess = bdry[e]
+                ee = fp[e]
+                col = colouring[e]
+                alternations = 0
+                while ee not in half_edges_up:
+                    excess += bdry[ee]
+                    alternations += colouring[ee] != col
+                    col = colouring[ee]
+                    e = fp[e]
+                fp_up[relabelling_up[e]] = relabelling_up[ee]
+
+            vt_up = VeeringTriangulation.from_permutations(None, ep_up, fp_up, (angle_excess_up, colouring_up), mutable=mutable)
+
+        else:
+            vt_up = None
+
+        # build the lower level
+        relabelling_low = {e: j for j, e in enumerate(half_edges_low)}
+
+        vp_low = array('i', [0] * n_low)
+        ep_low = array('i', [0] * n_low)
+        angle_excess_low = array('i', [0] * n_low)
+        colouring_low = array('i', [0] * n_low)
+        for e in half_edges_low:
+            ep_low[relabelling_low[e]] = relabelling_low[ep[e]]
+
+            colouring_low[relabelling_low[e]] = colouring[e]
+
+            excess = bdry[e]
+            col = colouring[e]
+            alternations = 0
+            ee = vp[e]
+            while ee not in relabelling_low:
+                excess += bdry[ee]
+                alternations += colouring[ee] != col
+                col = colouring[ee]
+                assert col == RED or col == BLUE
+                ee = vp[ee]
+            vp_low[relabelling_low[e]] = relabelling_low[ee]
+            alternations += colouring[ee] != col
+            assert (alternations % 2 == 0) == (colouring[e] == colouring[ee])
+            angle_excess_low[relabelling_low[e]] = excess + alternations // 2
+
+        vt_low = VeeringTriangulation.from_permutations(vp_low, ep_low, None, (angle_excess_low, colouring_low), mutable=mutable)
+
+        # compute constraints in order to produce linear families
+        constraints = self.constraints_matrix().matrix_from_columns(sorted(edges_up) + sorted(edges_low))
+        constraints.echelonize()
+        i = 0
+        constraints_up = constraints[:, :len(edges_up)]
+        i = 0
+        while i < constraints_up.nrows() and constraints_up[i]:
+            i += 1
+        constraints_up = constraints_up[:i]
+
+        constraints_low = constraints[i:, len(edges_up):]
+        j = 0
+        while j < constraints_low.nrows() and constraints_low[j]:
+            j += 1
+        constraints_low = constraints_low[:j]
+
+        from .linear_family import VeeringTriangulationLinearFamily
+        if vt_up is not None:
+            generators_up = constraints_up.right_kernel_matrix()
+            for e in range(n):
+                if mix_p[e] == -1:
+                    continue
+                a = self._norm(e)
+                b = self._norm(mix_p[e])
+                if generators_up.column(a) != generators_up.column(b):
+                    raise RuntimeError('a={} b={}\ngenerators_matrix={}'.format(a, b, genmerators_matrix))
+
+            half_edges_up_to_edge_index = {e: i for i, e in enumerate(sorted(edges_up))}
+            half_edges_up_to_edge_index.update({ep[e]: i for i, e in half_edges_up_to_edge_index.items()})
+            representatives = [half_edges_up_to_edge_index[e] for e, e_up in relabelling_up.items() if e_up <= ep_up[e_up]]
+            f_up = VeeringTriangulationLinearFamily(vt_up, generators_up.matrix_from_columns(representatives))
+        else:
+            f_up = vt_up
+        f_low = VeeringTriangulationLinearFamily(vt_low, constraints_low.right_kernel_matrix().__copy__())
+
+        return (f_up, relabelling_up, f_low, relabelling_low) if mapping else (f_up, f_low)
+
+    def codimension_one_horizontal_degenerations(self, mutable=False, mapping=False):
+        r"""
+        Return codimension one horizontal degenerations.
+
+        INPUT:
+
+        - ``mapping`` -- whether to also return the mapping used to relabel edges
+
+        EXAMPLES::
+
+            sage: from veerer import VeeringTriangulation
+
+            sage: vt = VeeringTriangulation("(0,1,2)(~1,3,4)(~3,5,6)(~6,~2,~5)(~4,7,8)(~8,~0,~7)", "RBBBRRBBR")
+            sage: [degeneration.stratum() for _, degeneration in vt.codimension_one_horizontal_degenerations()]  # optional - surface_dynamics
+            [H_1(2, -1^2)]
+
+            sage: from veerer.linear_family import VeeringTriangulationLinearFamilies
+            sage: X9 = VeeringTriangulationLinearFamilies.prototype_H1_1(0, 2, 1, -1)
+            sage: [degeneration.stratum() for _, degeneration in vt.codimension_one_horizontal_degenerations()]  # optional - surface_dynamics
+            [H_1(2, -1^2)]
+        """
+        n = self._n
+        for col in [RED, BLUE]:
+            for cyl_family in self.parallel_cylinders(col):
+                edges = []
+                for cyl in cyl_family[0]:
+                    for i, j in enumerate(cyl):
+                        if j:
+                            edges.append(i)
+                yield self.degeneration(edges_up=edges, mutable=mutable)
 
     def is_half_edge_strebel(self, e, slope=VERTICAL, check=True):
         r"""
