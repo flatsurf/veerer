@@ -2638,6 +2638,8 @@ class VeeringTriangulation(Triangulation):
             if self._colouring[e] != ZERO:
                 cs.insert(L.element_class(L, {shift + e: one}, zero) >= zero, check=False)
 
+    _set_subspace_constraints_fast = _set_train_track_constraints_fast
+
     def _set_switch_conditions(self, insert, x, slope=VERTICAL):
         r"""
         These are the linear parts of the train-track equations
@@ -2843,6 +2845,8 @@ class VeeringTriangulation(Triangulation):
 
     def _set_delaunay_constraints_fast(self, cs, L):
         zero = L.base_ring().zero()
+        one = L.base_ring().one()
+        mone = -one
         ne = self.num_edges()
         for e in self.forward_flippable_edges():
             a, _, _, d = self.square_about_edge(e, check=False)
@@ -2850,7 +2854,7 @@ class VeeringTriangulation(Triangulation):
             d = self._norm(d)
             e = self._norm(e)
             # y[a] + y[d] - x[e] >= 0
-            l = L.element_class(L, {ne + a: 1, ne + d: 1, e: -1}, zero)
+            l = L.element_class(L, {ne + a: one, ne + d: one, e: mone}, zero)
             cs.insert(l >= 0, check=False)
         for e in self.backward_flippable_edges():
             a, _, _, d = self.square_about_edge(e, check=False)
@@ -2858,7 +2862,7 @@ class VeeringTriangulation(Triangulation):
             d = self._norm(d)
             e = self._norm(e)
             # x[a] + x[d] - y[e] >= 0
-            l = L.element_class(L, {a: 1, d: 1, ne + e: -1}, zero)
+            l = L.element_class(L, {a: one, d: one, ne + e: mone}, zero)
             cs.insert(l >= 0, check=False)
 
     def _set_delaunay_constraints(self, insert, x, y, hw_bound=0):
@@ -3064,16 +3068,45 @@ class VeeringTriangulation(Triangulation):
 
             sage: T.delaunay_cone(backend='sage')
             Cone of dimension 4 in ambient dimension 6 made of 6 facets (backend=sage)
+
+            sage: T = VeeringTriangulation("(0,1,2)(~0,~1,~2)", "RRB")
+            sage: T.delaunay_cone()
+            Cone of dimension 4 in ambient dimension 6 made of 6 facets (backend=ppl)
+            sage: T.as_linear_family().delaunay_cone(backend='ppl')
+            Cone of dimension 4 in ambient dimension 6 made of 6 facets (backend=ppl)
+            sage: T.as_linear_family().delaunay_cone(backend='sage')
+            Cone of dimension 4 in ambient dimension 6 made of 6 facets (backend=sage)
+
+        An example in genus 2 involving a linear constraint::
+
+            sage: vt, s, t = VeeringTriangulations.L_shaped_surface(1, 1, 1, 1)
+            sage: f = VeeringTriangulationLinearFamily(vt, [s, t])
+            sage: PG = f.delaunay_cone(backend='ppl')
+            sage: PG
+            Cone of dimension 4 in ambient dimension 14 made of 6 facets (backend=ppl)
+            sage: sorted(PG.rays())
+            [[0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1],
+             [0, 1, 1, 1, 1, 1, 0, 2, 0, 0, 2, 2, 2, 2],
+             [0, 1, 1, 1, 1, 1, 0, 2, 2, 2, 0, 0, 0, 2],
+             [0, 2, 2, 2, 2, 2, 0, 1, 1, 1, 0, 0, 0, 1],
+             [1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1],
+             [1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1],
+             [2, 0, 0, 2, 2, 2, 2, 1, 1, 1, 0, 0, 0, 1]]
         """
         if x_low_bound or y_low_bound or hw_bound:
             raise NotImplementedError
 
-        L = LinearExpressions(ZZ)
+        R = self.base_ring()
+        L = LinearExpressions(R)
+        zero = R.zero()
+        one = R.one()
         ne = self.num_edges()
         cs = ConstraintSystem()
-        self._set_train_track_constraints_fast(cs, L, VERTICAL)
-        self._set_train_track_constraints_fast(cs, L, HORIZONTAL)
+        for i in range(2 * ne):
+            cs.insert(L.element_class(L, {i : one}, zero) >= zero, check=False)
         self._set_delaunay_constraints_fast(cs, L)
+        self._set_subspace_constraints_fast(cs, L, VERTICAL)
+        self._set_subspace_constraints_fast(cs, L, HORIZONTAL)
         return cs.cone(backend)
 
     def geometric_polytope(self, *args, **kwds):
