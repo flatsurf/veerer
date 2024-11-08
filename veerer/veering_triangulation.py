@@ -2846,7 +2846,7 @@ class VeeringTriangulation(Triangulation):
     def _set_delaunay_constraints_fast(self, cs, L):
         zero = L.base_ring().zero()
         one = L.base_ring().one()
-        mone = -one
+        minus_one = -one
         ne = self.num_edges()
         for e in self.forward_flippable_edges():
             a, _, _, d = self.square_about_edge(e, check=False)
@@ -2854,7 +2854,7 @@ class VeeringTriangulation(Triangulation):
             d = self._norm(d)
             e = self._norm(e)
             # y[a] + y[d] - x[e] >= 0
-            l = L.element_class(L, {ne + a: one, ne + d: one, e: mone}, zero)
+            l = L.element_class(L, {ne + a: one, ne + d: one, e: minus_one}, zero)
             cs.insert(l >= 0, check=False)
         for e in self.backward_flippable_edges():
             a, _, _, d = self.square_about_edge(e, check=False)
@@ -2862,7 +2862,7 @@ class VeeringTriangulation(Triangulation):
             d = self._norm(d)
             e = self._norm(e)
             # x[a] + x[d] - y[e] >= 0
-            l = L.element_class(L, {a: one, d: one, ne + e: mone}, zero)
+            l = L.element_class(L, {a: one, d: one, ne + e: minus_one}, zero)
             cs.insert(l >= 0, check=False)
 
     def _set_delaunay_constraints(self, insert, x, y, hw_bound=0):
